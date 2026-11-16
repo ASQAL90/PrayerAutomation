@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayo Jama'ah! — jadwal sholat, kalender, dan widget untuk Windows</title>
+<meta name="description" content="Aplikasi Windows untuk jadwal sholat, kalender Hijriyah, widget, dan pengingat teks tanpa suara. Perhitungan dilakukan lokal.">
+<style>
+  :root { color-scheme: light dark; --bg:#0b1220; --card:#121d33; --fg:#e9eefb; --muted:#a2b2cd; --accent:#0e9f6e; --border:#233350; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f8fc; --card:#ffffff; --fg:#0d1a2b; --muted:#4e6076; --border:#dbe4f0; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--fg); line-height:1.65; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 20px 64px; }
+  header { text-align: center; }
+  h1 { font-size: 2.5rem; margin: 0 0 8px; letter-spacing: -.02em; }
+  .tagline { color: var(--muted); font-size: 1.08rem; margin: 0 auto 28px; max-width: 660px; }
+  .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: 600; border: 1px solid var(--border); color: var(--fg); background: var(--card); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .meta { margin-top: 14px; color: var(--muted); font-size: .9rem; }
+  .notice { margin: 18px auto 0; max-width: 720px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted); font-size: .92rem; }
+  img.shot { display: block; width: 100%; max-width: 760px; margin: 40px auto 0; border-radius: 12px; border: 1px solid var(--border); }
+  section { margin-top: 48px; }
+  h2 { font-size: 1.3rem; margin: 0 0 12px; }
+  ul { padding-left: 1.2rem; color: var(--muted); }
+  li { margin: 4px 0; }
+  a { color: var(--accent); }
+  footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: .9rem; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Ayo Jama'ah!</h1>
+    <p class="tagline">Jadwal sholat, kalender Hijriyah, widget, dan pengingat teks tanpa suara untuk Windows. Perhitungan jadwal dilakukan lokal lewat core Rust.</p>
+    <div class="buttons">
+      <a class="btn primary" href="https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip">Unduh versi terbaru</a>
+      <a class="btn" href="https://github.com/asqal90/PrayerAutomation/releases/latest">Semua rilis</a>
+    </div>
+    <p class="meta">Windows 10 (19041+) / 11 · x64 · portable ZIP</p>
+    <p class="notice">Build saat ini <strong>belum ditandatangani</strong>, jadi Windows SmartScreen bisa menampilkan peringatan. Unduhan selalu mengarah ke rilis terbaru.</p>
+  </header>
+
+  <img class="shot" src="screenshot.png" alt="Tampilan Ayo Jama'ah!">
+
+  <section>
+    <h2>Fitur utama</h2>
+    <ul>
+      <li>Jadwal sholat harian dengan pilihan metode perhitungan, zona waktu, dan koreksi menit.</li>
+      <li>Kalender Masehi dan Hijriyah.</li>
+      <li>Widget Essential, Minimalist, dan Detail dengan beberapa tema.</li>
+      <li>Pengingat teks tanpa suara/adzan.</li>
+      <li>Lokasi manual, perkiraan jaringan, atau Windows Location Services.</li>
+      <li>Pencarian nama permukiman offline memakai data GeoNames.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Dokumentasi</h2>
+    <p><a href="https://github.com/asqal90/PrayerAutomation#readme">README</a> · <a href="https://github.com/asqal90/PrayerAutomation/tree/master/docs">Dokumentasi teknis</a> · <a href="https://github.com/asqal90/PrayerAutomation">Kode sumber</a></p>
+  </section>
+
+  <footer>Installer terpisah masih dibuat manual dan belum disediakan di halaman ini.</footer>
+</main>
+</body>
+</html>

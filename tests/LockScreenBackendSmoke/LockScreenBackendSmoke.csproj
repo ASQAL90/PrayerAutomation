@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageWorkflow.cs" Link="LockScreenImageWorkflow.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageScheduler.cs" Link="LockScreenImageScheduler.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenRestoreStore.cs" Link="LockScreenRestoreStore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/WindowsLockScreenImageBackend.cs" Link="WindowsLockScreenImageBackend.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenNativePlatform.cs" Link="LockScreenNativePlatform.cs" Condition="Exists('../../src/PrayerAutomation.UI/LockScreenNativePlatform.cs')" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+<Project>
+  <!-- Command-line-only: retain canonical project paths and never rebuild protected hardlinks. -->
+  <ItemGroup>
+    <Compile Remove="$(MSBuildProjectDirectory)/obj/**/*.cs;$(MSBuildProjectDirectory)/bin/**/*.cs" />
+    <Page Remove="$(MSBuildProjectDirectory)/obj/**/*.xaml;$(MSBuildProjectDirectory)/bin/**/*.xaml" />
+    <ApplicationDefinition Remove="$(MSBuildProjectDirectory)/obj/**/*.xaml;$(MSBuildProjectDirectory)/bin/**/*.xaml" />
+    <None Remove="$(MSBuildProjectDirectory)/obj/**/*;$(MSBuildProjectDirectory)/bin/**/*" />
+    <Content Remove="../../target/x86_64-pc-windows-gnu/release/prayer_core.dll" />
+    <Content Include="$(IsolatedPrayerCore)" Link="prayer_core.dll"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+             Condition="'$(IsolatedPrayerCore)' != ''" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DeadlineCargoTarget>$([System.Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR'))</DeadlineCargoTarget>
+  </PropertyGroup>
+  <Target Name="RequireDeadlineBuildIsolation" BeforeTargets="BuildRustPrayerCore">
+    <Error Condition="'$(IsolatedPrayerCore)' == '' or '$(OwnedRustTarget)' == ''"
+           Text="This command-line isolation target requires an owned Rust target and a verified native copy." />
+    <Error Condition="'$(DeadlineCargoTarget)' != '$(OwnedRustTarget)'"
+           Text="CARGO_TARGET_DIR must match the fresh owned target; canonical hardlinks must never be rebuilt." />
+  </Target>
+</Project>

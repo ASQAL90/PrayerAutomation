@@ -1,0 +1,73 @@
+<Window x:Class="PrayerAutomation.UI.AboutWindow" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PrayerAutomation.UI"
+        Title="Tentang Ayo Jama'ah!" Width="640" Height="540" MinWidth="440" MinHeight="320"
+        WindowStyle="None" ResizeMode="CanResizeWithGrip" ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource SurfaceBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Segoe UI"
+        PreviewKeyDown="OnPreviewKeyDown" UseLayoutRounding="True">
+    <Window.Resources>
+        <Style x:Key="CreditText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="TextAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style TargetType="Hyperlink">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="TextDecorations" Value="Underline" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Border AutomationProperties.AutomationId="AboutFrame" BorderThickness="1"
+            BorderBrush="{DynamicResource AppBorderBrush}" Background="{DynamicResource SurfaceBrush}">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
+                            MouseLeftButtonDown="OnHeaderMouseLeftButtonDown">
+                    <local:AppLogo Width="36" Height="36" Margin="0,0,10,0" />
+                    <TextBlock Text="Tentang Ayo Jama'ah!" FontSize="20" FontWeight="SemiBold"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Tutup" Click="OnCloseClick"
+                        AutomationProperties.AutomationId="AboutClose" AutomationProperties.Name="Tutup tentang aplikasi" />
+            </Grid>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          AutomationProperties.AutomationId="AboutCreditsScroll">
+                <StackPanel Margin="0,0,8,0">
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditAuthor"
+                               Text="author : Muhammad Nashiruddin Al-Asqalani &quot;I develop as hobby&quot;" />
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditEmail"><Run Text="email : " /><Hyperlink NavigateUri="mailto:madinalani@gmail.com" RequestNavigate="OnLinkRequestNavigate"><Run Text="madinalani@gmail.com" /></Hyperlink></TextBlock>
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditLinkedIn"><Run Text="linkedin : " /><Hyperlink NavigateUri="https://linkedin.com/in/madinalani" RequestNavigate="OnLinkRequestNavigate"><Run Text="https://linkedin.com/in/madinalani" /></Hyperlink></TextBlock>
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditGitHub"><Run Text="github : " /><Hyperlink NavigateUri="https://github.com/ASQAL90" RequestNavigate="OnLinkRequestNavigate"><Run Text="github.com/ASQAL90" /></Hyperlink></TextBlock>
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditCoAuthor" Margin="0,12,0,10"
+                               Text="co-author : dibantu beberapa mba-mba AI" />
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditLuna"
+                               Text="terimakasih pada mbak Luna yang membuat kerangka pondasi program dari awal membuat core perhitungan kalender &amp; waktu sholat dengan Rust &amp; C#," />
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditSol"
+                               Text="dan mbak Sol yang membantu menemukan dan memperbaiki Bug, celah- celah keamanan, unit test, serta meningkatkan fitur menjadi lebih baik." />
+                </StackPanel>
+            </ScrollViewer>
+            <TextBlock x:Name="LinkStatus" Grid.Row="2" Visibility="Collapsed" Margin="0,10,0,0"
+                       Style="{StaticResource CreditText}" Foreground="{DynamicResource ErrorTextBrush}"
+                       AutomationProperties.AutomationId="AboutLinkStatus" />
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,18 @@
+GeoNames offline locality data
+
+This application includes a derived subset of the GeoNames Gazetteer `cities1000` extract.
+
+Source data:
+- https://download.geonames.org/export/dump/cities1000.zip
+- https://download.geonames.org/export/dump/admin1CodesASCII.txt
+- https://download.geonames.org/export/dump/countryInfo.txt
+- https://www.geonames.org/
+
+Snapshot: source files last modified 2026-10-22 (UTC); downloaded 2026-10-22.
+Changes made: retained GeoNames feature-class P (populated-place) records; selected the locality name, English ASCII first-level administrative name, country name, WGS84 latitude/longitude, and ISO country code; normalized whitespace and compressed the tab-separated result as `cities1000.tsv.gz`. No lookup request is made when this offline dataset is used.
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Attribution: GeoNames (https://www.geonames.org/).
+
+GeoNames provides the data “as is” without warranty or representation of accuracy, timeliness, or completeness. Results are nearest-populated-place labels, not street addresses or proof of a device's exact position.

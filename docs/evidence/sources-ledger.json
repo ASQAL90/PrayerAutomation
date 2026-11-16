@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://learn.microsoft.com/en-us/uwp/api/windows.system.userprofile.lockscreen.setimagefileasync?view=winrt-26100",
+      "title": "LockScreen.SetImageFileAsync — Microsoft Learn",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "Sets the lock screen image from a StorageFile object.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "url": "https://learn.microsoft.com/en-us/uwp/api/windows.system.userprofile.lockscreen.originalimagefile?view=winrt-26100",
+      "title": "LockScreen.OriginalImageFile — Microsoft Learn",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "This property retrieves only files. If the image was set through a stream, this call will return E_FILE_NOT_FOUND.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "url": "https://support.microsoft.com/en-us/windows/experience/personalization/customize-the-lock-screen-in-windows",
+      "title": "Customize the Lock Screen in Windows — Microsoft Support",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "Select Start > Settings > Personalization > Lock screen.",
+          "added": "2026-10-22"
+        },
+        {
+          "text": "Windows spotlight: displays a rotating set of images from Microsoft, along with tips, tricks, and notifications.",
+          "added": "2026-10-22"
+        },
+        {
+          "text": "Picture: select a single image as your lock screen background.",
+          "added": "2026-10-22"
+        },
+        {
+          "text": "Slideshow: use a slideshow of images from a folder on your device.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "url": "https://learn.microsoft.com/en-us/windows/client-management/mdm/personalization-csp",
+      "title": "Personalization CSP — Microsoft Learn",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "## LockScreenImageUrl\n\n| Scope | Editions | Applicable OS |\n|---|---|---|\n| ✅ Device ❌ User | ✅ Pro ✅ Enterprise ✅ Education ✅ IoT Enterprise / IoT Enterprise LTSC | ✅ Windows 10, version 1709 [10.0.16299] and later |\n\n```Device\n./Vendor/MSFT/Personalization/LockScreenImageUrl\n```\n\nAn http or https Url to a jpg, jpeg or png image that needs to be downloaded and used as the Lock Screen Image or a file Url to a local image on the file system that needs to be used as the Lock Screen Image.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "url": "https://sunnah.com/bukhari:1",
+      "title": "Sahih al-Bukhari 1 - Revelation - كتاب بدء الوحى - Sunnah.com - Sayings and Teachings of Prophet Muhammad (صلى الله عليه و سلم)",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "The reward of deeds depends upon the intentions and every person will get the reward according to what he has intended.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "url": "https://sunnah.com/bukhari:6464",
+      "title": "Sahih al-Bukhari 6464 - To make the Heart Tender (Ar-Riqaq) - كتاب الرقاق - Sunnah.com - Sayings and Teachings of Prophet Muhammad (صلى الله عليه و سلم)",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "the most beloved deed to Allah is the most regular and constant even if it were little.",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "url": "https://sunnah.com/muslim:2593",
+      "title": "Sahih Muslim 2593 - The Book of Virtue, Enjoining Good Manners, and Joining of the Ties of Kinship - كتاب البر والصلة والآداب - Sunnah.com - Sayings and Teachings of Prophet Muhammad (صلى الله عليه و سلم)",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "verily Allah is kind and He loves kindness",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "url": "https://sunnah.com/bukhari:69",
+      "title": "Sahih al-Bukhari 69 - Knowledge - كتاب العلم - Sunnah.com - Sayings and Teachings of Prophet Muhammad (صلى الله عليه و سلم)",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "Facilitate things to people (concerning religious matters), and do not make it hard for them and give them good tidings and do not make them run away (from Islam).",
+          "added": "2026-10-22"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "url": "https://sunnah.com/muslim:1005",
+      "title": "Sahih Muslim 1005 - The Book of Zakat - كتاب الزكاة - Sunnah.com - Sayings and Teachings of Prophet Muhammad (صلى الله عليه و سلم)",
+      "accessed": "2026-10-22",
+      "quotes": [
+        {
+          "text": "Every act of goodness is sadaqa.",
+          "added": "2026-10-22"
+        }
+      ]
+    }
+  ]
+}

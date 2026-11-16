@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/PrayerAutomation.UI/PrayerAutomation.UI.csproj" Aliases="ProductUi" />
+    <None Include="../../sedang_sholat.png" Link="sedang_sholat.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../target/x86_64-pc-windows-gnu/release/prayer_core.dll" Link="prayer_core.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

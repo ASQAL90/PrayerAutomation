@@ -1,0 +1,158 @@
+{
+  "scope": "Current documentation checks only; no main-app, real-profile or Windows personalization acceptance.",
+  "checked_at": "2026-10-23T13:19:16.929722+07:00",
+  "documents_sha256": {
+    "README.md": "30ec95d95ec15c4668c558b874e0fd6b9946861f6f7f24c6d7a875dcf225ff7f",
+    "PROGRAM_DOCUMENTATION_ID.md": "e73b9782a12448e794460cb8c1817c75e2b8a7289240daf8d2ce3392e992b964",
+    "docs/UI_ACCEPTANCE_ID.md": "aac40bd31459f97a2200222029f9dd6d4163a4e76d82903beb216f2ddc2b53db",
+    "docs/LEGACY_PYTHON_ID.md": "b8618e403e7231040092402bce03d2cf35b6d35870b41afb2ee35f3d95fcfbcc",
+    "docs/VERIFICATION_ID.md": "bcf5f65d35b78ebeb911c92d5984065ac7795b24292aeec10df2a08e91932974",
+    "program_full_flowchart.html": "8ed10ca43ee59503adaadccb69847e102cba99ea3ce4547309dc08b4428001d9",
+    "lockscreen_restore_flow.html": "de56562cb94ed78e011cf6e3b2635008147508df3ee7a865bd70613e8f7260af",
+    "docs/program_full_flowchart.html": "3be83af499a6c82a8589325842fbec87bb81be3ede636cb42f630d33c2a347e2",
+    "docs/lockscreen_restore_flow.html": "e705046c20dfb547581889fa7c57a10d6b238cefae06a01d1fc1384e8849a084"
+  },
+  "structure": {
+    "documents_checked": 9,
+    "local_links_checked": 60,
+    "html_documents_checked": 4,
+    "html_source_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "html_citations_checked": 4,
+    "external_dependencies_in_active_html": 0,
+    "errors": [],
+    "complete": true
+  },
+  "citations": {
+    "markdown_guide_strict_evidence_exit_code": 0,
+    "ledger": "sources-ledger.json",
+    "ledger_ids_preserved": true,
+    "unrelated_research_candidates_excluded": true,
+    "check_output": "info: stats: 121 prose sentence(s), 8 with declared provenance (7%) — 8 cited, 0 marked [unverified] (a sentence may be both); 9 distinct source(s) cited, 9 in ledger (9 with evidence quotes)\r\ncitations OK"
+  },
+  "browser": {
+    "run_id": "prayerautomation-doc-browser-2026-10-23T05-43-07-277Z",
+    "results_sha256": "f60279885784bd470c3e7476fd9e02f643fedbb79c5c4d3829116e3bd6027f71",
+    "browser_version": "Edg/155.0.4283.62",
+    "temporary_scratch_profile": true,
+    "page_public_network_blocked": true,
+    "layout_count": 4,
+    "layouts": [
+      {
+        "name": "program_full_flowchart",
+        "viewport_width": 1280,
+        "page_width": 1265,
+        "page_height": 3369,
+        "heading_count": 15,
+        "column_overlaps": [],
+        "text_overflows": [],
+        "source_line_overflows": [],
+        "mobile_column_failures": 0,
+        "external_resource_tags": 0,
+        "navigation": {
+          "expected": "preview",
+          "actual": "preview",
+          "target_top": -0.203125
+        }
+      },
+      {
+        "name": "program_full_flowchart",
+        "viewport_width": 520,
+        "page_width": 505,
+        "page_height": 4697,
+        "heading_count": 15,
+        "column_overlaps": [],
+        "text_overflows": [],
+        "source_line_overflows": [],
+        "mobile_column_failures": 0,
+        "external_resource_tags": 0,
+        "navigation": {
+          "expected": "preview",
+          "actual": "preview",
+          "target_top": -0.171875
+        }
+      },
+      {
+        "name": "lockscreen_restore_flow",
+        "viewport_width": 1280,
+        "page_width": 1265,
+        "page_height": 4491,
+        "heading_count": 20,
+        "column_overlaps": [],
+        "text_overflows": [],
+        "source_line_overflows": [],
+        "mobile_column_failures": 0,
+        "external_resource_tags": 0,
+        "navigation": {
+          "expected": "mode",
+          "actual": "mode",
+          "target_top": -0.03125
+        }
+      },
+      {
+        "name": "lockscreen_restore_flow",
+        "viewport_width": 520,
+        "page_width": 505,
+        "page_height": 6714,
+        "heading_count": 20,
+        "column_overlaps": [],
+        "text_overflows": [],
+        "source_line_overflows": [],
+        "mobile_column_failures": 0,
+        "external_resource_tags": 0,
+        "navigation": {
+          "expected": "mode",
+          "actual": "mode",
+          "target_top": 0.09375
+        }
+      }
+    ],
+    "complete": true
+  },
+  "visual_spot_checks": {
+    "successful_checks": 2,
+    "run_id": "prayerautomation-doc-browser-2026-10-23T05-43-07-277Z",
+    "regions": [
+      "program_full_flowchart-520-first-fold.png",
+      "lockscreen_restore_flow-1280-first-fold.png"
+    ],
+    "result": "Two first-fold screenshots show readable warnings and no visible overlap/horizontal clipping. Below-fold portions checked through DOM geometry, not exhaustive visual acceptance."
+  },
+  "historical_checks": {
+    "checked_at": "2026-10-23T10:35:28.997665+07:00",
+    "local_links_checked": 54,
+    "browser_layout_count": 4,
+    "visual_spot_checks": {
+      "successful_checks": 3,
+      "regions": "Two initial first-fold checks plus the corrected full lock-screen guide at 520px.",
+      "result": "Corrected mode/result cards are single-column; source URLs and CSP quote remain inside content margins. Other flow-page sections checked by DOM geometry, not exhaustive screenshot inspection."
+    },
+    "superseded_by_current_document_hashes": true
+  },
+  "corrected_document_defect": {
+    "red_structure_exit_code": 1,
+    "red_browser_exit_code": 1,
+    "cause": "A per-line tool-read truncation cut CSS before URL wrapping and the responsive media query.",
+    "change": "Only the CSS block was restored from the complete local template.",
+    "green_structure_exit_code": 0,
+    "green_browser_exit_code": 0,
+    "scope": "Documentation only; no application source or Windows personalization state changed by this correction."
+  },
+  "main_app_launched": false,
+  "complete": true,
+  "final_reconciliation": {
+    "spec_reviews_passed": 2,
+    "quality_integration_review_passed": true,
+    "quality_evidence": "independent-quality-20261023-122627.json",
+    "only_markdown_guide_changed_since_browser_check": true,
+    "active_html_hashes_match_browser_checked_document_version": true,
+    "final_structure_exit_code": 0,
+    "final_citation_strict_evidence_exit_code": 0,
+    "final_git_whitespace_exit_code": 0,
+    "native_user_acceptance_remains_pending": true
+  }
+}

@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWinUI>false</UseWinUI>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
+    <WindowsAppSdkUndockedRegFreeWinRTInitialize>false</WindowsAppSdkUndockedRegFreeWinRTInitialize>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../AyoJamaah.ico</ApplicationIcon>
+    <AssemblyName>AyoJamaah</AssemblyName>
+    <Version>2.1.0</Version>
+    <Product>Ayo Jama'ah!</Product>
+    <Company>Ayo Jama'ah!</Company>
+    <AssemblyTitle>Ayo Jama'ah!</AssemblyTitle>
+    <Description>Jadwal sholat, kalender, dan pengingat</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Branding/AyoJamaah-v13.svg" />
+    <PackageReference Include="GeoTimeZone" Version="6.1.0" />
+    <PackageReference Include="TimeZoneConverter" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../../sedang_sholat.png" Link="sedang_sholat.png"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Data/geonames/cities1000.tsv.gz" Link="geonames/cities1000.tsv.gz"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Data/geonames/NOTICE.txt" Link="geonames/NOTICE.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../AyoJamaah.ico" Link="AyoJamaah.ico"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../target/x86_64-pc-windows-gnu/release/prayer_core.dll" Link="prayer_core.dll"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="BuildRustPrayerCore" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="cargo build --release --target x86_64-pc-windows-gnu --package prayer-core"
+          WorkingDirectory="$(MSBuildProjectDirectory)/../.." />
+  </Target>
+
+  <ItemGroup>
+    <Compile Remove="NominatimReverseGeocodingService.cs" />
+    <Compile Include="../Shared/PrayerIconPaths.cs" Link="Shared/PrayerIconPaths.cs" />
+    <!-- Retain the old source for comparison; it is no longer the native backend. -->
+    <Compile Remove="NativeTaskbarRenderer.cs" />
+    <ProjectReference Include="../PrayerAutomation.Taskbar.WinUI/PrayerAutomation.Taskbar.WinUI.csproj" />
+  </ItemGroup>
+  <Import Project="../PrayerAutomation.Taskbar.WinUI/NoOptionalHelperExecutables.targets" />
+</Project>

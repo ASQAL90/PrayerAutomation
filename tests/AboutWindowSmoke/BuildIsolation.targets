@@ -1,0 +1,9 @@
+<Project>
+  <!-- Command-line-only isolation; do not mutate canonical/in-use outputs. -->
+  <ItemGroup>
+    <Compile Remove="$(MSBuildProjectDirectory)/obj/**/*.cs;$(MSBuildProjectDirectory)/bin/**/*.cs" />
+    <Page Remove="$(MSBuildProjectDirectory)/obj/**/*.xaml;$(MSBuildProjectDirectory)/bin/**/*.xaml" />
+    <ApplicationDefinition Remove="$(MSBuildProjectDirectory)/obj/**/*.xaml;$(MSBuildProjectDirectory)/bin/**/*.xaml" />
+    <None Remove="$(MSBuildProjectDirectory)/obj/**/*;$(MSBuildProjectDirectory)/bin/**/*" />
+  </ItemGroup>
+</Project>

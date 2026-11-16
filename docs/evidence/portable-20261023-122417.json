@@ -1,0 +1,281 @@
+{
+  "scope": "Automated isolated checks and portable artifact metadata; not main-app, real-profile or Windows personalization acceptance.",
+  "git_head": "9d364a9e6ad9e42098f2bc6a340f9c27357a5e17",
+  "working_tree_has_uncommitted_changes": true,
+  "source_snapshot_id": "prayerautomation-review-20261023-122627",
+  "source_sha256": {
+    "PrayerAutomation.UI/MainWindow.xaml": "a5309a84db8602f9d548e43755937211ec73b277d06a4b83a66f945eddf16ea6",
+    "PrayerAutomation.UI/MainWindow.xaml.cs": "737d5e8e7068dc056a8b13801d0cc0347fe8b2499576cb09fc4fb26465233efb",
+    "PrayerAutomation.UI/App.xaml.cs": "e269e8925e7ce30aa6311f8edabbf2af2095199b3c38b3fc55bae0ba24656b5c",
+    "tests/WidgetLayoutSmoke/Program.cs": "c6ed621a7287ac1500b11f28bd5527696fb0053703bf60038cf1caf33ab66cb5",
+    "tests/WidgetLayoutSmoke/MarqueeRenderSmoke.cs": "cf64bb47ad28558b29a1c38bff9ad7b644a3ce6e40d7066700937e83cb3349dd",
+    "tests/WidgetLayoutSmoke/WidgetSettingsInteractionSmoke.cs": "4b888b48607d1589d3d3cb5ea4448dc725160e6b887b400c982c83bb74cea861",
+    "tests/FormTypographySmoke/Program.cs": "a7819e3b8126af779fab82c8352d0fe68595996bcfa38dfd79c98ea890a87200",
+    "tests/FormTypographySmoke/FormTypographySmoke.csproj": "0df79d4047a1c275a79c83e3d17c12baed775aefa4de18f7d3717104327789d3",
+    "tests/WidgetLayoutSmoke/StartupWidgetLifecycleSmoke.cs": "5cc765f05421ad92098e7c28af33775107ae2f0bda07077d877096ef0522fd05",
+    "tests/WidgetLayoutSmoke/VisualAcceptanceSmoke.cs": "052a30440a76e6ed899ac7468dbd4e9f3329f6b187ea44532e70d0b4f475af23",
+    "tests/WidgetLayoutSmoke/ControlStateContrastSmoke.cs": "d45e89bce24b3e56a14446518c6f3e2ae84f993c25a8e8e404ca657cf23d9ebf",
+    "tests/PrayerUiLogicSmoke/Program.cs": "96f8b77a3fae5a8484641462b8a5ae03a121a4446ceaa9a825eca74f795659e5"
+  },
+  "source_snapshot_sha256": "65e82f98cb74aff9adcc86e78b7d99275aa3efefc4ab4cffd02cbb8cb69ef470",
+  "run_id": "prayerautomation-final-20261023-122417",
+  "run_started_at": "2026-10-23T12:24:17.383629+07:00",
+  "run_finished_at": "2026-10-23T12:25:42.963395+07:00",
+  "step_count": 14,
+  "asserting_csharp_suites": [
+    "CalendarSmoke",
+    "LocationDetectionSmoke",
+    "OfflineGeocoderSmoke",
+    "PrayerScheduleSmoke",
+    "PrayerUiLogicSmoke",
+    "LockScreenBackendSmoke",
+    "LockScreenWorkflowSmoke",
+    "WidgetLayoutSmoke",
+    "FormTypographySmoke"
+  ],
+  "skipped": [
+    {
+      "name": "SingleInstanceSmoke",
+      "reason": "Starts the real application; saved auto_lock_enabled is active."
+    }
+  ],
+  "steps": [
+    {
+      "name": "rust-tests",
+      "exit_code": 0,
+      "elapsed_seconds": 1.102,
+      "log_file": "rust-tests.log",
+      "log_sha256": "76bc994ad1de3328b7cd4d3f75c0d78a8615541c515a236494cff1e5fb1150cc"
+    },
+    {
+      "name": "CalendarSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 3.479,
+      "log_file": "CalendarSmoke.log",
+      "log_sha256": "344a7a2393085e4d13ba93b2b594d11ac07220eaf6f56ed54f1f07248c4c5065"
+    },
+    {
+      "name": "LocationDetectionSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 2.537,
+      "log_file": "LocationDetectionSmoke.log",
+      "log_sha256": "c4b09b83d188c1945aeec79284b31d7b801e420bb3b51812a616e33df0e9f5a7"
+    },
+    {
+      "name": "OfflineGeocoderSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 2.922,
+      "log_file": "OfflineGeocoderSmoke.log",
+      "log_sha256": "c3bb9f115d7f2a6bca0e814420db7007e4774027ecc9bec32311706e57441852"
+    },
+    {
+      "name": "PrayerScheduleSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 3.07,
+      "log_file": "PrayerScheduleSmoke.log",
+      "log_sha256": "ff4f56b993b2ed8b1fe493610d1acbd6337abe732e338b97b3afec8946c70157"
+    },
+    {
+      "name": "PrayerUiLogicSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 3.23,
+      "log_file": "PrayerUiLogicSmoke.log",
+      "log_sha256": "3860c391ac6ae3968cdbde28f5e2237bb22513f190f2b1f0db28c049549195e8"
+    },
+    {
+      "name": "LockScreenBackendSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 2.879,
+      "log_file": "LockScreenBackendSmoke.log",
+      "log_sha256": "1fcaa25001de829a22909d76df50186e519b966ab7ddce60a210b766877ca179"
+    },
+    {
+      "name": "LockScreenWorkflowSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 3.057,
+      "log_file": "LockScreenWorkflowSmoke.log",
+      "log_sha256": "3ef7263dd7f1ce80223f02e60b4319463a3305982daac2930f099637b02f0b75"
+    },
+    {
+      "name": "WidgetLayoutSmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 42.842,
+      "log_file": "WidgetLayoutSmoke.log",
+      "log_sha256": "20c8342438de191ccf0b4f0c3f5fd1b2e3164aa581c6f0b7c59c9c7fbf5d02e9"
+    },
+    {
+      "name": "FormTypographySmoke",
+      "exit_code": 0,
+      "elapsed_seconds": 8.672,
+      "log_file": "FormTypographySmoke.log",
+      "log_sha256": "3fa672666c7e9bf835f27b826135489fbd4eff5640b8a0f31aedf519d4f49461"
+    },
+    {
+      "name": "LockScreenApiSmoke-read-only",
+      "exit_code": 0,
+      "elapsed_seconds": 3.251,
+      "log_file": "LockScreenApiSmoke-read-only.log",
+      "log_sha256": "0432d549019ca7e37711be9c131e5c2cc88e3f2888ed9c09b647c92a82bd399d"
+    },
+    {
+      "name": "wpf-build",
+      "exit_code": 0,
+      "elapsed_seconds": 3.015,
+      "log_file": "wpf-build.log",
+      "log_sha256": "4a5cf5a1ff514b2fb895c3424d8a0ecff553a6b8605303ee98781f8c24950233"
+    },
+    {
+      "name": "portable-publish",
+      "exit_code": 0,
+      "elapsed_seconds": 5.172,
+      "log_file": "portable-publish.log",
+      "log_sha256": "2aaa7a6a068a5265da6f405376507d8a9b6d1d53275da05fd1a6ad7165675d79"
+    },
+    {
+      "name": "git-whitespace",
+      "exit_code": 0,
+      "elapsed_seconds": 0.126,
+      "log_file": "git-whitespace.log",
+      "log_sha256": "2082211f4885ca42d4bd1131d83ec2fb94e8f28c09ec1269f0ad516c42dd927e"
+    }
+  ],
+  "protected_user_state_unchanged": true,
+  "standard_user": true,
+  "main_app_launched": false,
+  "build_warnings": 0,
+  "build_errors": 0,
+  "visual_metrics": {
+    "CONTROL_STATE_CONTRAST": {
+      "themes": 8,
+      "checks": 368,
+      "minimum_ratio": 5.095,
+      "failures": 0
+    },
+    "RENDERED_TEXT_CONTRAST": {
+      "themes": 8,
+      "checks": 10920,
+      "minimum_ratio": 4.673,
+      "failures": 0
+    }
+  },
+  "lifecycle_current_cases_passed": 16,
+  "payload": {
+    "payload_directory": "dist/PrayerAutomation.WPF-lockscreen-test",
+    "main_app_launched": false,
+    "native_calls": "Pure domain C ABI only; no Windows personalization/session API called.",
+    "standard_user": true,
+    "apphost_pe": {
+      "file": "PrayerAutomation.UI.exe",
+      "machine": "AMD64",
+      "format": "PE32+",
+      "subsystem": 2,
+      "is_dll": false,
+      "section_count": 6,
+      "sha256": "53d946bb805bd52d38eb3bf99ad30e21ff9bd7590ede2e014875bf65568dc89c",
+      "size_bytes": 167936
+    },
+    "native_pe": {
+      "file": "prayer_core.dll",
+      "machine": "AMD64",
+      "format": "PE32+",
+      "subsystem": 3,
+      "is_dll": true,
+      "section_count": 10,
+      "sha256": "7f18fd13ed58430475904d38914575ca421f408381d62c43c6041d1e2e525858",
+      "size_bytes": 1195166
+    },
+    "execution_manifest": {
+      "level": "asInvoker",
+      "uiAccess": "false"
+    },
+    "included_frameworks": [
+      {
+        "name": "Microsoft.NETCore.App",
+        "version": "10.0.9"
+      },
+      {
+        "name": "Microsoft.WindowsDesktop.App",
+        "version": "10.0.9"
+      }
+    ],
+    "managed_payload_checks": [
+      {
+        "file": "PrayerAutomation.UI.exe",
+        "source_equal": true,
+        "sha256": "53d946bb805bd52d38eb3bf99ad30e21ff9bd7590ede2e014875bf65568dc89c"
+      },
+      {
+        "file": "PrayerAutomation.UI.dll",
+        "source_equal": true,
+        "sha256": "9870552e48bc15c5fb1d0dba3d498cdbaf26d4b79e46e28e2d2f3361ad3d559f"
+      },
+      {
+        "file": "PrayerAutomation.UI.pdb",
+        "source_equal": true,
+        "sha256": "b940b8e5b9207dcac4fe33499e5ca93bbfbe5496e2a8527b2ed15218af6292e3"
+      }
+    ],
+    "asset_checks": [
+      {
+        "file": "sedang_sholat.png",
+        "source_equal": true,
+        "sha256": "e64b8515280119b4e4e7f0e59c74244da5a44a815f1dd4cb5c4e2dbc7868a5df",
+        "size_bytes": 93297
+      },
+      {
+        "file": "prayer_automation.ico",
+        "source_equal": true,
+        "sha256": "555c890b949528ce48fc8c9cdb5c0ef75286ac41dbfb4df4fa75a772caa11c12",
+        "size_bytes": 5068
+      },
+      {
+        "file": "prayer_core.dll",
+        "source_equal": true,
+        "sha256": "7f18fd13ed58430475904d38914575ca421f408381d62c43c6041d1e2e525858",
+        "size_bytes": 1195166
+      },
+      {
+        "file": "geonames/cities1000.tsv.gz",
+        "source_equal": true,
+        "sha256": "e377a5ffddd22ad4e47e84452d394bc2227f35eb67dfdcacf186ee9b8462e2f1",
+        "size_bytes": 2552758
+      },
+      {
+        "file": "geonames/NOTICE.txt",
+        "source_equal": true,
+        "sha256": "b116bb5f613ad8b2476eb8dbdee7af5310cc5b396798d2bf9e6e0b56f0a116f2",
+        "size_bytes": 1173
+      }
+    ],
+    "image_dimensions": [
+      1920,
+      1080
+    ],
+    "offline_geonames_rows": 171572,
+    "forbidden_payload_files": [],
+    "payload_file_count": 480,
+    "payload_size_bytes": 210204909,
+    "pure_native_functions_exercised": 7,
+    "native_abi_version": 1,
+    "native_fixture": {
+      "coordinates": "synthetic 10.0,20.0",
+      "date": "2026-05-01",
+      "hijri": [
+        1447,
+        11,
+        14
+      ],
+      "method": 3,
+      "prayer_minutes": [
+        190,
+        263,
+        637,
+        830,
+        1011,
+        1080
+      ]
+    },
+    "complete": true
+  },
+  "complete": true
+}

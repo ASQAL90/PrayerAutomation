@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/PrayerAutomation.UI/PrayerAutomation.UI.csproj">
+      <Aliases>ProductUi</Aliases>
+    </ProjectReference>
+    <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/PrayerScheduleService.cs" Link="PrayerScheduleService.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/CorrectionInputBehavior.cs" Link="CorrectionInputBehavior.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AutoLockScheduler.cs" Link="AutoLockScheduler.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ScheduleWidgetWindow.cs" Link="ScheduleWidgetWindow.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/WidgetMarqueeContent.cs" Link="WidgetMarqueeContent.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ThemeManager.cs" Link="ThemeManager.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/PrayerScheduleService.cs" Link="PrayerScheduleService.cs" />
+    <Content Include="../../target/x86_64-pc-windows-gnu/release/prayer_core.dll" Link="prayer_core.dll" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+  <Target Name="BuildRustPrayerCoreForPrayerScheduleSmoke" BeforeTargets="PrepareForBuild">
+    <Exec Command="cargo build --release --target x86_64-pc-windows-gnu --package prayer-core"
+          WorkingDirectory="$(MSBuildProjectDirectory)/../.." />
+  </Target>
+</Project>

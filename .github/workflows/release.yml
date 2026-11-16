@@ -1,0 +1,69 @@
+# Build portable Windows lalu unggah ke GitHub Release saat tag v*
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Install MinGW linker
+        shell: pwsh
+        run: |
+          choco install mingw --no-progress -y
+          $candidates = @(
+            'C:\ProgramData\mingw64\mingw64\bin',
+            'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin'
+          )
+          $mingw = $candidates | Where-Object { Test-Path (Join-Path $_ 'x86_64-w64-mingw32-gcc.exe') } | Select-Object -First 1
+          if (-not $mingw) {
+            $found = Get-ChildItem 'C:\ProgramData\chocolatey\lib' -Filter x86_64-w64-mingw32-gcc.exe -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+            if ($found) { $mingw = $found.DirectoryName }
+          }
+          if (-not $mingw) { throw 'MinGW (x86_64-w64-mingw32-gcc) tidak ditemukan setelah instalasi.' }
+          $mingw | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          & (Join-Path $mingw 'x86_64-w64-mingw32-gcc.exe') --version | Select-Object -First 1
+
+      - name: Publish portable build
+        run: dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -r win-x64 -o out
+
+      - name: Package ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path out/* -DestinationPath AyoJamaah-win-x64.zip -Force
+          $hash = (Get-FileHash AyoJamaah-win-x64.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  AyoJamaah-win-x64.zip" | Out-File -Encoding ascii SHA256SUMS.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AyoJamaah-win-x64
+          path: |
+            AyoJamaah-win-x64.zip
+            SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AyoJamaah-win-x64.zip
+            SHA256SUMS.txt
+          generate_release_notes: true

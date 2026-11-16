@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageWorkflow.cs" Link="LockScreenImageWorkflow.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageScheduler.cs" Link="LockScreenImageScheduler.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenRestoreStore.cs" Link="LockScreenRestoreStore.cs" />
+  </ItemGroup>
+</Project>

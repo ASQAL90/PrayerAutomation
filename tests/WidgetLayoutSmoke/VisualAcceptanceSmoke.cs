@@ -1,0 +1,617 @@
+extern alias ProductUi;
+
+using System.Collections;
+using System.Reflection;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using System.Windows.Threading;
+
+internal static class VisualAcceptanceSmoke
+{
+    private const BindingFlags I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private const BindingFlags S = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+    public static void Run(Application application)
+    {
+        Assembly assembly = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
+        Type appType = assembly.GetType("PrayerAutomation.UI.App", throwOnError: true)!;
+        MethodInfo initialize = appType.GetMethod("InitializeComponent", I)
+            ?? throw new InvalidOperationException("App.InitializeComponent tidak ditemukan.");
+        initialize.Invoke(application, null);
+        var errors = new List<string>();
+        Type settingsType = assembly.GetType("PrayerAutomation.UI.AppSettings", true)!;
+        object settings = Activator.CreateInstance(settingsType, nonPublic: true)!;
+        Set(settingsType, settings, "AutoLockEnabled", false);
+        Set(settingsType, settings, "LockScreenEnabled", false);
+        Set(settingsType, settings, "LockScreenOptIn", false);
+        Set(settingsType, settings, "StartupEnabled", true);
+        Set(settingsType, settings, "WidgetEnabled", false);
+        ApplyTheme(assembly, application, "light");
+
+        Type windowType = assembly.GetType("PrayerAutomation.UI.MainWindow", true)!;
+        ConstructorInfo constructor = windowType.GetConstructor(I, null, [settingsType], null)
+            ?? throw new InvalidOperationException("MainWindow(AppSettings) constructor tidak ditemukan.");
+        var window = (Window)constructor.Invoke([settings]);
+        window.Opacity = 0;
+        window.ShowInTaskbar = false;
+        window.ShowActivated = false;
+        window.Width = Math.Max(940, Math.Min(1050, SystemParameters.WorkArea.Width - 32));
+        window.Height = Math.Max(650, Math.Min(760, SystemParameters.WorkArea.Height - 32));
+
+        try
+        {
+            window.Show();
+            Pump();
+            TabControl? tabs = Field<TabControl>(windowType, window, "MainTabs");
+            if (tabs is null)
+            {
+                errors.Add("MainTabs pada WPF MainWindow tidak ditemukan.");
+                Finish(errors);
+                return;
+            }
+
+            tabs.SelectedIndex = 2;
+            Pump();
+            VerifyDateButtons(windowType, window, errors);
+            VerifyHiddenStartup(windowType, settingsType, window, errors);
+            VerifyGeocodingControls(windowType, window, errors);
+            VerifyLivePreview(windowType, settingsType, window, errors);
+            VerifyThemeContrast(assembly, application, windowType, window, tabs, errors);
+            ControlStateContrastSmoke.Run(application, errors);
+            VerifyAllRenderedText(assembly, application, windowType, window, tabs, errors);
+            VerifyLegends(windowType, window, tabs, errors);
+            VerifyStartupLogic(assembly, errors);
+            Finish(errors);
+        }
+        finally
+        {
+            windowType.GetField("_allowClose", I)?.SetValue(window, true);
+            window.Close();
+            Pump();
+            ApplyTheme(assembly, application, "light");
+        }
+    }
+
+    private static void VerifyDateButtons(Type type, Window window, List<string> errors)
+    {
+        string[] names = [
+            "CalendarDateCorrectionDecreaseButton", "CalendarDateCorrectionIncreaseButton",
+            "HijriDateCorrectionDecreaseButton", "HijriDateCorrectionIncreaseButton"];
+        foreach (string name in names)
+        {
+            Button? button = Field<Button>(type, window, name);
+            if (button is null)
+            {
+                errors.Add($"Tombol koreksi {name} tidak ditemukan di WPF.");
+                continue;
+            }
+
+            button.BringIntoView();
+            Pump();
+            ScrollViewer? scroll = Ancestor<ScrollViewer>(button);
+            bool inViewport = false;
+            if (scroll is not null && scroll.ViewportHeight > 0 && scroll.ViewportWidth > 0)
+            {
+                Rect r = button.TransformToAncestor(scroll).TransformBounds(new Rect(button.RenderSize));
+                inViewport = r.Left >= -1 && r.Top >= -1 && r.Right <= scroll.ViewportWidth + 1
+                    && r.Bottom <= scroll.ViewportHeight + 1;
+            }
+            Console.WriteLine($"VISUAL {name} {button.ActualWidth:0.#}x{button.ActualHeight:0.#} inViewport={inViewport}");
+            if (!button.IsVisible || button.ActualWidth < 24 || button.ActualHeight < 26 || !inViewport)
+                errors.Add($"Tombol {name} tidak terlihat utuh di viewport settings.");
+        }
+
+        ClickAndCheck("CalendarDateCorrectionDecreaseButton", "CalendarDateCorrectionBox", "-1");
+        ClickAndCheck("CalendarDateCorrectionIncreaseButton", "CalendarDateCorrectionBox", "0");
+        ClickAndCheck("HijriDateCorrectionDecreaseButton", "HijriDateCorrectionBox", "-1");
+        ClickAndCheck("HijriDateCorrectionIncreaseButton", "HijriDateCorrectionBox", "0");
+
+        void ClickAndCheck(string buttonName, string boxName, string expected)
+        {
+            Button? button = Field<Button>(type, window, buttonName);
+            TextBox? box = Field<TextBox>(type, window, boxName);
+            if (button is null || box is null)
+                return;
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
+            Pump();
+            if (box.Text != expected)
+                errors.Add($"Klik {buttonName}: nilai {boxName} aktual '{box.Text}', diharapkan '{expected}'.");
+        }
+    }
+
+    private static void VerifyHiddenStartup(Type type, Type settingsType, Window window, List<string> errors)
+    {
+        PropertyInfo? preference = settingsType.GetProperty("StartHidden", I);
+        object? settings = type.GetField("_settings", I)?.GetValue(window);
+        if (preference is null || settings is null || preference.GetValue(settings) is not false)
+            errors.Add("StartHidden harus tersedia dan nonaktif secara default.");
+
+        CheckBox? startup = Field<CheckBox>(type, window, "StartupEnabledCheckBox");
+        CheckBox? hidden = Field<CheckBox>(type, window, "StartHiddenCheckBox");
+        if (startup is null || hidden is null)
+        {
+            errors.Add("Checkbox startup tersembunyi tidak ditemukan.");
+            return;
+        }
+        startup.BringIntoView();
+        Pump();
+        if (hidden.IsChecked == true)
+            errors.Add("StartHidden harus tidak dicentang secara default.");
+        startup.IsChecked = false;
+        Pump();
+        if (hidden.IsEnabled)
+            errors.Add("StartHidden harus nonaktif saat registrasi startup dimatikan.");
+        startup.IsChecked = true;
+        Pump();
+        if (!hidden.IsEnabled)
+            errors.Add("StartHidden harus aktif saat registrasi startup dinyalakan.");
+    }
+
+    private static void VerifyGeocodingControls(Type type, Window window, List<string> errors)
+    {
+        TextBox? endpoint = Field<TextBox>(type, window, "OnlineGeocodingEndpointBox");
+        CheckBox? consent = Field<CheckBox>(type, window, "OnlineReverseGeocodeConsentCheckBox");
+        Button? online = Field<Button>(type, window, "OnlineReverseGeocodeButton");
+        TextBlock? endpointInfo = Field<TextBlock>(type, window, "OnlineGeocodingEndpointInfo");
+        TextBlock? disclosure = Field<TextBlock>(type, window, "OnlineGeocodingConsentDisclosure");
+        TextBlock? onlineStatus = Field<TextBlock>(type, window, "OnlineReverseGeocodeStatus");
+        Button? offline = Field<Button>(type, window, "OfflineReverseGeocodeButton");
+        TextBlock? offlineStatus = Field<TextBlock>(type, window, "OfflineReverseGeocodeStatus");
+        TextBox? latitude = Field<TextBox>(type, window, "LatitudeBox");
+        TextBox? longitude = Field<TextBox>(type, window, "LongitudeBox");
+        TextBox? locationName = Field<TextBox>(type, window, "LocationNameBox");
+        if (endpoint is null || consent is null || online is null || endpointInfo is null || disclosure is null ||
+            onlineStatus is null || offline is null || offlineStatus is null || latitude is null || longitude is null || locationName is null)
+        {
+            errors.Add("Kontrol reverse-geocoding online/offline tidak lengkap di WPF.");
+            return;
+        }
+
+        endpoint.BringIntoView();
+        Pump();
+        const string defaultEndpoint = "https://nominatim.openstreetmap.org";
+        if (endpoint.Text != defaultEndpoint || !endpointInfo.Text.Contains(defaultEndpoint, StringComparison.Ordinal))
+            errors.Add("Endpoint online default Nominatim tidak ditampilkan dengan benar.");
+        if (consent.IsChecked == true || online.IsEnabled)
+            errors.Add("Consent online harus tidak dicentang dan tombol nonaktif secara default.");
+        if (!disclosure.Text.Contains("IP publik", StringComparison.OrdinalIgnoreCase) ||
+            !disclosure.Text.Contains("Windows", StringComparison.OrdinalIgnoreCase) ||
+            !disclosure.Text.Contains("form", StringComparison.OrdinalIgnoreCase) ||
+            !disclosure.Text.Contains("tersimpan", StringComparison.OrdinalIgnoreCase) ||
+            !disclosure.Text.Contains("estimasi IP", StringComparison.OrdinalIgnoreCase) ||
+            !(disclosure.Text.Contains("tidak dikirim", StringComparison.OrdinalIgnoreCase) ||
+              disclosure.Text.Contains("tidak digunakan", StringComparison.OrdinalIgnoreCase)))
+            errors.Add("Disclosure harus menyebut IP publik, lokasi Windows terbaru dan larangan memakai koordinat form/tersimpan atau estimasi IP.");
+
+        MethodInfo? onlineClick = type.GetMethod("OnlineReverseGeocode_Click", I);
+        if (onlineClick is null)
+        {
+            errors.Add("Handler online reverse-geocoding tidak ditemukan.");
+        }
+        else
+        {
+            string latitudeBefore = latitude.Text, longitudeBefore = longitude.Text, locationBefore = locationName.Text;
+            onlineClick.Invoke(window, [online, new RoutedEventArgs(Button.ClickEvent, online)]);
+            if (!(onlineStatus.Text.Contains("tidak ada lokasi yang dibaca atau dikirim", StringComparison.OrdinalIgnoreCase) ||
+                  onlineStatus.Text.Contains("belum membaca atau mengirim lokasi", StringComparison.OrdinalIgnoreCase)) ||
+                consent.IsChecked == true || online.IsEnabled ||
+                type.GetField("_onlineGeocodeCancellation", I)?.GetValue(window) is not null ||
+                latitude.Text != latitudeBefore || longitude.Text != longitudeBefore || locationName.Text != locationBefore)
+                errors.Add("Handler online harus menolak tanpa consent, tanpa memulai operasi atau mengubah lokasi form.");
+        }
+
+        consent.IsChecked = true;
+        Pump();
+        if (!online.IsEnabled)
+            errors.Add("Consent eksplisit untuk endpoint valid harus mengaktifkan tombol satu-pencarian.");
+        endpoint.Text = "https://reverse.example/nominatim";
+        Pump();
+        if (consent.IsChecked == true || online.IsEnabled ||
+            !disclosure.Text.Contains("https://reverse.example/nominatim", StringComparison.Ordinal))
+            errors.Add("Mengubah endpoint harus memperbarui disclosure dan mencabut consent lama.");
+        endpoint.Text = "http://reverse.example";
+        Pump();
+        if (consent.IsChecked == true || online.IsEnabled ||
+            !endpointInfo.Text.Contains("HTTPS", StringComparison.OrdinalIgnoreCase))
+            errors.Add("Endpoint HTTP yang tidak aman harus ditolak tanpa consent.");
+        endpoint.Text = defaultEndpoint;
+        Pump();
+
+        latitude.Text = "-6.21462";
+        longitude.Text = "106.84513";
+        locationName.Text = "Lokasi uji sebelum lookup";
+        offline.BringIntoView();
+        Pump();
+        bool timedOut = false;
+        var frame = new DispatcherFrame();
+        void OnOfflineButtonEnabledChanged(object? sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (offline.IsEnabled)
+                frame.Continue = false;
+        }
+        offline.IsEnabledChanged += OnOfflineButtonEnabledChanged;
+        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        timeout.Tick += (_, _) =>
+        {
+            timedOut = true;
+            frame.Continue = false;
+        };
+        timeout.Start();
+        offline.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, offline));
+        if (!offline.IsEnabled)
+        {
+            frame.Continue = true;
+            Dispatcher.PushFrame(frame);
+        }
+        timeout.Stop();
+        offline.IsEnabledChanged -= OnOfflineButtonEnabledChanged;
+        if (timedOut)
+            errors.Add("Lookup offline WPF melebihi batas 20 detik.");
+        if (!locationName.Text.StartsWith("Jakarta", StringComparison.OrdinalIgnoreCase) ||
+            !offlineStatus.Text.Contains("tidak ada permintaan internet", StringComparison.OrdinalIgnoreCase))
+            errors.Add("Tombol lookup offline WPF harus menemukan Jakarta dari dataset lokal tanpa jaringan.");
+    }
+
+    private static void VerifyLivePreview(Type type, Type settingsType, Window window, List<string> errors)
+    {
+        ComboBox? mode = Field<ComboBox>(type, window, "WidgetModeBox");
+        TextBlock? label = Field<TextBlock>(type, window, "WidgetLivePreviewModeLabel");
+        if (mode is null || label is null)
+        {
+            errors.Add("Live preview widget atau label automation-nya tidak ditemukan.");
+            return;
+        }
+        mode.BringIntoView();
+        Pump();
+        object? settings = type.GetField("_settings", I)?.GetValue(window);
+        PropertyInfo? savedMode = settingsType.GetProperty("WidgetMode", I);
+        string? before = savedMode?.GetValue(settings)?.ToString();
+        if (mode.Items.Count < 3)
+        {
+            errors.Add("Pilihan mode widget kurang dari tiga.");
+            return;
+        }
+        mode.SelectedIndex = 2;
+        Pump();
+        if (!label.Text.Contains("detail", StringComparison.OrdinalIgnoreCase))
+            errors.Add("Status widget aktual tidak berubah mengikuti pilihan Medium Detail.");
+        if (Field<ContentControl>(type, window, "WidgetLivePreviewContent") is not null)
+            errors.Add("Preview widget tiruan masih ada; perubahan harus terlihat pada widget aktual.");
+        if (savedMode?.GetValue(settings)?.ToString() != before)
+            errors.Add("Perubahan preview sebelum Simpan mengubah setting tersimpan.");
+        mode.SelectedIndex = 0;
+        Pump();
+    }
+
+    private static void VerifyThemeContrast(Assembly assembly, Application app, Type windowType, Window window,
+        TabControl tabs, List<string> errors)
+    {
+        ComboBox? mode = Field<ComboBox>(windowType, window, "WidgetModeBox");
+        CheckBox? startup = Field<CheckBox>(windowType, window, "StartupEnabledCheckBox");
+        if (mode is null || startup is null)
+        {
+            errors.Add("ComboBox atau checkbox tema tidak ditemukan untuk uji kontras.");
+            return;
+        }
+        Type catalog = assembly.GetType("PrayerAutomation.UI.ThemeCatalog", true)!;
+        IEnumerable themes = (IEnumerable)catalog.GetProperty("All", S)!.GetValue(null)!;
+        MethodInfo apply = Method(assembly, "PrayerAutomation.UI.ThemeManager", "Apply");
+        MethodInfo refresh = windowType.GetMethod("RefreshThemeDependentViews", I)!;
+        foreach (object theme in themes)
+        {
+            string id = theme.GetType().GetProperty("Id", I)!.GetValue(theme)!.ToString()!;
+            apply.Invoke(null, [app, id]);
+            refresh.Invoke(window, null);
+            Pump();
+            Contrast(mode.Foreground, mode.Background, $"ComboBox collapsed/{id}", errors);
+            Contrast(startup.Foreground, Ancestor<GroupBox>(startup)?.Background ?? window.Background,
+                $"Checkbox text/{id}", errors);
+
+            tabs.SelectedIndex = 2;
+            Pump();
+            if (tabs.ItemContainerGenerator.ContainerFromIndex(2) is TabItem tab)
+            {
+                var defaultTab = new TabItem { Header = "Default template probe", Style = new Style(typeof(TabItem)) };
+                var defaultTabs = new TabControl { Items = { defaultTab } };
+                defaultTabs.Measure(new Size(300, 100));
+                defaultTabs.Arrange(new Rect(0, 0, 300, 100));
+                defaultTab.ApplyTemplate();
+                tab.ApplyTemplate();
+                if (!ReferenceEquals(tab.Template, defaultTab.Template))
+                    errors.Add($"Tab {id} tidak mempertahankan template default Windows/WPF.");
+                if (Descendants(tab).OfType<Border>().Any(border => border.CornerRadius != new CornerRadius(0)))
+                    errors.Add($"Header tab {id} masih memiliki bentuk rounded.");
+                Border? header = Descendants(tab).OfType<Border>().FirstOrDefault(border => border.Background is SolidColorBrush);
+                if (header is not null)
+                    Contrast(tab.Foreground, header.Background, $"Tab aktif/{id}", errors);
+                else
+                    errors.Add($"Border tab aktif tidak ditemukan untuk tema {id}.");
+            }
+
+            mode.IsDropDownOpen = true;
+            Pump();
+            if (mode.SelectedIndex >= 0 && mode.ItemContainerGenerator.ContainerFromIndex(mode.SelectedIndex) is ComboBoxItem item)
+            {
+                item.ApplyTemplate();
+                if (item.Template.FindName("ItemBackground", item) is Border itemBackground)
+                    Contrast(item.Foreground, itemBackground.Background, $"Item ComboBox terpilih/{id}", errors);
+                else
+                    errors.Add($"Border item ComboBox terpilih tidak ditemukan untuk tema {id}.");
+            }
+            mode.IsDropDownOpen = false;
+            Pump();
+
+            startup.IsChecked = false;
+            startup.ApplyTemplate();
+            IEnumerable<string> glyphNames = Descendants(startup).OfType<FrameworkElement>()
+                .Select(element => element.Name).Where(name => !string.IsNullOrEmpty(name));
+            Console.WriteLine($"CHECKBOX template={startup.Template?.TargetType?.Name ?? "null"} names={string.Join(",", glyphNames)}");
+            if (startup.Template?.FindName("CheckBoxGlyphBackground", startup) is not Border glyph)
+                errors.Add($"Glyph checkbox bertema tidak ditemukan untuk {id}.");
+            else
+            {
+                Contrast(startup.Foreground, glyph.Background, $"Checkbox/glyph/{id}", errors);
+                startup.IsChecked = true;
+                Pump();
+                Brush? background = glyph.Background;
+                if (startup.Template?.FindName("CheckMarkPath", startup) is not Path mark || mark.Visibility != Visibility.Visible)
+                    errors.Add($"Tanda centang tidak terlihat untuk tema {id}.");
+                else
+                    Contrast(mark.Stroke, background, $"Tanda checkbox/{id}", errors);
+                startup.IsChecked = false;
+            }
+        }
+        startup.IsChecked = true;
+        mode.SelectedIndex = 0;
+        ApplyTheme(assembly, app, "light");
+        refresh.Invoke(window, null);
+        Pump();
+    }
+
+    private static void VerifyAllRenderedText(Assembly assembly, Application application, Type windowType,
+        Window window, TabControl tabs, List<string> errors)
+    {
+        Type catalog = assembly.GetType("PrayerAutomation.UI.ThemeCatalog", true)!;
+        MethodInfo apply = Method(assembly, "PrayerAutomation.UI.ThemeManager", "Apply");
+        MethodInfo refresh = windowType.GetMethod("RefreshThemeDependentViews", I)!;
+        object[] themes = ((IEnumerable)catalog.GetProperty("All", S)!.GetValue(null)!).Cast<object>().ToArray();
+        ComboBox mode = Field<ComboBox>(windowType, window, "WidgetModeBox")!;
+        TabControl calendarTabs = Field<TabControl>(windowType, window, "CalendarModeTabs")!;
+        int checkedText = 0;
+        double minimum = double.MaxValue;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (object theme in themes)
+        {
+            string id = theme.GetType().GetProperty("Id", I)!.GetValue(theme)!.ToString()!;
+            apply.Invoke(null, [application, id]);
+            refresh.Invoke(window, null);
+            Pump();
+            for (int tabIndex = 0; tabIndex < tabs.Items.Count; tabIndex++)
+            {
+                tabs.SelectedIndex = tabIndex;
+                int variants = tabIndex == 1 ? calendarTabs.Items.Count : tabIndex == 2 ? mode.Items.Count : 1;
+                for (int variant = 0; variant < variants; variant++)
+                {
+                    if (tabIndex == 1) calendarTabs.SelectedIndex = variant;
+                    if (tabIndex == 2) mode.SelectedIndex = variant;
+                    Pump();
+                    if (tabIndex == 2 && variant == 0)
+                    {
+                        var header = window.FindName("OnlineGeocodingAdvancedHeader") as TextBlock
+                            ?? throw new InvalidOperationException("The actual online advanced header is missing.");
+                        header.BringIntoView();
+                        Pump();
+                        VerifyNativeHeaderSurface(header, window.Background, errors, $"{theme}:header");
+                    }
+                    foreach (TextBlock text in Descendants(window).OfType<TextBlock>().Where(text => text.IsVisible && text.ActualWidth > 0 && !string.IsNullOrWhiteSpace(text.Text)))
+                    {
+                        Brush? background = TextSurface(text, window.Background);
+                        if (text.Foreground is not SolidColorBrush fg || background is not SolidColorBrush bg) continue;
+                        double ratio = Ratio(fg.Color, bg.Color);
+                        checkedText++;
+                        minimum = Math.Min(minimum, ratio);
+                        if (ratio < 4.5)
+                        {
+                            string label = $"{id}/{tabIndex}/{variant}/{text.Name}/{text.Text[..Math.Min(28, text.Text.Length)]}/{fg.Color}/{bg.Color}";
+                            if (seen.Add(label)) errors.Add($"Teks ter-render {label} hanya {ratio:0.000}:1.");
+                        }
+                    }
+                }
+            }
+        }
+        mode.SelectedIndex = 0;
+        calendarTabs.SelectedIndex = 0;
+        ApplyTheme(assembly, application, "light");
+        refresh.Invoke(window, null);
+        Pump();
+        Console.WriteLine($"RENDERED_TEXT_CONTRAST themes={themes.Length} checks={checkedText} minimum={minimum:0.000}:1 failures={seen.Count}");
+    }
+
+    private static void VerifyNativeHeaderSurface(TextBlock text, Brush fallback, List<string> errors, string label)
+    {
+        DependencyObject? parent = text;
+        while (parent is not null && parent is not System.Windows.Documents.AdornerDecorator)
+            parent = VisualTreeHelper.GetParent(parent);
+        var root = parent as System.Windows.Documents.AdornerDecorator
+            ?? throw new InvalidOperationException("The header must have its actual render root.");
+        root.UpdateLayout();
+        Rect bounds = text.TransformToAncestor(root).TransformBounds(new Rect(text.RenderSize));
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(root.ActualWidth), (int)Math.Ceiling(root.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(root);
+        var region = new Int32Rect((int)Math.Floor(bounds.X), (int)Math.Floor(bounds.Y), (int)Math.Ceiling(bounds.Width), (int)Math.Ceiling(bounds.Height));
+        if (region.X < 0 || region.Y < 0 || region.Width <= 0 || region.Height <= 0
+            || region.X + region.Width > bitmap.PixelWidth || region.Y + region.Height > bitmap.PixelHeight)
+            throw new InvalidOperationException("The complete header must be inside the actual raster.");
+        var cropped = new CroppedBitmap(bitmap, region);
+        int stride = cropped.PixelWidth * 4;
+        byte[] pixels = new byte[stride * cropped.PixelHeight];
+        cropped.CopyPixels(pixels, stride, 0);
+        var counts = new Dictionary<int, int>();
+        for (int offset = 0; offset < pixels.Length; offset += 4)
+        {
+            if (pixels[offset + 3] != 255) continue;
+            int rgb = (pixels[offset + 2] << 16) | (pixels[offset + 1] << 8) | pixels[offset];
+            counts[rgb] = counts.TryGetValue(rgb, out int count) ? count + 1 : 1;
+        }
+        var dominant = counts.OrderByDescending(item => item.Value).First();
+        if (dominant.Value <= pixels.Length / 8)
+            throw new InvalidOperationException("The rendered text background must have a strict pixel majority.");
+        Color actual = Color.FromRgb((byte)(dominant.Key >> 16), (byte)(dominant.Key >> 8), (byte)dominant.Key);
+        Brush? selected = TextSurface(text, fallback);
+        bool matched = selected is SolidColorBrush surface && surface.Color == actual;
+        if (!matched) errors.Add($"Native header surface mismatch {label}: selected={selected} actual={actual}.");
+        if (text.Foreground is not SolidColorBrush foreground || Ratio(foreground.Color, actual) < 4.5)
+            errors.Add($"Native header actual raster contrast is below 4.5:1 {label}.");
+        Console.WriteLine($"NATIVE_HEADER_SURFACE {label} selected={selected} actual={actual} matched={matched} background-pixels={dominant.Value}");
+    }
+
+    private static Brush? TextSurface(DependencyObject node, Brush fallback)
+    {
+        DependencyObject target = node;
+        while (node is not null)
+        {
+            Brush? brush = node switch
+            {
+                Border border => border.Background,
+                Panel panel => panel.Background,
+                // The native Expander header toggle paints its indicator, not this exact header text area.
+                Control control when control is not CheckBox
+                    && !(control is System.Windows.Controls.Primitives.ToggleButton toggle
+                        && toggle.TemplatedParent is Expander expander
+                        && ReferenceEquals(expander.Header, target)) => control.Background,
+                TextBlock text => text.Background,
+                _ => null
+            };
+            if (brush is SolidColorBrush color && color.Color.A == 255 && brush.Opacity == 1) return brush;
+            node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(node)! : LogicalTreeHelper.GetParent(node)!;
+        }
+        return fallback;
+    }
+
+    private static void VerifyLegends(Type type, Window window, TabControl tabs, List<string> errors)
+    {
+        tabs.SelectedIndex = 1;
+        Pump();
+        foreach (string name in new[] { "GregorianCalendarLegend", "HijriCalendarLegend" })
+        {
+            FrameworkElement? legend = Field<FrameworkElement>(type, window, name);
+            if (legend is null)
+            {
+                errors.Add($"Legenda kalender {name} tidak ada.");
+                continue;
+            }
+            legend.BringIntoView();
+            Pump();
+            int markers = Descendants(legend).OfType<Shape>().Count();
+            if (markers < 4)
+                errors.Add($"Legenda {name} hanya memiliki {markers} penanda; perlu minimal empat.");
+        }
+    }
+
+    private static void VerifyStartupLogic(Assembly assembly, List<string> errors)
+    {
+        Type? type = assembly.GetType("PrayerAutomation.UI.StartupRegistration");
+        MethodInfo? build = type?.GetMethod("BuildRunCommand", S);
+        MethodInfo? hidden = type?.GetMethod("ShouldStartHidden", S);
+        if (build is null || hidden is null)
+        {
+            errors.Add("Logika pure startup hidden untuk diuji tanpa menulis Registry tidak ditemukan.");
+            return;
+        }
+        string path = @"C:\Apps\PrayerAutomation.UI.exe";
+        string shown = build.Invoke(null, [path, false])?.ToString() ?? "";
+        string concealed = build.Invoke(null, [path, true])?.ToString() ?? "";
+        if (shown.Contains("--hidden", StringComparison.Ordinal) || !concealed.StartsWith('"')
+            || !concealed.Contains("--hidden", StringComparison.Ordinal))
+            errors.Add("Command startup hidden/normal tidak sesuai.");
+        bool off = (bool)(hidden.Invoke(null, [new[] { "--hidden" }, false]) ?? false);
+        bool on = (bool)(hidden.Invoke(null, [new[] { "--hidden" }, true]) ?? false);
+        bool manual = (bool)(hidden.Invoke(null, [Array.Empty<string>(), true]) ?? false);
+        if (off || !on || !manual)
+            errors.Add("Mulai tersembunyi harus mengikuti preferensi pada peluncuran manual maupun startup Windows.");
+    }
+
+    private static void Contrast(Brush? foreground, Brush? background, string name, List<string> errors)
+    {
+        if (foreground is not SolidColorBrush fg || background is not SolidColorBrush bg)
+        {
+            errors.Add($"Brush kontras {name} bukan solid.");
+            return;
+        }
+        double ratio = Ratio(fg.Color, bg.Color);
+        Console.WriteLine($"CONTRAST {name}={ratio:0.00}:1");
+        if (ratio < 4.5)
+            errors.Add($"Kontras {name} hanya {ratio:0.00}:1.");
+    }
+
+    private static double Ratio(Color a, Color b)
+    {
+        static double L(Color c)
+        {
+            static double C(byte n)
+            {
+                double x = n / 255.0;
+                return x <= 0.04045 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4);
+            }
+            return .2126 * C(c.R) + .7152 * C(c.G) + .0722 * C(c.B);
+        }
+        double x = L(a), y = L(b);
+        return (Math.Max(x, y) + .05) / (Math.Min(x, y) + .05);
+    }
+
+    private static void ApplyTheme(Assembly assembly, Application app, string id)
+    {
+        Method(assembly, "PrayerAutomation.UI.ThemeManager", "Apply").Invoke(null, [app, id]);
+        Pump();
+    }
+
+    private static MethodInfo Method(Assembly assembly, string typeName, string name)
+        => assembly.GetType(typeName, true)!.GetMethod(name, S)
+            ?? throw new InvalidOperationException($"{typeName}.{name} tidak ditemukan.");
+
+    private static T? Field<T>(Type type, object instance, string name) where T : class
+        => type.GetField(name, I)?.GetValue(instance) as T;
+
+    private static void Set(Type type, object instance, string name, bool value)
+        => type.GetProperty(name, I)?.SetValue(instance, value);
+
+    private static T? Ancestor<T>(DependencyObject node) where T : DependencyObject
+    {
+        while (node is not null)
+        {
+            if (node is T found)
+                return found;
+            node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(node)!
+                : LogicalTreeHelper.GetParent(node)!;
+        }
+        return null;
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (DependencyObject descendant in Descendants(child))
+                yield return descendant;
+        }
+    }
+
+    private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ApplicationIdle, new Action(() => { }));
+
+    private static void Finish(List<string> errors)
+    {
+        if (errors.Count == 0)
+        {
+            Console.WriteLine("PASS VisualAcceptanceSmoke");
+            return;
+        }
+        throw new InvalidOperationException("VisualAcceptanceSmoke failures: " + string.Join(" | ", errors));
+    }
+}

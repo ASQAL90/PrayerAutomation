@@ -1,0 +1,50 @@
+# C# WPF + Rust source repository
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local runtime state
+previous_lock_screen.json
+lock_screen_deadline.json
+config.json
+
+# Build output & artefak distribusi (installer/portable tidak masuk Git)
+build/
+dist/
+publish/
+out/
+*.exe
+*.spec
+*.zip
+installer-output/
+
+# Generated/cache files
+**/bin/
+**/obj/
+**/target/
+**/publish/
+**/publish-portable/
+**/.vs/
+*.pdb
+*.log
+*.tmp
+
+# Keep only the active application artwork; no helper EXEs in Git
+!prayer_automation.ico
+!sedang_sholat.png
+mosque.svg
+mosque_reference.jpg
+sedang_sholat.bmp
+
+spotlight_candidates/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Bukti pengujian lokal
+.evidence/

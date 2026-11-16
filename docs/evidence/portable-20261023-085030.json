@@ -1,0 +1,255 @@
+{
+  "scope": "Stored baseline only. New source/publish requires a new verification. No real application/session/personalization write exercised.",
+  "run_started_at": "2026-10-23T08:50:30.116955+07:00",
+  "run_finished_at": "2026-10-23T08:52:30.570685+07:00",
+  "step_count": 13,
+  "asserting_csharp_suites": [
+    "CalendarSmoke",
+    "LocationDetectionSmoke",
+    "OfflineGeocoderSmoke",
+    "PrayerScheduleSmoke",
+    "PrayerUiLogicSmoke",
+    "LockScreenBackendSmoke",
+    "LockScreenWorkflowSmoke",
+    "WidgetLayoutSmoke"
+  ],
+  "skipped": [
+    {
+      "name": "SingleInstanceSmoke",
+      "reason": "Starts the real application; saved auto_lock_enabled is active."
+    }
+  ],
+  "steps": [
+    {
+      "name": "rust-tests",
+      "exit_code": 0,
+      "evidence": [
+        "running 8 tests",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "running 0 tests",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "name": "CalendarSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: Gregorian/Hijri round-trip, 1500 H month lengths, observance/no-fast markers, correction offset, and accessible names in both source views; no UI input automation used."
+      ]
+    },
+    {
+      "name": "LocationDetectionSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: both network providers, coordinate/time-zone normalization, disagreement handling, and IP minimization."
+      ]
+    },
+    {
+      "name": "OfflineGeocoderSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: offline nearest-city selection and locality formatting.",
+        "PASS: bundled GeoNames data resolves Jakarta without network access.",
+        "PASS: online geocoding is consent-gated, HTTPS-only, source-restricted, cached, and HTTP-mocked."
+      ]
+    },
+    {
+      "name": "PrayerScheduleSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: eight calculation methods, Dhuha/Umm al-Qura derived times, manual offsets, legacy MWL mapping, and reminder filtering."
+      ]
+    },
+    {
+      "name": "PrayerUiLogicSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: five offline hadith meaning summaries preserve attribution, deterministic rotation, single-line text and explicit message overrides.",
+        "PASS: layout grouping/scrolling, widget setting lifecycle, countdown, GPS status handling, safe lock-screen gate, startup registration, calendar markers, and presentation logic."
+      ]
+    },
+    {
+      "name": "LockScreenBackendSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: production Spotlight capture/restart recovery requires only the saved mode, not an original image URI.",
+        "PASS: production Picture capture/restore copies and verifies the original image; active restore files survive cleanup.",
+        "PASS: production backend rechecks ownership at the injected native setter boundary and preserves a changed user picture.",
+        "PASS: production ownership classifier checks path+hash, unreadable sources, partial restore and mode overrides without native calls."
+      ]
+    },
+    {
+      "name": "LockScreenWorkflowSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "PASS: startup recovery failure retains the journal, arms a timer, honors backoff and retries.",
+        "PASS: recovery status distinguishes mode restoration from Picture-only original-image restoration.",
+        "PASS: disable recovery failure retains a timer, backs off and restores without a new apply.",
+        "PASS: Exit drains in-flight apply, blocks remaining triggers and keeps recovery-only intent.",
+        "PASS: Spotlight, slideshow and picture modes restore; 60-minute expiry, extension, fail-closed, user-override, prayer scheduling and persistent journal cases verified."
+      ]
+    },
+    {
+      "name": "WidgetLayoutSmoke",
+      "exit_code": 0,
+      "evidence": [
+        "MARQUEE_RENDER PASS: frames=64 full/narrow short/production dpi=96/144 empty=0 right-side-entry verified.",
+        "MARQUEE_RUNTIME PASS: full-width motion, live timers, updated clock/countdown, offset preservation, holiday content and short-text repeat.",
+        "WIDGET_LIVE_APPEARANCE PASS: actual window, mode, placement, saved-state isolation.",
+        "WIDGET_CANCEL PASS: appearance, theme, form, visibility restored.",
+        "WIDGET_TRAY_RESTORE PASS: Close/hide/reopen discard unsaved appearance.",
+        "WIDGET_VISIBILITY PASS: enabled/disabled and manually hidden state rollback.",
+        "HELPER_CONSISTENCY PASS: themes=8 geometry/style/font/color checks=64 normal+disabled.",
+        "WIDGET_SAVE_AND_TAB PASS: real Save handler, isolated file readback, new baseline, explicit tray navigation.",
+        "CONTROL_STATE_CONTRAST themes=8 checks=368 minimum=5.095:1 failures=0",
+        "RENDERED_TEXT_CONTRAST themes=8 checks=10848 minimum=4.673:1 failures=0",
+        "PASS: actual WPF layout distributes Essential static/marquee and aligns Minimalist content."
+      ]
+    },
+    {
+      "name": "LockScreenApiSmoke-read-only",
+      "exit_code": 0,
+      "evidence": [
+        "profile_api_supported=True",
+        "slideshow_mode_flag=0",
+        "spotlight_mode_flag=1"
+      ]
+    },
+    {
+      "name": "wpf-build",
+      "exit_code": 0,
+      "evidence": [
+        "0 Warning(s)",
+        "0 Error(s)"
+      ]
+    },
+    {
+      "name": "portable-publish",
+      "exit_code": 0,
+      "evidence": []
+    },
+    {
+      "name": "git-whitespace",
+      "exit_code": 0,
+      "evidence": []
+    }
+  ],
+  "protected_user_state_unchanged": true,
+  "payload": {
+    "main_app_launched": false,
+    "standard_user": true,
+    "native_calls": "Pure domain C ABI only; no Windows personalization/session API called.",
+    "apphost_pe": {
+      "file": "PrayerAutomation.UI.exe",
+      "machine": "AMD64",
+      "format": "PE32+",
+      "subsystem": 2,
+      "is_dll": false,
+      "section_count": 6,
+      "sha256": "53d946bb805bd52d38eb3bf99ad30e21ff9bd7590ede2e014875bf65568dc89c",
+      "size_bytes": 167936
+    },
+    "native_pe": {
+      "file": "prayer_core.dll",
+      "machine": "AMD64",
+      "format": "PE32+",
+      "subsystem": 3,
+      "is_dll": true,
+      "section_count": 10,
+      "sha256": "7f18fd13ed58430475904d38914575ca421f408381d62c43c6041d1e2e525858",
+      "size_bytes": 1195166
+    },
+    "execution_manifest": {
+      "level": "asInvoker",
+      "uiAccess": "false"
+    },
+    "included_frameworks": [
+      {
+        "name": "Microsoft.NETCore.App",
+        "version": "10.0.9"
+      },
+      {
+        "name": "Microsoft.WindowsDesktop.App",
+        "version": "10.0.9"
+      }
+    ],
+    "managed_payload_checks": [
+      {
+        "file": "PrayerAutomation.UI.exe",
+        "source_equal": true,
+        "sha256": "53d946bb805bd52d38eb3bf99ad30e21ff9bd7590ede2e014875bf65568dc89c"
+      },
+      {
+        "file": "PrayerAutomation.UI.dll",
+        "source_equal": true,
+        "sha256": "6cfdd9c06b2bc038ab83d0e6d963a70fc0b40ae621b906fc19b2ccc79be2ba46"
+      },
+      {
+        "file": "PrayerAutomation.UI.pdb",
+        "source_equal": true,
+        "sha256": "f72db35c59e667bf0f1b192a72291dd1f90456c4c20e60fe406a958903b48be5"
+      }
+    ],
+    "asset_checks": [
+      {
+        "file": "sedang_sholat.png",
+        "source_equal": true,
+        "sha256": "e64b8515280119b4e4e7f0e59c74244da5a44a815f1dd4cb5c4e2dbc7868a5df",
+        "size_bytes": 93297
+      },
+      {
+        "file": "prayer_automation.ico",
+        "source_equal": true,
+        "sha256": "555c890b949528ce48fc8c9cdb5c0ef75286ac41dbfb4df4fa75a772caa11c12",
+        "size_bytes": 5068
+      },
+      {
+        "file": "prayer_core.dll",
+        "source_equal": true,
+        "sha256": "7f18fd13ed58430475904d38914575ca421f408381d62c43c6041d1e2e525858",
+        "size_bytes": 1195166
+      },
+      {
+        "file": "geonames/cities1000.tsv.gz",
+        "source_equal": true,
+        "sha256": "e377a5ffddd22ad4e47e84452d394bc2227f35eb67dfdcacf186ee9b8462e2f1",
+        "size_bytes": 2552758
+      },
+      {
+        "file": "geonames/NOTICE.txt",
+        "source_equal": true,
+        "sha256": "b116bb5f613ad8b2476eb8dbdee7af5310cc5b396798d2bf9e6e0b56f0a116f2",
+        "size_bytes": 1173
+      }
+    ],
+    "image_dimensions": [
+      1920,
+      1080
+    ],
+    "offline_geonames_rows": 171572,
+    "forbidden_payload_files": [],
+    "payload_file_count": 480,
+    "payload_size_bytes": 210206545,
+    "pure_native_functions_exercised": 7,
+    "native_abi_version": 1,
+    "native_fixture": {
+      "coordinates": "synthetic 10.0,20.0",
+      "date": "2026-05-01",
+      "hijri": [
+        1447,
+        11,
+        14
+      ],
+      "method": 3,
+      "prayer_minutes": [
+        190,
+        263,
+        637,
+        830,
+        1011,
+        1080
+      ]
+    },
+    "complete": true
+  }
+}

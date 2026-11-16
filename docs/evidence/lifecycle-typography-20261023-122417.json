@@ -1,0 +1,136 @@
+{
+  "scope": "Only the selected validated RED, GREEN and current parent-run: no Application.Run, production startup prefix, native setter, original-profile save or session lock in those runs. This does not cover every historical attempt.",
+  "run_id": "prayerautomation-final-20261023-122417",
+  "lifecycle": {
+    "validated_red": {
+      "run_id": "prayerautomation-independent-startup-red-20261023-102918",
+      "runner_exit_code": 0,
+      "expected_fixture_exit_code": 1,
+      "actual_fixture_exit_code": 1,
+      "cases": {
+        "pass": 8,
+        "fail": 8
+      },
+      "protected_user_state_unchanged": true,
+      "results_sha256": "aead139cc77e554bd421beab3170f6c92f678636f15d6fdaafce0f452b728fda",
+      "focused_log_sha256": "3b403af997f569b0c0d96fc7c1adee950f6700027570557a7fc6cbf8f20a008e"
+    },
+    "green": {
+      "run_id": "prayerautomation-independent-startup-green-20261023-103136",
+      "runner_exit_code": 0,
+      "fixture_exit_code": 0,
+      "cases": {
+        "pass": 16,
+        "fail": 0
+      },
+      "protected_user_state_unchanged": true,
+      "results_sha256": "465782a263c9d8d1ce018bcff994a01bd228f6c0dc61fa49a07250c5f8c8ec9c",
+      "current_source_hash_matches": {
+        "PrayerAutomation.UI/App.xaml.cs": true,
+        "tests/WidgetLayoutSmoke/WidgetSettingsInteractionSmoke.cs": true,
+        "tests/WidgetLayoutSmoke/Program.cs": false,
+        "tests/WidgetLayoutSmoke/MarqueeRenderSmoke.cs": true,
+        "tests/WidgetLayoutSmoke/StartupWidgetLifecycleSmoke.cs": true
+      }
+    },
+    "parent_current_rerun": {
+      "run_id": "prayerautomation-final-20261023-122417",
+      "cases_passed": 16,
+      "fixture_exit_code": 0,
+      "production_startup_prefix_called": false,
+      "only_sole_await_continuation_replayed": true
+    },
+    "fixture_guard_red": {
+      "run_id": "prayerautomation-widget-20261023-121403",
+      "fixture_exit_code": 1,
+      "protected_user_state_unchanged": true,
+      "results_sha256": "c5845cd0dc7a216bc4ba5c884234c0bddb516ab1601b316b9f53b5e8c90a20bf"
+    }
+  },
+  "typography": {
+    "original_red": {
+      "run_id": "form-typography-13030bbda6ae4a839e42b2b1347077e5",
+      "complete": false,
+      "failure_count": 87,
+      "results_sha256": "5f76b077fa9678f0903f0d865ece882e4868f77a26bb0a168062b9e9a9fb2a09"
+    },
+    "review_gap_red": {
+      "run_id": "form-typography-0c6050f9140a482eb565ca8a95d9f493",
+      "complete": false,
+      "failures": [
+        "Prayer correction guidance must share the paragraph typography and indentation.",
+        "Schedule error paragraphs need the actual shared production text builder so both error paths can be checked without logging or inducing a native failure."
+      ],
+      "results_sha256": "e307d2414aa3333b86af349a6bd2f4ed0329bb81a421b952cfc67e8c101a3c8a"
+    },
+    "parent_current_green": {
+      "run_id": "form-typography-9f0c8c422e3e44dea43514089f14aada",
+      "complete": true,
+      "isolated_startup": true,
+      "main_app_run": false,
+      "failures": [],
+      "synthetic_safety_flags_disabled": [
+        "RemindersEnabled",
+        "AutoLockEnabled",
+        "LockScreenEnabled",
+        "LockScreenOptIn",
+        "StartupEnabled",
+        "WidgetEnabled"
+      ],
+      "results_sha256": "e74363be632230e96c13352384b09ac90098a2b75113e17264425c461db4944c",
+      "layouts": [
+        {
+          "width": 940,
+          "window_height": 650,
+          "content_width": 849,
+          "content_height": 2576,
+          "help_paragraphs": 33,
+          "field_labels": 12,
+          "actual_dpi": 96,
+          "bottom_reached": true
+        },
+        {
+          "width": 1180,
+          "window_height": 820,
+          "content_width": 1089,
+          "content_height": 2396,
+          "help_paragraphs": 33,
+          "field_labels": 12,
+          "actual_dpi": 96,
+          "bottom_reached": true
+        }
+      ]
+    },
+    "checks": "Production shared paragraph style, correction guidance, actual error-text builder and error ink; dynamic safety reason retained, scheduler-status deduplication, wrapped checkbox names/gap/normal-disabled foreground."
+  },
+  "marquee": {
+    "sample_report_sha256": "76e74545a63306d107133c093f8de800c2d62baabe784f979c25eb3f340fe483",
+    "frames": 64,
+    "raster_dpi": [
+      96,
+      144
+    ],
+    "empty_frames": 0,
+    "current_forced_timer_wraps_observed": 5,
+    "limitations": [
+      "No hidden-text/reference-ROI differential baseline.",
+      "No actual per-monitor layout DPI acceptance.",
+      "Forced near-boundary runtime cycles and sampled transforms do not prove every real tick/content replacement combination."
+    ]
+  },
+  "manual_visual_notes": [
+    "940-DIP full-content screenshot shows the method label clipped in its collapsed ComboBox; existing layout retained.",
+    "Some correction plus-button right edges need user visual confirmation; no product change inferred from raster alone.",
+    "1180-DIP composite image does not replace full form/viewport or native acceptance."
+  ],
+  "independent_review_status": "Two bounded SPEC reviews and the quality/integration review passed on the matching 12-file snapshot. No security or logic findings in that scope. See independent-spec-20261023-122627.json and independent-quality-20261023-122627.json; native/whole-app/user acceptance remains pending.",
+  "historical_isolation_incident": {
+    "recorded_evidence_id": "prayerautomation-final-20261023-103606/independent-fix-evidence.json:102-110",
+    "incident_run_id": "prayerautomation-independent-startup-red-20261023-101707",
+    "all_attempts_startup_prefix_absent": false,
+    "protected_user_state_unchanged_at_incident": true,
+    "description": "Earlier harness pumped WPF Dispatcher before aborting the implicit Application-constructor startup callback. Guard found the single-instance field non-null and stopped replay. The corrected harness aborts that exact queued callback before pumping and verifies startup objects remain null.",
+    "limitation": "Unchanged monitored profile/journal/startup/mode hashes do not establish absence of all native or session effects in the earlier attempt. Current isolation must not be generalized to every historical run."
+  },
+  "complete": true
+}
