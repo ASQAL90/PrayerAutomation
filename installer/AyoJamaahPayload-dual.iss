@@ -17,19 +17,19 @@ Source: "{#MyAppSourceDirX64}\AyoJamaah.deps.json"; DestDir: "{app}"; Flags: ign
   #error "Accepted payload mismatch (x86): AyoJamaah.deps.json"
 #endif
 Source: "{#MyAppSourceDirX86}\AyoJamaah.deps.json"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX86Arch
-#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.dll") != "e270e2388657cc7d02f777c8c495b80fbc25f556a48d575c9c9dd3fb3d3763bc"
+#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.dll") != "c9ad7bcef8cfa233dde1de600be62d095d1624d79148c051260efc96b45f0078"
   #error "Accepted payload mismatch (x64): AyoJamaah.dll"
 #endif
 Source: "{#MyAppSourceDirX64}\AyoJamaah.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX64Arch
-#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.dll") != "a3e55dff3ace133668e1fcf1682f07433bc195e2557b41d75730830ccf53bb4b"
+#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.dll") != "51bb84321107d47475ebbea4a2701297cb10fd720db45cbf795e8375cfc79f47"
   #error "Accepted payload mismatch (x86): AyoJamaah.dll"
 #endif
 Source: "{#MyAppSourceDirX86}\AyoJamaah.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX86Arch
-#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.exe") != "a05d087de6b3f4a4d7465eabdcc72a10c67da6030cb4c1f3706b0652632cf036"
+#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.exe") != "c84feb92dff63a193b2caaa5d10fdaf66c03f2387941ef54c73a53c0c87f9035"
   #error "Accepted payload mismatch (x64): AyoJamaah.exe"
 #endif
 Source: "{#MyAppSourceDirX64}\AyoJamaah.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX64Arch
-#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.exe") != "d9b66620b8b8c94c2e4604b41d20ff4ad3f2349f1d0ff27d8d356432472fd532"
+#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.exe") != "412a490a885659e58037a8f28084f39b59dd7d1bca44069566fd79321774ad38"
   #error "Accepted payload mismatch (x86): AyoJamaah.exe"
 #endif
 Source: "{#MyAppSourceDirX86}\AyoJamaah.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX86Arch
@@ -40,11 +40,11 @@ Source: "{#MyAppSourceDirX86}\AyoJamaah.exe"; DestDir: "{app}"; Flags: ignorever
   #error "Accepted payload mismatch (x64): AyoJamaah.ico"
 #endif
 Source: "{#MyAppSourceDirX64}\AyoJamaah.ico"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite
-#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.pdb") != "27d18d6c07fbd3a74a191be39784a66d50087ec59e258e603d3cdefeb41c69f4"
+#if GetSHA256OfFile(MyAppSourceDirX64 + "\AyoJamaah.pdb") != "57455b1afecb366433edd33d8f22a0807fa033f7eecedfffe32f0bf381352d86"
   #error "Accepted payload mismatch (x64): AyoJamaah.pdb"
 #endif
 Source: "{#MyAppSourceDirX64}\AyoJamaah.pdb"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX64Arch
-#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.pdb") != "20ed9a220e00da8c96a4689d3bb8dae13d1d47b643b454f3ec0760ab7a3d6b87"
+#if GetSHA256OfFile(MyAppSourceDirX86 + "\AyoJamaah.pdb") != "fe99c326b0e3676292b6c5236576a25802aa4aab11ec68bd1d9a32b394a676c3"
   #error "Accepted payload mismatch (x86): AyoJamaah.pdb"
 #endif
 Source: "{#MyAppSourceDirX86}\AyoJamaah.pdb"; DestDir: "{app}"; Flags: ignoreversion; Check: CheckPayloadWrite and IsX86Arch
