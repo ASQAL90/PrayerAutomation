@@ -3,13 +3,12 @@
 ## Mulai di sini — ringkasan 2.1.2
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
-- [Inventaris third-party](THIRD_PARTY_NOTICES.md): asal, lisensi, kewajiban atribusi, dan gap sebelum publikasi.
-- [Penghargaan dan asal source](SOURCE_ORIGINS_ID.md): adaptasi aktual, referensi teknis, dan algoritma lintas bahasa.
+- [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
+- [Penghargaan dan asal source](SOURCE_ORIGINS_ID.md): referensi teknis dan algoritma lintas bahasa yang dipakai source sekarang.
 - [Paket distribusi lokal](DISTRIBUTION_ID.md): lokasi installer/portable terbaru dan status unsigned.
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
 - [Audit repository lokal](REPOSITORY_AUDIT_ID.md): source/history, output build, catatan internal, dan batas pemeriksaan.
-- [Provenance backend WinUI](../src/PrayerAutomation.Taskbar.WinUI/PROVENANCE.md): arsip adaptasi Awqat Salaat dan bootstrap WindowsAppSDK; kode backend dihapus di 2.1.2, lisensi dipertahankan.
 - [Batas pemulihan lock screen](LOCKSCREEN_LIMITATIONS_ID.md): keterbatasan yang belum diselesaikan; bukan panduan bypass keamanan Windows.
 
 ## Panduan rinci — sebagian masih perlu sinkronisasi

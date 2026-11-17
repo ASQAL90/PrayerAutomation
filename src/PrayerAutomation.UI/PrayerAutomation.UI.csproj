@@ -8,7 +8,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <UseWinUI>false</UseWinUI>
     <!-- Architecture is selected with -p:Arch=x64|x86 (default x64). -->
     <Arch Condition="'$(Arch)' == ''">x64</Arch>
     <RuntimeIdentifier Condition="'$(Arch)' == 'x64'">win-x64</RuntimeIdentifier>
@@ -17,11 +16,6 @@
     <PlatformTarget Condition="'$(Arch)' == 'x86'">x86</PlatformTarget>
     <RustTarget Condition="'$(Arch)' == 'x64'">x86_64-pc-windows-gnu</RustTarget>
     <RustTarget Condition="'$(Arch)' == 'x86'">i686-pc-windows-gnu</RustTarget>
-    <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
-    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
-    <WindowsAppSdkUndockedRegFreeWinRTInitialize>false</WindowsAppSdkUndockedRegFreeWinRTInitialize>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <ApplicationManifest>app.manifest</ApplicationManifest>

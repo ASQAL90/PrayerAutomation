@@ -1,6 +1,6 @@
 # Metadata publisher — Ayo Jama'ah! 2.1.0
 
-> **Catatan 2.1.2:** `AyoJamaah.Taskbar.WinUI.dll` tidak lagi diproduksi karena backend WinUI dihapus. Tabel di bawah mendokumentasikan build 2.1.0; metadata `AyoJamaah.exe`/`AyoJamaah.dll` tetap berlaku.
+> **Catatan 2.1.2:** backend taskbar WinUI tidak lagi diproduksi. Tabel di bawah mendokumentasikan build 2.1.0 untuk referensi historis; metadata `AyoJamaah.exe`/`AyoJamaah.dll` tetap berlaku.
 
 ## Identitas yang dirapikan
 
@@ -10,7 +10,6 @@ Field `Company` pada kedua project C# ditetapkan menjadi **`Ayo Jama'ah!`**. Ini
 |---|---|---|---|
 | `AyoJamaah.exe` | `AyoJamaah` | `Ayo Jama'ah!` | `Ayo Jama'ah!` |
 | `AyoJamaah.dll` | `AyoJamaah` | `Ayo Jama'ah!` | `Ayo Jama'ah!` |
-| `AyoJamaah.Taskbar.WinUI.dll` | `AyoJamaah.Taskbar.WinUI` | `Ayo Jama'ah!` | `Ayo Jama'ah!` |
 
 Nilai dibaca dari version-info PE hasil build/publish, bukan hanya dari XML project.
 

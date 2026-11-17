@@ -62,8 +62,7 @@ Mode taskbar memakai popup WPF; backend XAML Island/WinUI sudah dihapus pada 2.1
 | Path | Isi |
 |---|---|
 | `src/PrayerAutomation.UI/` | Form WPF, tray, widget, pengaturan, adapter Windows |
-| `src/PrayerAutomation.Taskbar.WinUI/` | Arsip lisensi/provenance backend taskbar lama; kode backend dihapus di 2.1.2 |
-| `src/Shared/` | Geometri ikon yang dipakai dua project C# |
+| `src/Shared/` | Geometri ikon yang dipakai oleh proyek C# |
 | `src/rust-core/` | Perhitungan jadwal dan kalender, diekspor sebagai `prayer_core.dll` |
 | `installer/` | Installer NSIS per-user; Inno Setup disimpan sebagai referensi legacy |
 | `tests/` | Fixture dan smoke test, cakupannya berbeda-beda |
@@ -96,7 +95,7 @@ Jangan jalankan semua test sekaligus. `tests/SingleInstanceSmoke` menjalankan pr
 
 Source aplikasi memakai MIT, lihat [`LICENSE`](LICENSE). Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani.
 
-Komponen pihak ketiga tetap ikut lisensinya masing-masing: NuGet, Windows App SDK, data GeoTimeZone/ODbL, dan GeoNames. Rinciannya ada di [inventaris third-party](docs/THIRD_PARTY_NOTICES.md). Dokumen itu bukan clearance hukum untuk seluruh paket rilis.
+Komponen pihak ketiga tetap ikut lisensinya masing-masing: paket NuGet (GeoTimeZone, TimeZoneConverter), data GeoTimeZone/ODbL, dan GeoNames. Rinciannya ada di [inventaris third-party](docs/THIRD_PARTY_NOTICES.md). Dokumen itu bukan clearance hukum untuk seluruh paket rilis.
 
 ## Dokumentasi
 
