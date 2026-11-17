@@ -2,7 +2,9 @@
 
 Kami menghargai pengembang, penulis algoritma, dan komunitas yang source atau idenya membantu aplikasi ini. Penghargaan tetap relevan ketika implementasi diadaptasi ke bahasa lain. **Adaptasi source, inspirasi teknis, dan penggunaan dependency adalah kategori berbeda**; pencantuman berikut tidak mengklaim seluruh aplikasi berasal dari satu proyek maupun seluruh source original.
 
-## Source yang terbukti diadaptasi
+## Source yang terbukti diadaptasi (historis 2.1.0)
+
+> **Status 2.1.2:** backend taskbar WinUI dihapus, sehingga tidak ada lagi kode Awqat Salaat atau bootstrap WindowsAppSDK di source aktif. Bagian ini dipertahankan sebagai atribusi untuk build 2.1.0/2.1.1 yang pernah didistribusikan; file lisensi terkait masih disimpan di `src/PrayerAutomation.Taskbar.WinUI/`.
 
 ### Awqat Salaat — Khiro
 
@@ -10,7 +12,7 @@ Kami menghargai pengembang, penulis algoritma, dan komunitas yang source atau id
 - Subset hosting XAML Island/taskbar `AwqatSalaat.WinUI/TaskBarWidget.cs` dan interop `AwqatSalaat.Common/Interop/Native.cs` diadaptasi pada `AwqatTaskbarRenderer.cs`.
 - Perubahan lokal mencakup UI/countdown, validasi/error handling, lifetime management dan penempatan. Tidak mengklaim kalkulasi sholat/lokasi atau seluruh helper Awqat diambil.
 - MIT, `Copyright (c) 2023 Khiro`. [License lengkap](../src/PrayerAutomation.Taskbar.WinUI/LICENSE-Awqat-Salaat.txt) dipertahankan; lihat [provenance backend](../src/PrayerAutomation.Taskbar.WinUI/PROVENANCE.md).
-- Source renderer masuk DLL portable dan dapat dipanggil pada mode native; ini bukti build statis, bukan pengamatan mode aktif pada PC pengguna.
+- Source renderer masuk DLL portable build 2.1.0 dan dapat dipanggil pada mode native saat itu; ini bukti build statis, bukan pengamatan mode aktif pada PC pengguna.
 
 ### Microsoft Windows App SDK
 

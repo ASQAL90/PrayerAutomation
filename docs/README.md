@@ -1,6 +1,6 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.1.0
+## Mulai di sini — ringkasan 2.1.2
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): asal, lisensi, kewajiban atribusi, dan gap sebelum publikasi.
@@ -9,15 +9,15 @@
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
 - [Audit repository lokal](REPOSITORY_AUDIT_ID.md): source/history, output build, catatan internal, dan batas pemeriksaan.
-- [Provenance backend WinUI](../src/PrayerAutomation.Taskbar.WinUI/PROVENANCE.md): adaptasi Awqat Salaat dan bootstrap WindowsAppSDK.
+- [Provenance backend WinUI](../src/PrayerAutomation.Taskbar.WinUI/PROVENANCE.md): arsip adaptasi Awqat Salaat dan bootstrap WindowsAppSDK; kode backend dihapus di 2.1.2, lisensi dipertahankan.
 - [Batas pemulihan lock screen](LOCKSCREEN_LIMITATIONS_ID.md): keterbatasan yang belum diselesaikan; bukan panduan bypass keamanan Windows.
 
 ## Panduan rinci — sebagian masih perlu sinkronisasi
 
-Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.1.0**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
+Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.1.2**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): bagian awal membahas 2.1.0; bagian berikutnya adalah riwayat kandidat lama.
+- [Installer](INSTALLER_ID.md): status 2.1.2 di bagian awal; bagian berikutnya adalah riwayat kandidat 2.1.0.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.

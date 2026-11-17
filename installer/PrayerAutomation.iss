@@ -1,13 +1,17 @@
-; Packages accepted self-contained win-x64 runtime; no product rebuild.
-; ISCC /DMyAppSourceDir="..\dist\portable" /O"..\dist\installer"
+; Packages a self-contained win-x64 runtime today; win-x86 support is prepared in the
+; project file but needs a generated dual-architecture payload before it can ship.
+; ISCC /DMyAppSourceDirX64="..\dist\portable-x64" /O"..\dist\installer"
 #define MyAppName "Ayo Jama'ah!"
-#define MyAppVersion "2.1.0"
+#define MyAppVersion "2.1.2"
 #define MyAppPublisher "Ayo Jama'ah!"
 #define MyAppExeName "AyoJamaah.exe"
-#ifndef MyAppSourceDir
-  #define MyAppSourceDir "..\dist\portable"
+#ifndef MyAppSourceDirX86
+  #define MyAppSourceDirX86 "..\dist\portable-x86"
 #endif
-#define MyAppIcon MyAppSourceDir + "\AyoJamaah.ico"
+#ifndef MyAppSourceDirX64
+  #define MyAppSourceDirX64 "..\dist\portable-x64"
+#endif
+#define MyAppIcon MyAppSourceDirX64 + "\AyoJamaah.ico"
 
 [Setup]
 ; Same identity as Python 1.x; version 2 denotes runtime migration.
@@ -30,6 +34,8 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=
+; Enable `x86compatible or x64compatible` only together with a generated
+; AyoJamaahPayload-dual.iss; the single-architecture payload below is x64.
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -44,6 +50,11 @@ AllowCancelDuringInstall=yes
 
 [Files]
 ; Every reviewed payload file is individually hash-pinned at compile time.
+; A dual-architecture payload must be generated from matching x86/x64 portable
+; folders; until then the reviewed x64 payload stays active.
+#ifndef MyAppSourceDir
+  #define MyAppSourceDir MyAppSourceDirX64
+#endif
 #include "AyoJamaahPayload.iss"
 
 [Icons]
@@ -62,9 +73,20 @@ Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Description: "Jalankan A
 [Code]
 #include "SafetyGuard.iss"
 
+function IsX64Arch: Boolean;
+begin
+  Result := IsWin64;
+end;
+
+function IsX86Arch: Boolean;
+begin
+  Result := not IsWin64;
+end;
+
 var
   PayloadWritesStarted: Boolean;
   PayloadWriteProblem: String;
+  StartFreshPage: TInputOptionWizardPage;
 
 function InitializeSetup: Boolean;
 var Problem: String;
@@ -87,16 +109,42 @@ begin
   Result := ReviewPreviousInstallations;
 end;
 
+function ExistingConfigPath: String;
+begin
+  Result := ExpandConstant('{userappdata}\PrayerAutomation\config.json');
+end;
+
+function StartFreshSelected: Boolean;
+begin
+  Result := (StartFreshPage <> nil) and StartFreshPage.Values[0];
+end;
+
 procedure InitializeWizard;
 begin
   CreateOutputMsgPage(wpWelcome, 'Pemasangan untuk pengguna saat ini',
     'Pengaturan dan data lama tetap disimpan',
-    'Versi 2.1.0 memasang Ayo Jama''ah! berbasis C# + Rust tanpa hak administrator.'#13#10#13#10 +
-    'Pengaturan di %APPDATA%\PrayerAutomation tidak diubah, dihapus, atau dimigrasikan. ' +
-    'Skema lama yang tidak dikenal tidak dijamin kompatibel. Instalasi Python lama dan pendaftaran startup lama tidak dibersihkan otomatis.'#13#10#13#10 +
+    'Versi 2.1.2 memasang Ayo Jama''ah! berbasis C# + Rust tanpa hak administrator.'#13#10#13#10 +
+    'Pengaturan di %APPDATA%\PrayerAutomation dipertahankan, kecuali Anda memilih "Mulai dari baru" pada halaman berikutnya ' +
+    '(hanya muncul jika pengaturan lama ditemukan). Skema lama yang tidak dikenal tidak dijamin kompatibel. ' +
+    'Instalasi Python lama dan pendaftaran startup lama tidak dibersihkan otomatis.'#13#10#13#10 +
     'Jika aplikasi berjalan, pilih Keluar dari menu tray/aplikasi. Tombol X atau minimize hanya menyembunyikan jendela. ' +
-    'Jika pemulihan lock screen belum terverifikasi, tunggu pemulihan atau batalkan pemasangan. Tidak ada penghentian paksa.'#13#10#13#10 +
+    'Jika pemulihan lock screen belum terverifikasi, tunggu pemulihan atau batalkan pemasangan. Penutupan paksa hanya ditawarkan setelah konfirmasi dan dapat mengganggu pemulihan yang belum selesai.'#13#10#13#10 +
     'Aplikasi tidak dijalankan otomatis. Setelah memilih menjalankannya, periksa pengaturan startup dan lock screen yang tersimpan.');
+  if FileExists(ExistingConfigPath) then begin
+    StartFreshPage := CreateInputOptionPage(wpWelcome,
+      'Pengaturan lama ditemukan',
+      'Mulai dari baru?',
+      'Pengaturan tersimpan di %APPDATA%\PrayerAutomation\config.json ditemukan.'#13#10#13#10 +
+      'Centang opsi di bawah untuk MENGHAPUS PERMANEN seluruh folder %APPDATA%\PrayerAutomation ' +
+      'dan menghapus pendaftaran startup "PrayerAutomation" dari registry Run. ' +
+      'Aplikasi akan memakai pengaturan bawaan saat pertama dijalankan.'#13#10#13#10 +
+      'Jurnal pemulihan lock screen di %LOCALAPPDATA%\PrayerAutomation\LockScreen TIDAK dihapus; ' +
+      'jika pemulihan masih tertunda, pemasangan tetap dibatalkan oleh pengaman.'#13#10#13#10 +
+      'Jika tidak dicentang, pengaturan lama dipertahankan apa adanya.',
+      False, False);
+    StartFreshPage.Add('Mulai dari baru (hapus pengaturan lama secara permanen)');
+    StartFreshPage.Values[0] := False;
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -107,6 +155,43 @@ begin
   Result := RequireSafeBoundary(ExpandConstant('{app}'), False);
 end;
 
+procedure DeleteDirectoryTree(const Directory: String);
+var FindRec: TFindRec;
+    Path: String;
+begin
+  if not DirExists(Directory) then Exit;
+  if FindFirst(AddBackslash(Directory) + '*', FindRec) then begin
+    try
+      repeat
+        if (FindRec.Name <> '.') and (FindRec.Name <> '..') then begin
+          Path := AddBackslash(Directory) + FindRec.Name;
+          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            DeleteDirectoryTree(Path)
+          else
+            DeleteFile(Path);
+        end;
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+  RemoveDir(Directory);
+end;
+
+procedure ApplyStartFresh;
+var AppDataDir: String;
+begin
+  AppDataDir := ExpandConstant('{userappdata}\PrayerAutomation');
+  Log('START_FRESH: user opted to delete ' + AppDataDir);
+  DeleteDirectoryTree(AppDataDir);
+  if RegKeyExists(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run') then begin
+    if RegValueExists(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'PrayerAutomation') then begin
+      RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'PrayerAutomation');
+      Log('START_FRESH: removed Run\PrayerAutomation');
+    end;
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var Problem: String;
 begin
@@ -115,8 +200,11 @@ begin
     if Problem <> '' then RaiseException(Problem);
     PayloadWritesStarted := True;
   end;
-  { Release before optional unchecked post-install Run. }
-  if CurStep = ssPostInstall then ReleaseSafetyMutex;
+  { Delete old settings only after the payload was written successfully. }
+  if CurStep = ssPostInstall then begin
+    if StartFreshSelected then ApplyStartFresh;
+    ReleaseSafetyMutex;
+  end;
 end;
 
 function CheckPayloadWrite: Boolean;

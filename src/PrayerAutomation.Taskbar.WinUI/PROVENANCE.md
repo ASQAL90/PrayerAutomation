@@ -1,5 +1,11 @@
 # Provenance and license boundary
 
+> **Status 2.1.2 — backend dihapus.** Panel taskbar kini hanya memakai popup WPF. Source
+> `AwqatTaskbarRenderer.cs`, project `PrayerAutomation.Taskbar.WinUI.csproj`, dan
+> `NoOptionalHelperExecutables.targets` sudah dihapus dari repository. File lisensi/NOTICE di
+> direktori ini **sengaja dipertahankan** sebagai arsip atribusi dan syarat redistribusi untuk
+> build 2.1.0/2.1.1 yang pernah didistribusikan. Jangan hapus tanpa meninjau kewajiban lisensi.
+
 ## Adapted Awqat source
 - Repository: https://github.com/Khiro95/Awqat-Salaat
 - Exact upstream pin: `c77a733efad9dc986901f07236e886b0bd6642ff`.

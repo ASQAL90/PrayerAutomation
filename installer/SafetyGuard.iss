@@ -7,6 +7,10 @@ const
   SafetyMutexName = '{#SafetyMutexNameDef}';
   UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1';
   ProcessQueryLimited = $1000;
+  ProcessTerminate = $0001;
+  Synchronize = $00100000;
+  WaitObject0 = 0;
+  WaitTimeout = 258;
 
   StillActive = 259;
   ErrorAlreadyExists = 183;
@@ -32,6 +36,10 @@ var
 
 function NativeOpenProcess(Access: Cardinal; Inherit: Boolean; Pid: Cardinal): Longword;
   external 'OpenProcess@kernel32.dll stdcall';
+function NativeTerminateProcess(Process: Longword; ExitCode: Cardinal): Boolean;
+  external 'TerminateProcess@kernel32.dll stdcall';
+function NativeWaitForSingleObject(Handle: Longword; Milliseconds: Cardinal): Cardinal;
+  external 'WaitForSingleObject@kernel32.dll stdcall';
 function NativeGetCurrentProcessId: Cardinal;
   external 'GetCurrentProcessId@kernel32.dll stdcall';
 function NativeCloseHandle(Handle: Longword): Boolean;
@@ -209,6 +217,58 @@ begin
     end;
   except
     Result := 'Pemeriksaan proses Windows gagal. Tidak ada berkas aplikasi yang diubah. ' + GetExceptionMessage;
+  end;
+end;
+
+function ForceCloseProductProcesses(var Details: String): String;
+var Locator, Service, Items, Item: Variant;
+    I: Integer;
+    Pid, Session: Cardinal;
+    Name, Command, Image, Problem: String;
+    Mine, Candidate: Boolean;
+    P: Longword;
+begin
+  Result := ''; Details := '';
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Service := Locator.ConnectServer('', 'root\CIMV2');
+    Items := Service.ExecQuery('SELECT Name,ProcessId,CommandLine FROM Win32_Process WHERE Name LIKE ''python%'' OR Name=''dotnet.exe'' OR Name=''AyoJamaah.exe'' OR Name=''PrayerAutomation.UI.exe'' OR Name=''PrayerAutomation.exe'' OR Name=''prayer_automation.exe''');
+    for I := 0 to Items.Count - 1 do begin
+      Item := Items.ItemIndex(I);
+      Name := Item.Name;
+      Command := '';
+      if not VarIsNull(Item.CommandLine) then Command := Item.CommandLine;
+      Candidate := IsProductName(Name) or IsRelatedCommand(Command, '');
+      Pid := Item.ProcessId;
+      if not Candidate then begin
+        if VarIsNull(Item.CommandLine) then begin
+          Problem := InspectProcess(Pid, Mine, Image, Session);
+          if (Problem = '') and Mine then Candidate := IsRelatedCommand('', Image);
+        end;
+      end;
+      if Candidate then begin
+        Problem := InspectProcess(Pid, Mine, Image, Session);
+        if Problem <> '' then begin Result := Problem; Exit; end;
+        if not Mine then Continue;
+        P := NativeOpenProcess(ProcessTerminate or Synchronize, False, Pid);
+        if P = 0 then begin
+          Result := 'Proses ' + Name + ' (PID ' + IntToStr(Pid) + ') tidak dapat dibuka untuk dihentikan.';
+          Exit;
+        end;
+        try
+          if not NativeTerminateProcess(P, 0) then begin
+            Result := 'Proses ' + Name + ' (PID ' + IntToStr(Pid) + ') tidak dapat dihentikan.';
+            Exit;
+          end;
+          NativeWaitForSingleObject(P, 5000);
+        finally
+          NativeCloseHandle(P);
+        end;
+        Details := Details + Name + ' (PID ' + IntToStr(Pid) + ')' + #13#10;
+      end;
+    end;
+  except
+    Result := 'Penghentian paksa gagal: ' + GetExceptionMessage;
   end;
 end;
 
@@ -451,28 +511,39 @@ begin
 end;
 
 function RequireSafeBoundary(const Directory: String; Uninstalling: Boolean): String;
-var Problem: String; Choice: Integer;
+var Problem: String; Choice: Integer; Details: String;
 begin
   Result := BoundarySnapshot(Directory, Uninstalling);
   if Result <> '' then begin
     if (not IsUninstaller and WizardSilent) or (IsUninstaller and UninstallSilent) then Exit;
     Choice := MsgBox(Result + #13#10#13#10 +
-      'Izinkan penutupan normal secara manual? Jika Ya, pilih Keluar dari menu tray/aplikasi, lalu kembali ke sini. ' +
-      'Pemasang tidak mengirim X/WM_CLOSE dan tidak membunuh proses. Jika lock screen belum pulih/terverifikasi atau Keluar ditolak, batalkan.' ,
+      'Aplikasi masih berjalan. Pilih Ya untuk MENUTUP PAKSA aplikasi dan melanjutkan pemasangan. ' +
+      'Perubahan yang belum disimpan di aplikasi akan HILANG, dan pemulihan lock screen yang belum selesai dapat terganggu. ' +
+      'Pilih Tidak untuk menutup aplikasi secara normal (Keluar dari menu tray/aplikasi) dan mencoba lagi.',
       mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
-    if Choice <> IDYES then begin
-      Result := 'Izin penutupan ditolak. Operasi dihentikan sebelum perubahan aplikasi.'; Exit;
-    end;
-    repeat
-      Choice := MsgBox('Pilih Keluar pada Ayo Jama''ah!, tunggu pemulihan lock screen dan proses selesai. ' +
-        'Klik Coba Lagi untuk memeriksa ulang, atau Batal. Jangan gunakan End task.' + #13#10#13#10 + Result,
-        mbInformation, MB_RETRYCANCEL or MB_DEFBUTTON2);
-      if Choice <> IDRETRY then begin
-        Result := 'Operasi dibatalkan; aplikasi/pengaturan tidak diubah.'; Exit;
+    if Choice = IDYES then begin
+      Problem := ForceCloseProductProcesses(Details);
+      if Problem <> '' then begin
+        Result := Problem; Exit;
       end;
       Sleep(750);
       Result := BoundarySnapshot(Directory, Uninstalling);
-    until Result = '';
+      if Result <> '' then begin
+        Result := 'Aplikasi dihentikan paksa, tetapi pemeriksaan ulang gagal:'#13#10 + Result;
+        Exit;
+      end;
+    end else begin
+      repeat
+        Choice := MsgBox('Pilih Keluar pada Ayo Jama''ah!, tunggu pemulihan lock screen dan proses selesai. ' +
+          'Klik Coba Lagi untuk memeriksa ulang, atau Batal.' + #13#10#13#10 + Result,
+          mbInformation, MB_RETRYCANCEL or MB_DEFBUTTON2);
+        if Choice <> IDRETRY then begin
+          Result := 'Operasi dibatalkan; aplikasi/pengaturan tidak diubah.'; Exit;
+        end;
+        Sleep(750);
+        Result := BoundarySnapshot(Directory, Uninstalling);
+      until Result = '';
+    end;
   end;
   Result := AcquireSafetyMutex;
   if Result <> '' then Exit;

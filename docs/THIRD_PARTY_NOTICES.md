@@ -1,4 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.1.0
+# Third-party notices — Ayo Jama'ah! 2.1.2
+
+> **Catatan 2.1.2:** backend taskbar XAML Island/WinUI sudah dihapus dari source. File lisensi dan NOTICE WindowsAppSDK/Awqat di `src/PrayerAutomation.Taskbar.WinUI/` sengaja dipertahankan sebagai arsip untuk paket 2.1.0/2.1.1 yang pernah didistribusikan. Referensi di bawah karena itu bersifat historis, bukan daftar dependency aktif 2.1.2.
 
 Inventaris lokal per 11 November 2026. **Ini bukan LICENSE utama aplikasi atau clearance hukum menyeluruh.** Source asli repository ini dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Masing-masing komponen di bawah tetap tunduk pada lisensi/terms pemiliknya; lisensi MIT pada source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
@@ -16,7 +18,7 @@ Inventaris lokal per 11 November 2026. **Ini bukan LICENSE utama aplikasi atau c
 |---|---|---|---|
 | GeoTimeZone | 6.1.0 | Direct; `GeoTimeZone.dll` | MIT untuk kode; ODbL untuk data boundary; atribusi Geohash-net/Geohash-js |
 | TimeZoneConverter | 7.2.0 | Direct; `TimeZoneConverter.dll` | MIT untuk library; sumber mapping embedded dibahas terpisah di bawah |
-| Microsoft.WindowsAppSDK.WinUI | 2.6.4 | Direct; backend WinUI dan app-local assets | Microsoft Windows App SDK Software License Terms + NOTICE |
+| Microsoft.WindowsAppSDK.WinUI | 2.6.4 | Historis; backend WinUI dan app-local assets (dihapus di 2.1.2) | Microsoft Windows App SDK Software License Terms + NOTICE |
 | Microsoft.WindowsAppSDK.Foundation | 2.6.4 | Transitive; projection/bootstrap runtime | Microsoft Windows App SDK Software License Terms |
 | Microsoft.WindowsAppSDK.InteractiveExperiences | 2.6.4 | Transitive; projection/native assets | Microsoft Windows App SDK Software License Terms |
 | Microsoft.Web.WebView2 | 1.0.3719.77 | Transitive; loader/core/projection | LICENSE gaya BSD-3-Clause + NOTICE |
@@ -24,7 +26,7 @@ Inventaris lokal per 11 November 2026. **Ini bukan LICENSE utama aplikasi atau c
 | Microsoft.WindowsDesktop.App.Runtime.win-x64 | 10.0.9 | Self-contained WPF/WinForms runtime | MIT; aggregate .NET notices ikut dipertahankan |
 | Microsoft.Windows.SDK.NET.Ref | 10.0.26100.57 | Runtime pack; `Microsoft.Windows.SDK.NET.dll`, `WinRT.Runtime.dll` | Package metadata menunjuk Windows SDK terms; exact REDIST/runtime attribution belum ditutup |
 
-Entry `AyoJamaah`, `AyoJamaah.Taskbar.WinUI`, dan `.Reference` pada deps adalah assembly milik aplikasi, bukan third-party terpisah. Metadata library/reference dapat berbeda dari versi produk; inventaris tidak mengubahnya.
+Entry `AyoJamaah`, `AyoJamaah.Taskbar.WinUI` (historis), dan `.Reference` pada deps adalah assembly milik aplikasi, bukan third-party terpisah. Metadata library/reference dapat berbeda dari versi produk; inventaris tidak mengubahnya.
 
 **Batas pemetaan:** Microsoft.WindowsAppSDK.Base 2.6.4 terbukti dari dependency WinUI/cached metadata, tetapi tidak mempunyai entry library sendiri pada final deps. Seluruh app-local assets belum dipetakan ke setiap subkomponen internal. Aggregate NOTICE dipertahankan utuh; banyaknya nama komponen di NOTICE bukan bukti semuanya dikirim sebagai dependency aplikasi.
 
@@ -76,7 +78,9 @@ Final deps memetakan keduanya ke runtime pack Microsoft.Windows.SDK.NET.Ref 10.0
 
 Repository [CsWinRT saat diperiksa](https://raw.githubusercontent.com/microsoft/CsWinRT/master/LICENSE) berlisensi MIT, tetapi LICENSE branch tersebut **belum diikat ke source pin exact DLL final**. Ini referensi investigasi, bukan pin rilis. Notice/REDIST untuk projection dan runtime exact belum ditutup; tidak menerapkan source MIT WindowsAppSDK secara otomatis pada keduanya.
 
-## Source yang diadaptasi
+## Source yang diadaptasi (historis 2.1.0)
+
+> Kode adaptasi di bawah sudah dihapus bersama backend WinUI pada 2.1.2. Tabel ini dipertahankan untuk menjelaskan asal paket yang pernah didistribusikan.
 
 | Komponen | Pin/versi provenance | Lingkup | Lisensi |
 |---|---|---|---|

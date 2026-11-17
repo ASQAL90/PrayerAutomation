@@ -8,18 +8,20 @@ Aplikasi jadwal sholat untuk Windows. Perhitungan jadwal ada di library Rust, ta
 
 **Unduh:** [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip) untuk Windows 10 (build 19041 ke atas) dan Windows 11, x64.
 
-## Status 2.1.0
+## Status 2.1.2
 
 Nama di layar adalah Ayo Jama'ah!, file executable-nya `AyoJamaah.exe`. Portable dan installer yang saya simpan di `dist/` belum diunggah ke halaman Releases. Keduanya belum ditandatangani, jadi SmartScreen akan memberi peringatan saat pertama dijalankan. Nama publisher di metadata file juga belum terverifikasi.
 
-Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua.
+Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Installer menambah halaman "Mulai dari baru" dan opsi penutupan paksa setelah konfirmasi. Payload installer 2.1.2 belum diregenerasi, jadi build installer masih menunggu receipt yang cocok.
+
+Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua. Perubahan UI 2.1.2 baru diverifikasi secara statis, belum lewat penerimaan visual di Windows.
 
 ## Fitur
 
 - Jadwal sholat harian, beberapa metode perhitungan, pilihan timezone, dan koreksi menit.
 - Kalender Masehi dan Hijriyah, termasuk koreksi tampilan tanggal.
 - Tiga widget: Essential, Minimalist, dan Detail. Tema dan posisinya bisa diatur.
-- Panel taskbar dengan dua mode: popup terpisah, atau backend WinUI yang masih eksperimental.
+- Panel taskbar berbentuk popup dengan pilihan tampilan Minimalist atau Detail.
 - Pengingat berupa teks saja, tanpa suara atau adzan.
 - Lokasi bisa diisi manual, diperkirakan dari jaringan, atau diambil dari Windows Location Services.
 - Pencarian nama tempat offline memakai data GeoNames, tanpa request jaringan.
@@ -46,7 +48,7 @@ Installer memasang per-user ke `%LOCALAPPDATA%\Programs\PrayerAutomation`. Nama 
 5. Kalau menutup jendela dengan perubahan yang belum disimpan, muncul pilihan Simpan, Buang perubahan, atau Kembali mengedit.
 6. Tombol X dan minimize menyembunyikan jendela ke tray. Untuk benar-benar keluar, pakai menu Keluar.
 
-Mode taskbar WinUI belum tentu dapat ruang di semua konfigurasi Explorer dan DPI. Kalau bermasalah, ganti ke mode popup.
+Mode taskbar memakai popup WPF; backend XAML Island/WinUI sudah dihapus pada 2.1.2. Kalau popup tidak muncul di konfigurasi Explorer tertentu, cek pengaturan panel taskbar di tab Pengaturan.
 
 ## Lokasi dan jaringan
 
@@ -60,7 +62,7 @@ Mode taskbar WinUI belum tentu dapat ruang di semua konfigurasi Explorer dan DPI
 | Path | Isi |
 |---|---|
 | `src/PrayerAutomation.UI/` | Form WPF, tray, widget, pengaturan, adapter Windows |
-| `src/PrayerAutomation.Taskbar.WinUI/` | Backend XAML Island untuk panel taskbar |
+| `src/PrayerAutomation.Taskbar.WinUI/` | Arsip lisensi/provenance backend taskbar lama; kode backend dihapus di 2.1.2 |
 | `src/Shared/` | Geometri ikon yang dipakai dua project C# |
 | `src/rust-core/` | Perhitungan jadwal dan kalender, diekspor sebagai `prayer_core.dll` |
 | `installer/` | Skrip Inno Setup per-user |
@@ -70,20 +72,21 @@ Mode taskbar WinUI belum tentu dapat ruang di semua konfigurasi Explorer dan DPI
 
 ## Build
 
-Yang dibutuhkan: .NET SDK yang mendukung `net10.0-windows10.0.26100.0`, Rust dengan edition 2024 dan target `x86_64-pc-windows-gnu` beserta linker MinGW x64, dan paket NuGet sesuai `PackageReference`. Restore pertama butuh jaringan.
+Yang dibutuhkan: .NET SDK yang mendukung `net10.0-windows10.0.26100.0`, Rust dengan edition 2024 dan target `x86_64-pc-windows-gnu` (tambahkan `i686-pc-windows-gnu` untuk x86) beserta linker MinGW yang sesuai, dan paket NuGet sesuai `PackageReference`. Restore pertama butuh jaringan.
 
 ```bash
 cargo test --workspace --release --locked --target x86_64-pc-windows-gnu
-dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -r win-x64 --self-contained true -o ../AyoJamaah-build/portable
+dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x64 --self-contained true -o ../AyoJamaah-build/portable-x64
+dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 --self-contained true -o ../AyoJamaah-build/portable-x86
 ```
 
-MSBuild membangun Rust sebelum UI. Output publish sengaja ditaruh di luar repo. Installer butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish. Beberapa path default di installer dan runner test masih khusus komputer saya.
+`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish; payload dual-arsitektur belum tersedia.
 
 ## Pengujian
 
-Pada 11 November 2026 saya cek build dan publish. Fixture branding lulus 57/57 dan fixture perubahan belum disimpan lulus 99/99, keduanya terhadap DLL finalisasi yang sama. Setelah metadata publisher diubah, build dan publish lulus lagi, tapi fixture UI tadi tidak diulang ke DLL baru.
+Perubahan 2.1.2 divalidasi statis: `cargo test`, `cargo fmt --check`, dan `cargo clippy -D warnings` lulus; source C#/XAML dan skrip installer direview tanpa build WPF/Inno di mesin ini. Build dan publish Windows, smoke test UI, serta penerimaan visual belum dijalankan untuk 2.1.2. Sebelumnya, pada 11 November 2026, fixture branding lulus 57/57 dan fixture perubahan belum disimpan lulus 99/99 terhadap DLL 2.1.0.
 
-Yang belum tercakup: UI/UX normal 2.1.0, fokus dan modal sungguhan, Explorer, mixed-DPI, auto-hide, serta instalasi, upgrade, dan uninstall penuh.
+Yang belum tercakup: UI/UX normal 2.1.2, fokus dan modal sungguhan, Explorer, mixed-DPI, auto-hide, serta instalasi, upgrade, dan uninstall penuh.
 
 Pemulihan gambar lock screen, terutama untuk Spotlight, belum selesai sepenuhnya. Lulus build dan test tidak berarti gambar kembali normal secara visual.
 

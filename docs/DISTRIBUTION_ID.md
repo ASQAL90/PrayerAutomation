@@ -1,5 +1,7 @@
 # Distribusi lokal — Ayo Jama'ah! 2.1.0
 
+> **Status 2.1.2:** belum ada paket 2.1.2 yang dibangun. Source 2.1.2 sudah ada di repo, termasuk dukungan publish win-x86, tetapi installer/portable 2.1.2 menunggu build Windows dan regenerasi payload. Artefak 2.1.0 di bawah tetap yang terakhir tersedia secara lokal.
+
 Paket di bawah disiapkan lokal untuk pemeriksaan pengguna. **Unsigned: signing belum selesai.** CompanyName/AppPublisher `Ayo Jama'ah!` hanya metadata, bukan publisher Authenticode terverifikasi. SmartScreen/Smart App Control masih dapat memperingatkan atau memblokir. Tidak ada pemasangan sertifikat self-signed, pengecualian Defender, atau perubahan trust Windows.
 
 ## Lokasi di root repository

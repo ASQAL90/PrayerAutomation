@@ -60,8 +60,8 @@ internal sealed class AppSettings
         WidgetMode = WidgetSettingsLogic.NormalizeMode(savedWidgetMode);
         WidgetMotion = WidgetSettingsLogic.NormalizeMotion(WidgetMotion, legacyMinimalMode);
         WidgetPosition = WidgetSettingsLogic.NormalizePosition(WidgetPosition);
-        // Only an explicit known selection opts into native taskbar hosting.
-        TaskbarWidgetMode = TaskbarWidgetMode == "native" ? "native" : "popup";
+        // Only the popup renderer is supported; the native WinUI backend was removed.
+        TaskbarWidgetMode = "popup";
         ThemeId = ThemeCatalog.NormalizeId(ThemeId);
         if (!LockScreenOptIn) LockScreenEnabled = false;
 

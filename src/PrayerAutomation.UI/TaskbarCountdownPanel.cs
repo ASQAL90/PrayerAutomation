@@ -11,7 +11,6 @@ using System.Windows.Threading;
 using Image = System.Windows.Controls.Image;
 using FontFamily = System.Windows.Media.FontFamily;
 using Size = System.Windows.Size;
-using PrayerAutomation.Taskbar.WinUI;
 
 namespace PrayerAutomation.UI;
 
@@ -26,10 +25,8 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private readonly Func<DateTime>? _clock;
     private readonly Func<DateTime, IReadOnlyList<PrayerEntry>>? _schedule;
     internal string RendererMode { get; }
-    private AwqatTaskbarRenderer? _nativeRenderer;
-    private IntPtr PanelHandle => _nativeRenderer?.Handle ?? _source?.Handle ?? IntPtr.Zero;
+    private IntPtr PanelHandle => _source?.Handle ?? IntPtr.Zero;
     private string _iconKey = "";
-    private bool _unavailable;
     private readonly DispatcherTimer _timer;
     private readonly Dictionary<DateTime, IReadOnlyList<PrayerEntry>> _schedules = new();
     private readonly Border _root;
@@ -67,7 +64,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         _capture = capture ?? TaskbarPanelLayout.Capture;
         _clock = clock;
         _schedule = schedule;
-        RendererMode = settings.TaskbarWidgetMode == "native" ? "native" : "popup";
+        RendererMode = "popup";
         _icon = new Image { Width = 24, Height = 24, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
         _prayer = new TextBlock { FontSize = 11, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center };
         _countdown = new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 16, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center };
@@ -152,7 +149,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
                 ? remaining[..separator] + "\n" + remaining[(separator + 1)..] + "s" : remaining;
             string key = GetSchedule(countdown.LocalTime.Date).FirstOrDefault(e => e.Label == countdown.PrayerLabel)?.Key ?? "Fajr";
             _iconKey = key;
-            _unavailable = false;
             _icon.Source = PrayerWidgetIcons.Create(key, _prayer.Foreground);
             AutomationProperties.SetName(_icon, PrayerUiLogic.PresentationFor(key, countdown.PrayerLabel).AccessibleDescription);
             AutomationProperties.SetName(_root, $"{_prayer.Text}, {_countdown.Text}; buka jadwal Detail");
@@ -165,9 +161,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
             _countdown.Foreground = ThemeManager.ToBrush(palette.ErrorText);
             _icon.Source = null;
             _iconKey = "";
-            _unavailable = true;
         }
-        UpdateNativeRenderer();
     }
 
     private IReadOnlyList<PrayerEntry> GetSchedule(DateTime date)
@@ -278,11 +272,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
             return;
         }
         WatchHost(snapshot.Parent);
-        if (RendererMode == "native")
-        {
-            ApplyNativeSnapshot(snapshot, slot);
-            return;
-        }
         if (TaskbarPanelLayout.Native.GetAncestor(snapshot.Parent, 2) != snapshot.Parent)
         {
             RemoveChild();
@@ -339,52 +328,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         _hostClientSize = new Size(Math.Max(0, hostClient.Right - hostClient.Left),
             Math.Max(0, hostClient.Bottom - hostClient.Top));
         _root.UpdateLayout();
-        Status(snapshot.Message);
-    }
-
-    private void UpdateNativeRenderer()
-    {
-        if (_nativeRenderer?.LastRenderError is string error)
-        {
-            RemoveChild();
-            Status($"Panel disembunyikan — tampilan WinUI gagal ({error}); ruang taskbar akan diverifikasi kembali.");
-            return;
-        }
-        ThemePalette palette = ThemeManager.Current;
-        try
-        {
-            _nativeRenderer?.Update(_prayer.Text, _countdown.Text, _iconKey,
-                palette.WidgetBackground, palette.WidgetText, palette.Border, _vertical, _compact, _hostDpi,
-                $"{_prayer.Text}, {_countdown.Text}; {PrayerUiLogic.PresentationFor(_iconKey, _prayer.Text).AccessibleDescription}; buka jadwal Detail",
-                palette.CornerRadius, _unavailable ? palette.ErrorText : palette.WidgetText);
-        }
-        catch (Exception ex)
-        {
-            string sErrMessage = ex.Message;
-            RemoveChild();
-            Status($"Panel disembunyikan — tampilan WinUI gagal ({sErrMessage}); ruang taskbar akan diverifikasi kembali.");
-        }
-    }
-
-    private void ApplyNativeSnapshot(TaskbarPanelSnapshot snapshot, Rect slot)
-    {
-        if (!double.IsFinite(slot.Left) || !double.IsFinite(slot.Top) || !double.IsFinite(slot.Right) ||
-            !double.IsFinite(slot.Bottom) || slot.Width < 1 || slot.Height < 1 || snapshot.Dpi <= 0)
-            throw new ArgumentException("Native slot must have finite physical bounds.");
-        if (_nativeRenderer is not null && !_nativeRenderer.HasParent(snapshot.Parent)) RemoveChild();
-        _nativeRenderer ??= new AwqatTaskbarRenderer(snapshot.Parent, (int)slot.Width, (int)slot.Height, _openDetail);
-        _hostDpi = snapshot.Dpi;
-        ConfigureLayout(snapshot.Vertical, snapshot.Compact);
-        UpdateNativeRenderer();
-        if (_nativeRenderer is null) return;
-        // Awqat AppWindow placement/show: parent-local physical coordinates, owned HWND only.
-        _nativeRenderer.SetBounds((int)slot.Left, (int)slot.Top, (int)slot.Width, (int)slot.Height, true);
-        if (!_nativeRenderer.HasParent(snapshot.Parent))
-            throw new InvalidOperationException("Panel WinUI kehilangan host taskbar; menunggu posisi baru.");
-        _hostScreenBounds = snapshot.ScreenBounds;
-        _lastLayoutVerifiedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
-        _hostGeometryKnown = TaskbarPanelLayout.Native.GetClientRect(snapshot.Parent, out var client);
-        _hostClientSize = new Size(Math.Max(0, client.Right - client.Left), Math.Max(0, client.Bottom - client.Top));
         Status(snapshot.Message);
     }
 
@@ -455,8 +398,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         if (!_hostGeometryKnown || _lastLayoutVerifiedTicks == 0 || PanelHandle == IntPtr.Zero ||
             !TaskbarPanelLayout.Native.IsWindow(_trackedHost) ||
             !TaskbarPanelLayout.Native.IsWindow(PanelHandle) ||
-            (RendererMode == "native" ? _nativeRenderer?.HasParent(_trackedHost) != true :
-                !HasPopupOwnership(_trackedHost)) ||
+            !HasPopupOwnership(_trackedHost) ||
             !TaskbarPanelLayout.Native.IsWindowVisible(_trackedHost) ||
             TaskbarPanelLayout.Native.GetDpiForWindow(_trackedHost) != _hostDpi ||
             !TaskbarPanelLayout.Native.GetWindowRect(_trackedHost, out var screen) ||
@@ -499,7 +441,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
 
     private void Status(string text)
     {
-        if (RendererMode == "native") text = "Taskbar Window Awqat Salaat WinUI (eksperimental): " + text;
         if (_lastStatus == text) return;
         _lastStatus = text;
         _publishStatus(text);
@@ -529,8 +470,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         // Both renderers keep their HWND while the actual host is hidden or moving.
         // A lost host/parent still releases the renderer and its resources.
         if (TaskbarPanelLayout.Native.IsWindow(_trackedHost) &&
-            (_nativeRenderer?.HasParent(_trackedHost) == true || _source is not null &&
-                HasPopupOwnership(_trackedHost)))
+            _source is not null && HasPopupOwnership(_trackedHost))
         {
             TaskbarPanelLayout.Native.ShowWindow(PanelHandle, 0);
             return false;
@@ -541,8 +481,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
 
     private void RemoveChild()
     {
-        _nativeRenderer?.Dispose();
-        _nativeRenderer = null;
         HwndSource? source = _source;
         _source = null;
         _hostGeometryKnown = false;

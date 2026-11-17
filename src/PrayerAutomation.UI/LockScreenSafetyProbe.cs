@@ -79,8 +79,13 @@ internal static class LockScreenSafetyProbe
         try
         {
             using RegistryKey? key = Registry.CurrentUser.OpenSubKey(keyPath, writable: false);
-            if (key is null || !key.GetValueNames().Contains(valueName, StringComparer.OrdinalIgnoreCase) ||
-                key.GetValueKind(valueName) != RegistryValueKind.DWord)
+            // A missing key or value means the feature was never configured (disabled), not an error.
+            if (key is null)
+                return 0;
+            if (!key.GetValueNames().Contains(valueName, StringComparer.OrdinalIgnoreCase))
+                return 0;
+            // A present but malformed value is ambiguous; fail closed.
+            if (key.GetValueKind(valueName) != RegistryValueKind.DWord)
                 return null;
             return key.GetValue(valueName) is int value && value is (0 or 1) ? value : null;
         }

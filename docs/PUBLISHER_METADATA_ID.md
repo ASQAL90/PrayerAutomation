@@ -1,5 +1,7 @@
 # Metadata publisher — Ayo Jama'ah! 2.1.0
 
+> **Catatan 2.1.2:** `AyoJamaah.Taskbar.WinUI.dll` tidak lagi diproduksi karena backend WinUI dihapus. Tabel di bawah mendokumentasikan build 2.1.0; metadata `AyoJamaah.exe`/`AyoJamaah.dll` tetap berlaku.
+
 ## Identitas yang dirapikan
 
 Field `Company` pada kedua project C# ditetapkan menjadi **`Ayo Jama'ah!`**. Ini label publisher/brand untuk metadata file, bukan penetapan badan hukum atau pemegang hak cipta.

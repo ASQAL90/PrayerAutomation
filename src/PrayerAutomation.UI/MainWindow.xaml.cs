@@ -72,6 +72,10 @@ public partial class MainWindow : Window
     private int _selectedHijriYear;
     private DateTime _selectedGregorianDate;
     private DateTime _lastCalendarToday;
+    // A full year in each calendar creates hundreds of WPF controls.  Keep that
+    // work out of the startup path so the initially visible controls accept input
+    // as soon as the window is shown.
+    private bool _calendarViewsLoaded;
 
     internal MainWindow(AppSettings settings)
         : this(settings, SettingsStore.Save, StartupRegistration.SetEnabled, StartupRegistration.IsEnabled)
@@ -111,6 +115,8 @@ public partial class MainWindow : Window
         _locationSearchTimer.Tick += LocationSearchTimer_Tick;
         _loadingSettings = true;
         InitializeComponent();
+        MoveCalendarCorrectionEditorsBesideDates();
+        LoadLockScreenPreview();
         AttachCorrectionEditors();
         Icon = App.LoadApplicationIcon();
         Closing += OnClosing;
@@ -148,14 +154,14 @@ public partial class MainWindow : Window
             if (today != _lastCalendarToday)
             {
                 _lastCalendarToday = today;
-                RefreshCalendarViews();
+                if (_calendarViewsLoaded)
+                    RefreshCalendarViews();
                 RefreshOverview();
             }
         };
         _clockTimer.Start();
         Closed += (_, _) => _clockTimer.Stop();
 
-        RefreshCalendarViews();
         RefreshOverview();
         if (!string.IsNullOrWhiteSpace(SettingsStore.LoadWarning))
             SettingsStatusLabel.Text = SettingsStore.LoadWarning;
@@ -166,6 +172,7 @@ public partial class MainWindow : Window
     internal void SelectCalendarTab()
     {
         MainTabs.SelectedIndex = 1;
+        EnsureCalendarViewsLoaded();
         Activate();
     }
 
@@ -177,9 +184,16 @@ public partial class MainWindow : Window
 
     internal void RefreshThemeDependentViews()
     {
-        RefreshCalendarViews();
+        if (_calendarViewsLoaded)
+            RefreshCalendarViews();
         RefreshOverview();
         RefreshSettingsSchedulePreview();
+    }
+
+    private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source == MainTabs && MainTabs.SelectedIndex == 1)
+            EnsureCalendarViewsLoaded();
     }
 
     internal void RefreshOverview()
@@ -241,7 +255,8 @@ public partial class MainWindow : Window
             target.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
     }
 
-    private static void RenderScheduleEntries(Grid target, IReadOnlyList<PrayerEntry> entries, int columns)
+    private static void RenderScheduleEntries(Grid target, IReadOnlyList<PrayerEntry> entries, int columns,
+        Func<PrayerEntry, UIElement?>? footerFactory = null)
     {
         columns = Math.Max(1, columns);
         ResetScheduleGrid(target, columns);
@@ -252,14 +267,14 @@ public partial class MainWindow : Window
         IReadOnlyList<GridCellPosition> positions = PrayerUiLogic.ColumnFirstPositions(entries.Count, columns);
         for (int index = 0; index < entries.Count; index++)
         {
-            Border card = CreatePrayerScheduleCard(entries[index]);
-            Grid.SetColumn(card, positions[index].Column);
-            Grid.SetRow(card, positions[index].Row);
-            target.Children.Add(card);
+            UIElement item = CreatePrayerScheduleCard(entries[index], footerFactory?.Invoke(entries[index]));
+            Grid.SetColumn(item, positions[index].Column);
+            Grid.SetRow(item, positions[index].Row);
+            target.Children.Add(item);
         }
     }
 
-    private static Border CreatePrayerScheduleCard(PrayerEntry entry)
+    private static UIElement CreatePrayerScheduleCard(PrayerEntry entry, UIElement? footer = null)
     {
         ThemePalette palette = ThemeManager.Current;
         string prayerColor = ThemeCatalog.PrayerColor(palette, entry.Key);
@@ -279,9 +294,11 @@ public partial class MainWindow : Window
         var label = new TextBlock
         {
             Text = entry.Label,
-            Margin = new Thickness(7, 0, 3, 0),
+            Margin = new Thickness(5, 0, 2, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 12,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
             Foreground = MakeBrush(palette.PrimaryText)
         };
         Grid.SetColumn(label, 1);
@@ -289,7 +306,7 @@ public partial class MainWindow : Window
         var time = new TextBlock
         {
             Text = FormatTime(entry.Time),
-            Margin = new Thickness(3, 0, 2, 0),
+            Margin = new Thickness(2, 0, 1, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.SemiBold,
             Foreground = MakeBrush(presentation.Foreground)
@@ -299,9 +316,9 @@ public partial class MainWindow : Window
 
         var card = new Border
         {
-            Margin = new Thickness(3),
-            Padding = new Thickness(6, 5, 6, 5),
-            MinHeight = 36,
+            Margin = new Thickness(1),
+            Padding = new Thickness(4, 3, 4, 3),
+            MinHeight = 30,
             Background = MakeBrush(presentation.Background),
             BorderBrush = MakeBrush(palette.Border),
             BorderThickness = new Thickness(1),
@@ -311,7 +328,54 @@ public partial class MainWindow : Window
         AutomationProperties.SetAutomationId(card, $"PrayerTimeCard-{entry.Key}");
         AutomationProperties.SetName(card, $"{entry.Label}, {FormatTime(entry.Time)}");
         AutomationProperties.SetHelpText(card, presentation.AccessibleDescription);
-        return card;
+        if (footer is null) return card;
+        if (footer is FrameworkElement footerElement)
+            footerElement.HorizontalAlignment = HorizontalAlignment.Center;
+        // Stretch the card to the full grid column so the prayer indicators stay wide and
+        // nearly touch each other; the correction row is centered underneath.
+        var item = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(2, 0, 2, 0) };
+        card.Margin = new Thickness(0);
+        item.Children.Add(card);
+        item.Children.Add(footer);
+        return item;
+    }
+
+    private void MoveCalendarCorrectionEditorsBesideDates()
+    {
+        MoveToHost(CalendarDateCorrectionBox.Parent as FrameworkElement, GregorianDateCorrectionHost);
+        MoveToHost(HijriDateCorrectionBox.Parent as FrameworkElement, HijriDateCorrectionHost);
+    }
+
+    private static void MoveToHost(FrameworkElement? editor, System.Windows.Controls.Panel host)
+    {
+        if (editor is null || editor.Parent is not System.Windows.Controls.Panel parent) return;
+        parent.Children.Remove(editor);
+        host.Children.Add(editor);
+    }
+
+    private UIElement? CreatePrayerCorrectionEditor(PrayerEntry entry)
+    {
+        StackPanel? editor = entry.Key switch
+        {
+            "Fajr" => CorrectionFajrBox.Parent as StackPanel,
+            "Sunrise" => CorrectionSunriseBox.Parent as StackPanel,
+            // Duha is derived from sunrise, so expose its single meaningful
+            // adjustment rather than showing two competing inputs.
+            "Dhuha" => DhuhaAfterSunriseBox.Parent as StackPanel,
+            "Dhuhr" => CorrectionDhuhrBox.Parent as StackPanel,
+            "Asr" => CorrectionAsrBox.Parent as StackPanel,
+            "Maghrib" => CorrectionMaghribBox.Parent as StackPanel,
+            "Isha" => CorrectionIshaBox.Parent as StackPanel,
+            _ => null
+        };
+        if (editor is null) return null;
+        if (editor.Parent is System.Windows.Controls.Panel parent) parent.Children.Remove(editor);
+
+        foreach (TextBlock label in editor.Children.OfType<TextBlock>())
+            label.Visibility = Visibility.Collapsed;
+        editor.HorizontalAlignment = HorizontalAlignment.Center;
+        editor.Margin = new Thickness(0, 1, 0, 0);
+        return editor;
     }
 
     private static UIElement CreatePrayerIcon(string key, PrayerPresentation presentation)
@@ -319,8 +383,8 @@ public partial class MainWindow : Window
         var icon = new System.Windows.Controls.Image
         {
             Source = PrayerWidgetIcons.Create(key, MakeBrush(presentation.Foreground)),
-            Width = 22,
-            Height = 22,
+            Width = 24,
+            Height = 24,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = presentation.IconKind == PrayerIconKind.Moon ? new Thickness(0) : new Thickness(0, 0, 2, 0)
         };
@@ -380,6 +444,13 @@ public partial class MainWindow : Window
         HijriYearBox.SelectedItem = _selectedHijriYear;
         RenderGregorianYear(_selectedGregorianYear);
         RenderHijriYear(_selectedHijriYear);
+    }
+
+    private void EnsureCalendarViewsLoaded()
+    {
+        if (_calendarViewsLoaded) return;
+        _calendarViewsLoaded = true;
+        RefreshCalendarViews();
     }
 
     private void RenderGregorianYear(int year)
@@ -446,7 +517,7 @@ public partial class MainWindow : Window
                         continue;
                     }
                     DateTime date = new(year, month, day);
-                    CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, _settings.HijriDateCorrectionDays).ToArray();
+                    CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays()).ToArray();
                     bool isSelected = date == _selectedGregorianDate;
                     _gregorianObservances[date] = observances;
                     Button dateButton = CreateGregorianDateButton(date, today, observances, isSelected);
@@ -556,7 +627,7 @@ public partial class MainWindow : Window
             {
                 NativeHijriMonth nativeMonth = NativePrayerCore.HijriMonth(year, month);
                 DateTime uncorrectedStart = new(nativeMonth.GregorianYear, nativeMonth.GregorianMonth, nativeMonth.GregorianDay);
-                DateTime displayStart = uncorrectedStart.AddDays(-_settings.HijriDateCorrectionDays);
+                DateTime displayStart = uncorrectedStart.AddDays(-GetHijriDateCorrectionDays());
                 int firstWeekday = MondayBasedWeekday(displayStart);
                 totalDays += nativeMonth.DaysInMonth;
 
@@ -634,7 +705,7 @@ public partial class MainWindow : Window
 
     private Button CreateHijriDateButton(int year, int month, int day, DateTime gregorianDate, DateTime calendarToday, bool isActiveDate)
     {
-        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, _settings.HijriDateCorrectionDays);
+        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays());
         CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(gregorianDate, calendarToday, isActiveDate, observances);
         CalendarThemeColors themeColors = ThemeCatalog.CalendarColorsFor(ThemeManager.Current, markerStyle);
         string[] names = observances.Select(item => item.Name).ToArray();
@@ -750,7 +821,7 @@ public partial class MainWindow : Window
         {
             string weekday = date.ToString("dddd", IndonesianCulture);
             string caption = $"{weekday}, {date.ToString("d MMMM yyyy", IndonesianCulture)}";
-            CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, _settings.HijriDateCorrectionDays).ToArray();
+            CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays()).ToArray();
             if (observances.Length > 0)
                 caption += "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
             NativeCalendarDate hijri = HijriForCalendarDate(date);
@@ -768,14 +839,14 @@ public partial class MainWindow : Window
     private void SelectHijriDate(int year, int month, int day, DateTime gregorianDate)
     {
         string name = NativePrayerCore.HijriMonthName(month);
-        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, _settings.HijriDateCorrectionDays);
+        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays());
         string observanceDescription = observances.Count == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
         HijriSelectedDateDetail.Text = $"{day} {name} {year} H — {gregorianDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} M\nPerkiraan kalender sipil; dapat berbeda dari rukyat atau otoritas setempat.{observanceDescription}";
         AutomationProperties.SetName(HijriSelectedDateDetail, HijriSelectedDateDetail.Text);
     }
 
     private NativeCalendarDate HijriForCalendarDate(DateTime date) =>
-        NativePrayerCore.HijriDate(date.Date.AddDays(_settings.HijriDateCorrectionDays));
+        NativePrayerCore.HijriDate(date.Date.AddDays(GetHijriDateCorrectionDays()));
 
     private DateTime GetLocationNow()
     {
@@ -791,8 +862,18 @@ public partial class MainWindow : Window
         {
             now = DateTime.Now;
         }
-        return PrayerUiLogic.CalendarDisplayDate(now, _settings.CalendarDateCorrectionDays);
+        return PrayerUiLogic.CalendarDisplayDate(now, GetCalendarDateCorrectionDays());
     }
+
+    private int GetCalendarDateCorrectionDays() =>
+        !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox?.Text, out int days)
+            ? days
+            : _settings.CalendarDateCorrectionDays;
+
+    private int GetHijriDateCorrectionDays() =>
+        !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox?.Text, out int days)
+            ? days
+            : _settings.HijriDateCorrectionDays;
 
     private DateTime GetPrayerScheduleDate()
     {
@@ -810,6 +891,13 @@ public partial class MainWindow : Window
         TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(settings.TimeZoneId);
         DateTime locationLocalNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime;
         return PrayerUiLogic.PrayerScheduleDate(locationLocalNow);
+    }
+
+    private static DateTime GetCalendarToday(AppSettings settings)
+    {
+        TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(settings.TimeZoneId);
+        DateTime locationLocalNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime;
+        return PrayerUiLogic.CalendarDisplayDate(locationLocalNow, settings.CalendarDateCorrectionDays);
     }
 
     private static int MondayBasedWeekday(DateTime date) => ((int)date.DayOfWeek + 6) % 7;
@@ -902,7 +990,6 @@ public partial class MainWindow : Window
             return;
 
         _applyThemePreview(themeId);
-        UpdateWidgetPreviewPresentation();
     }
 
     private void WidgetModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -925,7 +1012,6 @@ public partial class MainWindow : Window
         string position = (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag as string ?? _settings.WidgetPosition;
         _applyWidgetAppearancePreview(
             WidgetEnabledCheckBox.IsChecked == true, mode, motion, position);
-        UpdateWidgetPreviewPresentation();
     }
 
     private void StartupEnabled_Changed(object sender, RoutedEventArgs e)
@@ -938,6 +1024,27 @@ public partial class MainWindow : Window
     {
         if (StartHiddenCheckBox is not null && StartupEnabledCheckBox is not null)
             StartHiddenCheckBox.IsEnabled = true;
+    }
+
+    private void LoadLockScreenPreview()
+    {
+        if (LockScreenPreviewImage is null) return;
+        string path = System.IO.Path.Combine(AppContext.BaseDirectory, "sedang_sholat.png");
+        if (!File.Exists(path)) return;
+        try
+        {
+            var image = new System.Windows.Media.Imaging.BitmapImage();
+            image.BeginInit();
+            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            image.UriSource = new Uri(path, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+            LockScreenPreviewImage.Source = image;
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FileFormatException)
+        {
+            AppLogger.Write("lock-screen.preview", ex);
+        }
     }
 
     private void RefreshLockScreenSafety(string? status = null)
@@ -980,16 +1087,14 @@ public partial class MainWindow : Window
     private void ApplyTaskbarAppearancePreview()
     {
         if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string mode ||
-            mode is not ("popup" or "native")) return;
+            mode != "popup") return;
         _applyTaskbarAppearancePreview(TaskbarWidgetEnabledCheckBox.IsChecked == true, mode);
     }
 
     private void UpdateTaskbarWidgetModeHint()
     {
         if (TaskbarWidgetModeHint is null) return;
-        TaskbarWidgetModeHint.Text = (TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string == "native"
-            ? "Windows 11 (eksperimental; belum lolos uji). Windows 10 belum diverifikasi."
-            : "Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11. Windows 10 belum diverifikasi.";
+        TaskbarWidgetModeHint.Text = "Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11.";
     }
 
     private void UpdateWidgetOptionStates()
@@ -1044,6 +1149,19 @@ public partial class MainWindow : Window
             }
             RefreshSettingsSchedulePreview();
         }
+    }
+
+    private void CalendarCorrectionInput_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (_loadingSettings ||
+            !CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text, out _) ||
+            !CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out _))
+            return;
+
+        RefreshOverview();
+        if (_calendarViewsLoaded)
+            RefreshCalendarViews();
+        RefreshSettingsSchedulePreview();
     }
 
     private void QueueLocationSearch()
@@ -1176,52 +1294,40 @@ public partial class MainWindow : Window
         if (_loadingSettings) return;
         if (!TryReadSchedulePreviewSettings(out AppSettings? preview, out string error))
         {
-            ResetScheduleGrid(SettingsSchedulePreviewGrid, 2);
+            ResetScheduleGrid(SettingsSchedulePreviewGrid, 7);
             SettingsScheduleDateLabel.Text = "Estimasi belum tersedia.";
+            SettingsScheduleHijriDateLabel.Text = string.Empty;
             SettingsSchedulePreviewStatus.Text = error;
-
-            UpdateWidgetPreviewPresentation();
             return;
         }
 
         try
         {
-            DateTime scheduleDate = GetPrayerScheduleDate(preview!);
-            IReadOnlyList<PrayerEntry> entries = PrayerScheduleService.ForDate(scheduleDate, preview!);
-            RenderScheduleEntries(SettingsSchedulePreviewGrid, entries, columns: 2);
+            AppSettings previewSettings = preview!;
+            DateTime scheduleDate = GetPrayerScheduleDate(previewSettings);
+            DateTime calendarDate = GetCalendarToday(previewSettings);
+            IReadOnlyList<PrayerEntry> entries = PrayerScheduleService.ForDate(scheduleDate, previewSettings);
+            RenderScheduleEntries(SettingsSchedulePreviewGrid, entries, columns: 7, CreatePrayerCorrectionEditor);
 
-            SettingsScheduleDateLabel.Text = $"{scheduleDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} · {preview!.TimeZoneId}";
-            string methodName = (MethodBox.SelectedItem as CalculationMethod)?.Name ?? preview.CalculationStandard;
-            SettingsSchedulePreviewStatus.Text = $"Metode {methodName}; nilai koreksi form sudah diterapkan. Ini estimasi lokal, bukan jadwal resmi.";
-            UpdateWidgetPreviewPresentation();
+            SettingsScheduleDateLabel.Text = $"{calendarDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} ({previewSettings.TimeZoneId})";
+            NativeCalendarDate hijri = NativePrayerCore.HijriDate(calendarDate.AddDays(previewSettings.HijriDateCorrectionDays));
+            SettingsScheduleHijriDateLabel.Text = $"Hijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H";
+
+            string methodName = (MethodBox.SelectedItem as CalculationMethod)?.Name ?? previewSettings.CalculationStandard;
+            SettingsSchedulePreviewStatus.Text = $"Metode {methodName}.";
         }
         catch (Exception ex) when (IsScheduleFailure(ex))
         {
             AppLogger.Write("settings.schedule-preview", ex);
-            ResetScheduleGrid(SettingsSchedulePreviewGrid, 2);
+            ResetScheduleGrid(SettingsSchedulePreviewGrid, 7);
             TextBlock message = CreateScheduleErrorText(
                 "Perkiraan belum dapat dihitung. Periksa lokasi, zona waktu, metode, dan mesin perhitungan.");
-            Grid.SetColumnSpan(message, 2);
+            Grid.SetColumnSpan(message, 7);
             SettingsSchedulePreviewGrid.Children.Add(message);
             SettingsScheduleDateLabel.Text = "Estimasi belum tersedia.";
+            SettingsScheduleHijriDateLabel.Text = string.Empty;
             SettingsSchedulePreviewStatus.Text = "Rincian teknis disimpan di log aplikasi.";
-
-            UpdateWidgetPreviewPresentation();
         }
-    }
-
-    private void UpdateWidgetPreviewPresentation()
-    {
-        string selectedMode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "essential";
-        string mode = WidgetSettingsLogic.NormalizeMode(selectedMode);
-        string displayMode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Essential";
-        WidgetLivePreviewModeLabel.Text = $"Widget aktual: {displayMode.Split('—')[0].Trim()}";
-        bool enabled = WidgetEnabledCheckBox.IsChecked == true;
-        WidgetPreviewDisabledNotice.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
-        WidgetPreviewDisabledNotice.Text = "Widget disembunyikan. Centang Tampilkan widget untuk melihatnya.";
-        string motion = (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Statis";
-        string position = (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Tengah atas";
-        WidgetPreviewOptionsText.Text = mode == "essential" ? $"Gerak: {motion} · Posisi: {position}" : $"Posisi: {position}";
     }
 
     private bool TryReadSchedulePreviewSettings(out AppSettings? candidate, out string error)
@@ -1257,6 +1363,13 @@ public partial class MainWindow : Window
             return false;
         }
 
+        if (!CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text, out int calendarCorrection) ||
+            !CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
+        {
+            error = "Koreksi tanggal harus berada pada rentang ±7 hari.";
+            return false;
+        }
+
         var corrections = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach ((string key, TextBox box) in CorrectionBoxes())
         {
@@ -1276,6 +1389,8 @@ public partial class MainWindow : Window
         candidate.CalculationStandard = method.Name;
         candidate.DhuhaAfterSunriseMinutes = dhuhaAfterSunrise;
         candidate.Corrections = corrections;
+        candidate.CalendarDateCorrectionDays = calendarCorrection;
+        candidate.HijriDateCorrectionDays = hijriCorrection;
         candidate.LocationName = LocationNameBox.Text.Trim();
         candidate.Normalize();
         return true;
@@ -1287,7 +1402,7 @@ public partial class MainWindow : Window
         object? originalContent = button.Content;
         button.IsEnabled = false;
         button.Content = "Memeriksa dua penyedia…";
-        NetworkLocationStatus.Text = "Menghubungi ipapi.co dan ipwho.is. Permintaan ini mengungkap IP publik ke kedua penyedia; IP tidak disimpan oleh aplikasi.";
+        NetworkLocationStatus.Text = "Mencari perkiraan lokasi dari jaringan…";
         int requestVersion = ++_locationRequestVersion;
         try
         {
@@ -1295,10 +1410,7 @@ public partial class MainWindow : Window
             if (requestVersion != _locationRequestVersion) return;
             if (!result.ProvidersAgree)
             {
-                string proxyNote = result.IpApi.IsLikelyProxyOrVpn || result.IpWho.IsLikelyProxyOrVpn
-                    ? " Salah satu penyedia menandai kemungkinan VPN, proxy, Tor, atau hosting."
-                    : "";
-                NetworkLocationStatus.Text = $"Perkiraan tidak cukup selaras: {DescribeLocationProvider(result.IpApi)}; {DescribeLocationProvider(result.IpWho)}; selisih koordinat {result.DistanceKm.ToString("0.#", CultureInfo.InvariantCulture)} km.{proxyNote} Tidak ada koordinat yang diisi. Masukkan lokasi secara manual.";
+                NetworkLocationStatus.Text = "Hasil jaringan tidak cukup selaras; lokasi tidak diisi. Isi secara manual atau coba lagi.";
                 return;
             }
 
@@ -1315,7 +1427,7 @@ public partial class MainWindow : Window
             }
             finally { _loadingSettings = wasLoading; }
 
-            NetworkLocationStatus.Text = $"Estimasi kedua penyedia selaras ({result.IpApi.CountryCode}, {result.IpApi.TimeZoneId}; selisih {result.DistanceKm.ToString("0.#", CultureInfo.InvariantCulture)} km). Nilai form diisi, belum disimpan. Tinjau hasilnya; lokasi jaringan bukan posisi GPS.";
+            NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); belum disimpan.";
             RefreshSettingsSchedulePreview();
         }
         catch (LocationLookupException ex)
@@ -1343,7 +1455,7 @@ public partial class MainWindow : Window
         object? originalContent = button.Content;
         button.IsEnabled = false;
         button.Content = "Memeriksa lokasi perangkat…";
-        GpsLocationStatus.Text = "Meminta izin lokasi Windows. Permintaan ini hanya berjalan setelah tombol ditekan.";
+        GpsLocationStatus.Text = "Meminta lokasi dari Windows…";
         int requestVersion = ++_locationRequestVersion;
         try
         {
@@ -1353,11 +1465,11 @@ public partial class MainWindow : Window
             {
                 GpsLocationStatus.Text = result.Status switch
                 {
-                    DeviceLocationStatus.PermissionDenied => "Akses lokasi ditolak. Periksa Pengaturan Windows > Privasi & keamanan > Lokasi, lalu coba lagi.",
-                    DeviceLocationStatus.PermissionUnspecified => "Windows belum memberi status izin lokasi. Periksa layanan lokasi Windows dan coba lagi.",
-                    DeviceLocationStatus.TimedOut => "Lokasi belum didapat dalam 30 detik. Coba lagi di area dengan sinyal lebih baik; GPS dapat memerlukan waktu akuisisi.",
-                    DeviceLocationStatus.InvalidPosition => "Windows mengembalikan koordinat tidak valid; form tidak diubah.",
-                    _ => "Lokasi perangkat tidak tersedia. Periksa layanan dan izin lokasi Windows atau isi secara manual."
+                    DeviceLocationStatus.PermissionDenied => "Izin lokasi Windows ditolak.",
+                    DeviceLocationStatus.PermissionUnspecified => "Lokasi Windows belum tersedia.",
+                    DeviceLocationStatus.TimedOut => "Lokasi belum didapat; coba lagi.",
+                    DeviceLocationStatus.InvalidPosition => "Koordinat perangkat tidak valid.",
+                    _ => "Lokasi perangkat tidak tersedia."
                 };
                 return;
             }
@@ -1376,7 +1488,7 @@ public partial class MainWindow : Window
             finally { _loadingSettings = wasLoading; }
             RefreshSettingsSchedulePreview();
 
-            GpsLocationStatus.Text = $"Koordinat, nama, dan zona waktu terisi, belum disimpan. Sumber: {DeviceLocationLogic.SourceLabel(result.Source)}; {DeviceLocationLogic.AccuracyLabel(result.AccuracyMeters)}. Koordinat tidak dikirim ke layanan lokasi jaringan atau pencarian nama online. Zona waktu dicocokkan secara offline dari koordinat GPS. Periksa sebelum simpan.";
+            GpsLocationStatus.Text = $"Lokasi perangkat diisi ({DeviceLocationLogic.SourceLabel(result.Source)}); belum disimpan.";
             OfflineLocationResult? offlinePlace = null;
             bool offlineLookupFailed = false;
             try
@@ -1393,7 +1505,7 @@ public partial class MainWindow : Window
             if (offlinePlace is not null)
             {
                 LocationNameBox.Text = offlinePlace.DisplayName;
-                GpsLocationStatus.Text += $" Nama permukiman terdekat dari GeoNames lokal: {offlinePlace.DisplayName} (sekitar {offlinePlace.DistanceKm:0.0} km); ini label perkiraan, bukan alamat.";
+                GpsLocationStatus.Text += $" Nama terdekat: {offlinePlace.DisplayName}.";
                 OfflineReverseGeocodeStatus.Text = $"Nama lokasi perangkat dicocokkan secara lokal dengan GeoNames: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
             }
             else if (offlineLookupFailed)
@@ -1402,7 +1514,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                GpsLocationStatus.Text += " Tidak ada permukiman GeoNames dalam radius 75 km; label lokal awal dipertahankan.";
+                GpsLocationStatus.Text += " Nama lokal dipertahankan.";
                 OfflineReverseGeocodeStatus.Text = "Tidak ada permukiman GeoNames dalam radius 75 km; label lokal awal dipertahankan. Tidak ada permintaan internet.";
             }
             RefreshSettingsSchedulePreview();
@@ -1414,47 +1526,6 @@ public partial class MainWindow : Window
                 ? "Akses ditolak oleh pengaturan privasi lokasi Windows."
                 : "Windows tidak dapat membaca lokasi perangkat. Periksa layanan dan izin lokasi.";
             GpsLocationStatus.Text = sErrMessage;
-        }
-        finally
-        {
-            button.Content = originalContent;
-            button.IsEnabled = true;
-        }
-    }
-
-    private async void OfflineReverseGeocode_Click(object sender, RoutedEventArgs e)
-    {
-        if (!TryDouble(LatitudeBox.Text, out double latitude) || !TryDouble(LongitudeBox.Text, out double longitude) ||
-            !DeviceLocationLogic.HasValidCoordinates(latitude, longitude))
-        {
-            OfflineReverseGeocodeStatus.Text = "Isi latitude/longitude WGS84 yang valid terlebih dahulu; form tidak diubah dan tidak ada permintaan internet.";
-            return;
-        }
-
-        int requestVersion = ++_locationRequestVersion;
-        Button button = OfflineReverseGeocodeButton;
-        object? originalContent = button.Content;
-        button.IsEnabled = false;
-        button.Content = "Mencari pada dataset lokal…";
-        OfflineReverseGeocodeStatus.Text = "Mencari permukiman terdekat di dataset lokal; tidak memakai jaringan.";
-        try
-        {
-            OfflineLocationResult? place = await Task.Run(() => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
-            if (requestVersion != _locationRequestVersion) return;
-            if (place is null)
-            {
-                OfflineReverseGeocodeStatus.Text = "Tidak ada permukiman dalam radius 75 km. Nama lokasi tidak diubah; tidak ada data yang dikirim.";
-                return;
-            }
-
-            LocationNameBox.Text = place.DisplayName;
-            OfflineReverseGeocodeStatus.Text = $"Label dari GeoNames lokal: {place.DisplayName}, kira-kira {place.DistanceKm:0.0} km dari koordinat. Perkiraan, belum disimpan; tidak ada permintaan internet.";
-            RefreshSettingsSchedulePreview();
-        }
-        catch (Exception)
-        {
-            if (requestVersion != _locationRequestVersion) return;
-            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama lokasi tidak diubah dan koordinat tetap lokal.";
         }
         finally
         {
@@ -1526,7 +1597,8 @@ public partial class MainWindow : Window
                 }
                 _refreshDependentViews();
                 PopulateSettingsForm();
-                RefreshCalendarViews();
+                if (_calendarViewsLoaded)
+                    RefreshCalendarViews();
                 SettingsStatusLabel.Text = $"Pengaturan tersimpan. {startupStatus}";
                 return true;
             }
@@ -1633,9 +1705,9 @@ public partial class MainWindow : Window
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string taskbarMode ||
-            taskbarMode is not ("popup" or "native"))
+            taskbarMode != "popup")
         {
-            error = "Pilih Popup independen atau Taskbar Window Awqat Salaat WinUI.";
+            error = "Pilih Popup independen.";
             return false;
         }
         candidate.TaskbarWidgetMode = taskbarMode;
@@ -1830,12 +1902,6 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
         return dialog.Choice;
     }
-
-    private void OpenSettings_Click(object sender, RoutedEventArgs e) => MainTabs.SelectedIndex = 2;
-
-    private void ShowWidget_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ToggleWidget();
-
-    private void OpenCalendar_Click(object sender, RoutedEventArgs e) => SelectCalendarTab();
 
     private void Exit_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ShutdownApplication();
 

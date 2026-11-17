@@ -93,8 +93,13 @@ internal sealed class WindowsLockScreenNativePlatform : ILockScreenNativePlatfor
 
     private static int ReadRequiredDword(string keyPath, string valueName)
     {
-        using RegistryKey key = Registry.CurrentUser.OpenSubKey(keyPath, writable: false) ??
-            throw new InvalidOperationException($"Required current-user lock-screen setting is missing: {valueName}.");
+        using RegistryKey? key = Registry.CurrentUser.OpenSubKey(keyPath, writable: false);
+        // A missing key or value means the feature was never configured (disabled), not an error.
+        if (key is null)
+            return 0;
+        if (!key.GetValueNames().Contains(valueName, StringComparer.OrdinalIgnoreCase))
+            return 0;
+        // A present but malformed value is ambiguous; fail closed.
         if (key.GetValueKind(valueName) != RegistryValueKind.DWord || key.GetValue(valueName) is not int value || value is not (0 or 1))
             throw new InvalidOperationException($"Current-user lock-screen setting is not a valid DWORD: {valueName}.");
         return value;
