@@ -999,6 +999,25 @@ Function ${P}ValidateInstallTarget
     StrCpy $SafetyPath "$INSTDIR"
     StrCpy $SafetyPath2 ""
     ${Do}
+      ; GetParent("C:\") returns the drive-relative "C:", and the empty path
+      ; after it makes GetFileAttributesW fail with ERROR_INVALID_NAME. That
+      ; aborted valid installs with "Lokasi tujuan tidak dapat diperiksa".
+      ; Drive and UNC roots are the end of the ancestor chain.
+      StrLen $3 "$SafetyPath"
+      ${If} $3 == 0
+        ${ExitDo}
+      ${EndIf}
+      StrCpy $4 "$SafetyPath" 1 1
+      ${If} $3 == 1
+        ${AndIf} $SafetyPath == "\"
+          ${ExitDo}
+      ${EndIf}
+      ${If} $3 == 2
+        ${If} $4 == ":"
+        ${OrIf} $SafetyPath == "\\"
+          ${ExitDo}
+        ${EndIf}
+      ${EndIf}
       StrCmp "$SafetyPath" "$SafetyPath2" 0 +2
         ${ExitDo}
       StrCpy $SafetyPath2 "$SafetyPath"
@@ -1018,7 +1037,7 @@ Function ${P}ValidateInstallTarget
         System::Call 'kernel32::GetLastError() i .r2'
         ${If} $2 != 2
         ${AndIf} $2 != 3
-          StrCpy $SafetyProblem "Lokasi tujuan tidak dapat diperiksa: $SafetyPath"
+          StrCpy $SafetyProblem "Lokasi tujuan tidak dapat diperiksa: $SafetyPath (Windows $2)"
           Return
         ${EndIf}
       ${EndIf}
