@@ -2,7 +2,7 @@
 
 [![Rilis terbaru](https://img.shields.io/github/v/release/asqal90/PrayerAutomation?label=rilis%20terbaru)](https://github.com/asqal90/PrayerAutomation/releases/latest)
 [![Unduh](https://img.shields.io/badge/unduh-Windows%2010%2F11-0078D6?logo=windows&logoColor=white)](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip)
-[![Total unduhan](https://img.shields.io/github/downloads/asqal90/PrayerAutomation/total?label=total%20unduhan&logo=github)](https://github.com/asqal90/PrayerAutomation/releases)
+[![Unduhan rilis](https://img.shields.io/github/downloads/asqal90/PrayerAutomation/latest/total?label=unduhan%20rilis%20terbaru&logo=github)](https://github.com/asqal90/PrayerAutomation/releases)
 [![Situs](https://img.shields.io/badge/situs-asqal90.github.io%2FPrayerAutomation-0e9f6e)](https://asqal90.github.io/PrayerAutomation/)
 [![Lisensi](https://img.shields.io/badge/lisensi-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](https://github.com/asqal90/PrayerAutomation/releases)
