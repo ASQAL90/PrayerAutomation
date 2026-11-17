@@ -12,7 +12,7 @@ Aplikasi jadwal sholat untuk Windows. Perhitungan jadwal ada di library Rust, ta
 
 Nama di layar adalah Ayo Jama'ah!, file executable-nya `AyoJamaah.exe`. Portable dan installer yang saya simpan di `dist/` belum diunggah ke halaman Releases. Keduanya belum ditandatangani, jadi SmartScreen akan memberi peringatan saat pertama dijalankan. Nama publisher di metadata file juga belum terverifikasi.
 
-Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Nomor versi tampil di title bar dan halaman Tentang; koreksi penanggalan Hijriyah diberi label dan sejajar dengan kolom Ashar, koreksi Masehi dihapus karena mengikuti tanggal komputer, koreksi Duha punya tombol −/+, pesan pengingat dibatasi 200 karakter, popup pengingat tidak memakai title bar, dan pratinjau lock screen bisa diperbesar dengan klik. Installer menambah halaman "Mulai dari baru", opsi penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Payload 2.1.2 sudah dipublish di luar repo dan `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt kedua arsitektur; yang tersisa adalah compile installer dan uji install/upgrade/uninstall di Windows.
+Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Nomor versi tampil di title bar dan halaman Tentang; koreksi penanggalan Hijriyah diberi label dan sejajar dengan kolom Ashar, koreksi Masehi dihapus karena mengikuti tanggal komputer, koreksi Duha punya tombol −/+, pesan pengingat dibatasi 200 karakter, popup pengingat tidak memakai title bar, dan pratinjau lock screen bisa diperbesar dengan klik. Installer memakai NSIS agar bisa dibangun langsung dari perangkat ini: halaman "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Include payload digenerate dari receipt kedua arsitektur; Inno Setup disimpan sebagai referensi legacy. Yang tersisa adalah uji install/upgrade/uninstall dan verifikasi visual di Windows.
 
 Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua. Perubahan UI 2.1.2 baru diverifikasi secara statis, belum lewat penerimaan visual di Windows.
 
@@ -65,7 +65,7 @@ Mode taskbar memakai popup WPF; backend XAML Island/WinUI sudah dihapus pada 2.1
 | `src/PrayerAutomation.Taskbar.WinUI/` | Arsip lisensi/provenance backend taskbar lama; kode backend dihapus di 2.1.2 |
 | `src/Shared/` | Geometri ikon yang dipakai dua project C# |
 | `src/rust-core/` | Perhitungan jadwal dan kalender, diekspor sebagai `prayer_core.dll` |
-| `installer/` | Skrip Inno Setup per-user |
+| `installer/` | Installer NSIS per-user; Inno Setup disimpan sebagai referensi legacy |
 | `tests/` | Fixture dan smoke test, cakupannya berbeda-beda |
 | `docs/` | Panduan, audit, atribusi, `prompts/`, dan `progress/` |
 | `dist/` | Installer dan portable lokal, tidak ikut Git |
@@ -80,11 +80,11 @@ dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:
 dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 --self-contained true -o ../AyoJamaah-build/portable-x86
 ```
 
-`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish: buat receipt dengan `installer/make_payload_receipt.py`, lalu generate `AyoJamaahPayload-dual.iss` dari receipt x86+x64 sebelum compile (lihat [panduan installer](installer/README_ID.md)).
+`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer NSIS butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish: buat receipt dengan `installer/make_payload_receipt.py`, lalu jalankan `python3 installer/build_installer_nsis.py` (atau `ayojamaah-build installer`) untuk memvalidasi receipt, menghasilkan include payload, dan mengompilasi installer (lihat [panduan installer](installer/README_ID.md)).
 
 ## Pengujian
 
-Perubahan 2.1.2 divalidasi statis: `cargo test`, `cargo fmt --check`, dan `cargo clippy -D warnings` lulus; source C#/XAML dan skrip installer direview tanpa build WPF/Inno di mesin ini. Build dan publish Windows, smoke test UI, serta penerimaan visual belum dijalankan untuk 2.1.2. Sebelumnya, pada 11 November 2026, fixture branding lulus 57/57 dan fixture perubahan belum disimpan lulus 99/99 terhadap DLL 2.1.0.
+Perubahan 2.1.2 divalidasi statis: `cargo test`, `cargo fmt --check`, dan `cargo clippy -D warnings` lulus; source C#/XAML dan skrip installer direview tanpa build WPF di mesin ini. Compile NSIS dan validasi payload dilakukan di perangkat ini, tetapi eksekusi installer tetap harus di Windows. Build dan publish Windows, smoke test UI, serta penerimaan visual belum dijalankan untuk 2.1.2. Sebelumnya, pada 11 November 2026, fixture branding lulus 57/57 dan fixture perubahan belum disimpan lulus 99/99 terhadap DLL 2.1.0.
 
 Yang belum tercakup: UI/UX normal 2.1.2, fokus dan modal sungguhan, Explorer, mixed-DPI, auto-hide, serta instalasi, upgrade, dan uninstall penuh.
 

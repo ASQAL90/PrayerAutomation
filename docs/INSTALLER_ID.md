@@ -1,69 +1,107 @@
 # Installer Ayo Jama'ah! 2.1.2
 
-> **Status 2.1.2:** source installer di repo memakai versi 2.1.2, halaman opsional "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt portable x64/x86 hasil cross-build 2.1.2 (484 file unik: 9 dipin sekali, 945 entri dipin per arsitektur). Compile ISCC dan uji install/upgrade/uninstall tetap harus di Windows. `AyoJamaahPayload.iss` hanya receipt historis 2.1.0. Catatan 2.1.0 di bawah tetap menjadi riwayat artefak yang pernah dibuat.
+> **Status 2.1.2:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup tetap disimpan sebagai referensi legacy dan tidak lagi menjadi jalur build utama. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.1.2 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
 
-## Kandidat finalisasi branding 11 November 2026
+## Jalur build NSIS
 
-- Produk aktif: `AyoJamaah.exe` dengan logo v13; paket `AyoJamaah.Portable-win-x64-2.1.0-20261111.zip`; installer `AyoJamaah.Setup-2.1.0.exe`. Artefak final berada di `<evidence>/2026-11-11-finalization/final/` setelah build terverifikasi.
-- Instalasi memakai akun biasa, lokasi tetap `%LOCALAPPDATA%\Programs\PrayerAutomation`. Path tersebut identitas kompatibilitas, bukan nama tampilan. Profil, mutex, Run value dan AppId lama tetap; pengaturan tersimpan tidak di-reset.
-- Gunakan **Keluar** dari aplikasi/tray lama dan tunggu pemulihan selesai sebelum memasang. Jika proses, jurnal recovery, izin, atau target belum dapat diverifikasi: **Batal**, bukan End task/admin/cleanup jurnal.
-- Pilihan **Jalankan Ayo Jama'ah!** dan pintasan desktop tidak dicentang otomatis. Produk/installer tidak dijalankan oleh agent pada profil asli yang auto-lock-nya aktif.
-- Startup mengenali `AyoJamaah.exe` serta `PrayerAutomation.UI.exe` lama pada Run value yang sama. Installer tidak menulis/menghapus pendaftaran startup. Saat pengguna menyimpan startup dari aplikasi baru, path mengikuti executable yang sedang digunakan.
-- Seluruh file paket di-hash-pin eksplisit; installer tidak membuild ulang produk. Native `prayer_core.dll` dipertahankan byte-identik pada perubahan managed-only.
-- Batas yang tetap: belum acceptance instalasi/upgrade/uninstall penuh, Windows lain/VM bersih, UI/UX/DPI/Explorer, atau pemulihan gambar lock-screen nyata. Installer belum ditandatangani; kebijakan SmartScreen dapat memberi peringatan.
+Build divalidasi dan dikompilasi oleh satu entry point:
 
-## Riwayat 2.0.0 — hash dan acceptance bukan milik 2.1.0
+```bash
+# dari root repo
+python3 installer/build_installer_nsis.py
 
-UI/UX rilis ini dinyatakan **LOLOS oleh pengguna pada 30 Oktober 2026**. Installer membungkus portable yang sama; nomor assembly aplikasi tidak diubah.
+# hanya validasi receipt + regenerate include, tanpa compile
+python3 installer/build_installer_nsis.py --check-only
 
-> **Installer masih WIP dengan blocker keselamatan.** Pengguna melaporkan instalasi normal berhasil. Namun source review mengonfirmasi bahwa installer/uninstaller belum memeriksa jurnal pemulihan lock screen persisten ketika proses/mutex sudah hilang setelah crash/reboot. Pending restoration dapat luput dari guard. **Jangan menjalankan build ini atau uninstaller terkait sampai diperbaiki.** Ini bukan bukti bahwa instalasi atau lock screen pengguna saat ini bermasalah.
->
-> Artefak yang dimaksud: SHA-256 `b47583cdcc434f649c2dbc4e027b455be4320ae9143c487abeb34be19c6d5886`. Bukti terfokus 25 PASS tidak mencakup kasus journal-only tersebut. Receipt: `<evidence>/2026-10-30-installer-release/installer-SPEC-blocker.json`. [Milestone dan pekerjaan tersisa](progress/MILESTONE_2026-10-30_ID.md).
+# lewat wrapper Termux
+ayojamaah-build installer
+ayojamaah-build installer --check-only
+```
 
-Petunjuk berikut mendokumentasikan alur installer yang sudah dibuat; **bukan izin menjalankan build yang masih terblokir**.
+Alur yang dijalankan:
 
-## Kandidat pengaman baru — 2 November 2026
+1. `receipt-x64.json`/`receipt-x86.json` dibaca dan arsitekturnya dicocokkan.
+2. Setiap file di receipt di-hash ulang terhadap `portable-x64`/`portable-x86`. Perbedaan satu byte menghentikan proses.
+3. `installer/generate_nsis_payload.py` menulis ulang `installer/nsis/AyoJamaahPayload-dual.nsh`: section payload, manifest install, dan daftar hapus uninstall. Tidak ada wildcard.
+4. `makensis` dijalankan. Di Termux ini memakai proot Debian (NSIS 3.11); di Windows memakai `makensis` native atau `--makensis <path>`.
+5. Output default: `<AYOJAMAAH_OUT>/installer/AyoJamaah.Setup-2.1.2.exe` (default `AYOJAMAAH_OUT` adalah `../AyoJamaah-build`).
 
-Source guard kini memeriksa state pemulihan walaupun proses/mutex hilang: jurnal biasa, quarantine invalid, interrupted writing, suffix tidak dikenal, direktori tidak terbaca atau reparse menolak perubahan. Hanya state yang terbukti tidak ada boleh lewat. Tidak ada parser, penghapusan jurnal, pemulihan gambar, atau bypass Keluar baru.
+Payload tidak dibangun ulang oleh installer. Kalau payload sengaja dibangun ulang, receipt harus dibuat ulang dengan `--force` dan include NSIS direview sebelum build berikutnya. Jangan mengganti file payload secara manual.
 
-- Uji compiled Inno terisolasi: **29 skenario/266 PASS/0 FAIL**, baseline RED sembilan callback keliru mengizinkan jurnal tunggal tanpa proses.
-- SPEC dan QUALITY review PASS; seluruh source pin cocok, serta parent membaca langsung manifest PE `asInvoker`/`uiAccess=false`.
-- Kandidat terpisah: `<evidence>/2026-11-02-installer-journal-guard/artifact-final/PrayerAutomationSetup-2.0.0.exe`; SHA-256 `9c7758b256c2045fc82cf2f5ac94ecd24370ca920e691b1dc467a0906dfa58b7`.
-- Payload tetap **485 berkas accepted lama**, belum memuat About/Credits baru. Installer/uninstaller lama tidak ikut berubah.
-- Kandidat tidak dijalankan pada profil pengguna. Callback uninstall diuji dalam Setup-host fixture, **bukan host uninstaller native**. Lifecycle penuh clean-VM, upgrade, crash/reboot, sesi kedua dan aktor legacy non-kooperatif tetap belum diverifikasi. Mutex/pemeriksaan ulang bukan jaminan eksklusi filesystem atomik; tidak ada recheck per-deletion uninstall.
+## Isi paket
 
-[Portable About, bukti dan pekerjaan tersisa](progress/PROGRESS_2026-11-02_ID.md). Jangan memakai hasil terfokus ini sebagai clearance fleet atau bukti refresh gambar lock-screen aktif.
+- Shared: 9 file yang byte-identik di kedua arsitektur, dipasang sekali.
+- x64-only dan x86-only: dipilih saat `.onInit` dengan `RunningX64`.
+- Manifest install ditulis ke `%LOCALAPPDATA%\PrayerAutomation\install-manifest.txt`; uninstaller memakai gabungan daftar path kedua arsitektur.
+- Tidak ada file produk di repo dan tidak ada artefak build yang dipindahkan ke repo.
 
-## Lokasi dan penggunaan
+## Alur pemasangan
 
-Rilis disimpan di luar folder Git:
+1. Halaman info: pemasangan per-user, pengaturan lama dipertahankan, dan pengingat untuk memilih **Keluar** dari aplikasi/tray. Pilihan pintasan desktop tidak dicentang.
+2. Halaman **Mulai dari baru** hanya muncul jika `%APPDATA%\PrayerAutomation\config.json` ditemukan. Opsi ini menghapus folder pengaturan dan value Run `PrayerAutomation`; jurnal lock screen tidak disentuh.
+3. Sebelum menulis, installer memeriksa target, proses produk, mutex, dan jurnal pemulihan lock screen. Jika ada masalah, pengguna dapat memilih penutupan normal lalu **Coba Lagi**, atau menutup paksa setelah konfirmasi terpisah.
+4. Payload, shortcut Start Menu, uninstaller, dan registry HKCU ditulis. Uninstaller terdaftar dengan AppId lama `{8B76B6D5-1B3C-4E13-9A39-000000000001}`.
+5. Pilihan **Jalankan aplikasi** tersedia di halaman akhir dan tidak dicentang.
+
+Tidak ada silent install/uninstall, `/ALLUSERS`, impor opsi, restart otomatis, atau pemasangan ke direktori lain. Argumen `/S`, `/LOADINF`, `/CLOSEAPPLICATIONS`, `/FORCECLOSEAPPLICATIONS`, `/RESTARTAPPLICATIONS`, `/ALLUSERS`, `/NOCANCEL`, dan `/NCRC` ditolak.
+
+## Pengaman dan batasannya
+
+Perilaku yang dipertahankan dari `installer/SafetyGuard.iss`:
+
+- Lokasi wajib `%LOCALAPPDATA%\Programs\PrayerAutomation`; ancestor junction/symlink/reparse dan folder instalasi Python lama ditolak.
+- Jurnal `%LOCALAPPDATA%\PrayerAutomation\LockScreen\lock-screen-restore.json` (dan variannya) memblokir install/uninstall. Jurnal tidak dihapus atau diperbaiki oleh installer.
+- Proses produk (`AyoJamaah.exe`, `PrayerAutomation.UI.exe`, `PrayerAutomation.exe`, `prayer_automation.exe`) dan interpreter `python.exe`/`pythonw.exe`/`dotnet.exe` yang image-nya berada di folder produk dideteksi.
+- Mutex global `Global\PrayerAutomation.Desktop.SingleInstance` diperiksa, lalu installer menahan mutex itu selama tahap tulis/hapus dan memeriksa ulang boundary.
+- Setiap file target diperiksa dengan `CreateFileW` read+write tanpa share; file yang terkunci, reparse point, atau tidak terbaca memblokir operasi.
+- Sebelum menulis payload NSIS baru, entri manifest lama dihapus agar file stale tidak tertinggal. Untuk instalasi Inno lama tanpa manifest NSIS, `$INSTDIR` dibersihkan setelah boundary check.
+- Hanya union path payload yang dihapus saat uninstall; `%APPDATA%\PrayerAutomation` dan data pengguna tidak disentuh.
+
+Batasan yang berbeda dari Inno:
+
+- Deteksi proses memakai nama image, image path, dan session ID. Tidak ada pembacaan owner SID atau command line seperti di Inno/WMI. Proses legacy yang dijalankan dari interpreter sistem di luar folder produk belum tentu terdeteksi.
+- Mutex global yang tidak dapat dipastikan pemiliknya tetap memblokir operasi, termasuk kemungkinan dari sesi lain.
+- Preflight memeriksa file target sebelum penulisan; tidak ada recheck per-file seperti `CheckPayloadWrite` Inno. Proteksi sharing Windows tetap berlaku saat file ditulis.
+- Tidak ada IPC shutdown; installer tidak mengirim `WM_CLOSE`. Penutupan paksa hanya lewat `TerminateProcess` setelah konfirmasi eksplisit.
+
+## Pengaturan dan upgrade
+
+- `%APPDATA%\PrayerAutomation\config.json` dan data pemulihan tidak dihapus, di-reset, atau dimigrasikan. Skema Python lama yang tidak dikenal tidak dijamin kompatibel.
+- Instalasi Python, folder, dan startup lama tidak dibersihkan otomatis. Jika folder tujuan masih berisi Python lama, pemasangan diblokir.
+- Identitas installer tetap AppId lama. Metadata uninstall HKCU dengan ID sama dapat diperbarui setelah persetujuan; jangan menjalankan uninstaller Python lama pada folder versi baru.
+- Startup tidak dibuat/dipindahkan oleh installer. Setelah pengguna menjalankan aplikasi, perilaku startup tersimpan ditangani aplikasi.
+- Uninstall memakai boundary check yang sama dan tidak menghapus profil/startup lama.
+
+## Yang masih harus diuji di Windows
+
+- Compile final dan pemeriksaan ukuran/header `MZ` sudah bisa dilakukan di perangkat ini; eksekusi installer tidak.
+- Install bersih, upgrade dari Inno 2.1.0, dan uninstall pada VM/profil sintetis.
+- Penolakan saat aplikasi berjalan, saat jurnal recovery tertunda, saat file terkunci, dan saat target berupa junction.
+- Alur Coba Lagi/Batal serta penutupan paksa setelah konfirmasi.
+- Verifikasi visual halaman kustom, shortcut, entri registry, dan hasil uninstall.
+- Pemeriksaan tanda tangan/SmartScreen: installer belum ditandatangani.
+
+## Inno Setup legacy
+
+`installer/PrayerAutomation.iss`, `installer/SafetyGuard.iss`, `installer/AyoJamaahPayload-dual.iss`, dan `installer/generate_accepted_payload.py` disimpan sebagai referensi perilaku dan riwayat. `AyoJamaahPayload-dual.iss` masih valid sebagai pin legacy, tetapi build utama tidak lagi memakainya. Dokumentasi Inno di bawah dipertahankan sebagai riwayat, bukan instruksi rilis aktif.
+
+## Riwayat Inno 2.0.0
+
+UI/UX rilis 2.0.0 dinyatakan **LOLOS oleh pengguna pada 30 Oktober 2026**. Installer Inno membungkus portable yang sama; nomor assembly aplikasi tidak diubah.
+
+> **Installer Inno lama masih WIP.** Pengguna melaporkan instalasi normal berhasil. Source review menemukan installer/uninstaller lama belum memeriksa jurnal pemulihan lock screen persisten ketika proses/mutex sudah hilang setelah crash/reboot. Artefak SHA-256 `b47583cdcc434f649c2dbc4e027b455be4320ae9143c487abeb34be19c6d5886` dan uninstaller lamanya **tidak ikut diperbaiki**. Jangan gunakan sebagai bukti pengaman baru.
+
+Kandidat pengaman Inno 2 November 2026: **29 skenario/266 PASS**, termasuk jurnal biasa, quarantine invalid, interrupted writing, suffix tidak dikenal, direktori tidak terbaca, dan reparse. Payload saat itu masih 485 file accepted lama. Kandidat terpisah: `<evidence>/2026-11-02-installer-journal-guard/artifact-final/PrayerAutomationSetup-2.0.0.exe` (SHA-256 `9c7758b256c2045fc82cf2f5ac94ecd24370ca920e691b1dc467a0906dfa58b7`). Callback uninstall diuji di Setup-host fixture, bukan host uninstaller native.
+
+## Lokasi artefak lama
 
 ```text
 ../PrayerAutomation-releases/2.0.0/installer/PrayerAutomationSetup-2.0.0.exe
 ../PrayerAutomation-releases/2.0.0/portable/PrayerAutomation.UI.exe
 ```
 
-1. Jalankan installer **sebagai pengguna biasa**, bukan `Run as administrator`.
-2. Baca pemberitahuan instalasi/pengaturan lama. Lokasi pemasangan tetap `%LOCALAPPDATA%\Programs\PrayerAutomation`.
-3. Jika aplikasi lama masih berjalan, installer meminta persetujuan. Pilih **Ya** hanya jika ingin keluar secara normal; kemudian pilih **Keluar** dari menu tray/aplikasi. **X/minimize hanya menyembunyikan jendela.**
-4. Jika pemulihan lock screen belum selesai atau Keluar ditolak, tunggu atau **Batal**. Installer tidak memaksa penghentian dan tidak melewati pengaman pemulihan.
-5. Setelah proses benar-benar selesai, pilih **Coba Lagi**. Tidak/Batal atau proses/berkas yang masih aktif menghalangi pemasangan.
-6. Pilihan pintasan desktop dan **Jalankan aplikasi** awalnya kosong. Jangan memilih Jalankan bila belum siap menjalankan pengaturan startup/auto-lock tersimpan.
+Portable Inno yang dipaketkan berisi **485 berkas**. Setiap nama dan SHA-256 dipin saat compile; runtime tidak dibuild ulang. Bukti build, PE manifest, dan hash artefak tersimpan di `<evidence>/2026-10-30-installer-release/child-installer/`.
 
-Installer ini tidak dijalankan oleh agent pada profil pengguna. Build dan uji keselamatan terisolasi terpisah dari penerimaan pemasangan nyata.
+Belum ada klaim pemasangan/upgrade/uninstall penuh pada VM bersih, pengguna/sesi kedua, atau penutupan aplikasi nyata. Installer belum ditandatangani.
 
-## Pengaturan dan upgrade
-
-- `%APPDATA%\PrayerAutomation\config.json` dan data pemulihan tidak dihapus/reset/dimigrasikan. Kompatibilitas skema Python lama yang tidak dikenal tidak dijamin.
-- Instalasi Python, foldernya, dan startup lama tidak dibersihkan otomatis. Jika lokasi tujuan masih berisi Python lama, pemasangan diblokir, bukan ditimpa.
-- Identitas installer tetap `{8B76B6D5-1B3C-4E13-9A39-000000000001}`. Metadata uninstall per-user dengan ID sama bisa diperbarui setelah persetujuan. Jangan memakai uninstaller Python lama pada folder rilis baru.
-- Startup tidak dibuat/dipindahkan oleh installer. Setelah pengguna sengaja menjalankan aplikasi baru, perilaku startup tersimpan tetap ditangani aplikasi. Folder `dist` yang masih dirujuk proses/Windows Startup dipertahankan sampai pengguna berpindah secara normal.
-- Uninstall memerlukan batas keselamatan yang sama dan tidak menghapus profil/startup lama. Silent install/uninstall, force-close, restart otomatis dan pemasangan semua pengguna tidak didukung.
-
-## Bukti dan batas
-
-Portable yang dipaketkan berisi **485 berkas**. Setiap nama dan SHA-256 dipin saat compile; runtime tidak dibuild ulang untuk installer. Source build, PE manifest, hasil pemeriksaan terfokus, dan hash artefak tersimpan pada `<evidence>/2026-10-30-installer-release/child-installer/`.
-
-Belum diuji sebagai pemasangan/upgrade/uninstall penuh pada VM bersih, pengguna/sesi kedua, atau penutupan aplikasi nyata. Installer **belum ditandatangani**; tidak ada jaminan lolos kebijakan SmartScreen. Tidak ada janji atomik terhadap legacy yang tidak bekerja sama dengan mutex; pemeriksaan ulang dan sharing Windows tetap fail-safe, bukan pengganti uji deployment.
-
-[Detail build dan fixture keselamatan](../installer/README_ID.md) · [Panduan aplikasi](prompts/PROGRAM_DOCUMENTATION_ID.md) · [Catatan arsip Python](LEGACY_PYTHON_ID.md)
+[Detail build dan payload](../installer/README_ID.md) · [Panduan aplikasi](prompts/PROGRAM_DOCUMENTATION_ID.md) · [Catatan arsip Python](LEGACY_PYTHON_ID.md)
