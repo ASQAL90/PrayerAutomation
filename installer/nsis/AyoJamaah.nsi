@@ -71,10 +71,13 @@ VIAddVersionKey /LANG=1033 "FileDescription" "Pemasang ${APP_NAME} ${APP_VERSION
 !define MUI_UNABORTWARNING
 !define MUI_ICON "${PAYLOAD_X64}/AyoJamaah.ico"
 !define MUI_UNICON "${PAYLOAD_X64}/AyoJamaah.ico"
+; Branded side banner for the welcome/finish pages (cropped from the
+; "sedang sholat" artwork, without text, plus the app logo).
+!define MUI_WELCOMEFINISHPAGE_BITMAP "wizard-banner.bmp"
 !define MUI_WELCOMEPAGE_TITLE_3LINES
 !define MUI_FINISHPAGE_NOAUTOCLOSE
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
-!define MUI_FINISHPAGE_RUN_TEXT "Jalankan ${APP_NAME} (menggunakan pengaturan tersimpan)"
+!define MUI_FINISHPAGE_RUN_TEXT "Jalankan ${APP_NAME} sekarang"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
 
 !insertmacro MUI_PAGE_WELCOME
