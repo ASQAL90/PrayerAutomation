@@ -2,9 +2,9 @@
 
 ## Build branding terbaru
 
-Nama tampilan `Ayo Jama'ah!`, executable `AyoJamaah.exe`, ikon `AyoJamaah.ico`, installer `AyoJamaah.Setup-2.1.2.exe`. Identitas AppId, profil, mutex, Run value serta lokasi pemasangan lama dipertahankan untuk kompatibilitas. Project UI sudah dapat dipublikasikan sebagai win-x64 (`-p:Arch=x64`, default) atau win-x86 (`-p:Arch=x86`). Installer 2.1.2 mengemas payload dual x86+x64. File `AyoJamaahPayload-dual.iss` di repo masih **placeholder** sampai digenerate dari receipt build yang cocok; compile akan berhenti dengan pesan jelas, bukan memakai pin lama. Gunakan [panduan installer aktif](../docs/INSTALLER_ID.md), bukan command/hash 2.0.0 historis di bawah.
+Nama tampilan `Ayo Jama'ah!`, executable `AyoJamaah.exe`, ikon `AyoJamaah.ico`, installer `AyoJamaah.Setup-2.1.2.exe`. Identitas AppId, profil, mutex, Run value serta lokasi pemasangan lama dipertahankan untuk kompatibilitas. Project UI sudah dapat dipublikasikan sebagai win-x64 (`-p:Arch=x64`, default) atau win-x86 (`-p:Arch=x86`). Installer 2.1.2 mengemas payload dual x86+x64. `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt portable x64 (482 file) dan x86 (481 file): 9 file identik dipin sekali, sisanya dipin per arsitektur. Kalau payload dibangun ulang, receipt dan pin wajib digenerate ulang; compile menolak hash yang tidak cocok. Gunakan [panduan installer aktif](../docs/INSTALLER_ID.md), bukan command/hash 2.0.0 historis di bawah.
 
-`generate_accepted_payload.py` menerima receipt dengan `assembly_name=AyoJamaah`, `review_status=TECHNICAL_CHECKS_PASSED_UI_ACCEPTANCE_PENDING`, `file_count`, `ui_sha256` dan map `payload` yang identik dengan seluruh file nyata. Mode dual memakai `--receipt-x86/--source-x86` dan `--receipt-x64/--source-x64`; file yang hash-nya sama di kedua arsitektur dipin sekali, file yang berbeda dipin per arsitektur dengan filter `IsX64Arch`/`IsX86Arch`. `AyoJamaahPayload.iss` sekarang hanya receipt historis 2.1.0; `AcceptedPayload.iss` lebih lama lagi. Setiap file tetap di-hash-pin saat compile; perubahan payload memerlukan receipt/review baru, bukan wildcard.
+`make_payload_receipt.py --source <portable> --arch x64|x86 --output <receipt.json>` membuat receipt dari folder portable: hash SHA-256 setiap file, `file_count`, `ui_sha256`, dan arsitektur yang diverifikasi dari header PE `AyoJamaah.dll`. `generate_accepted_payload.py` menerima receipt dengan `assembly_name=AyoJamaah`, `review_status=TECHNICAL_CHECKS_PASSED_UI_ACCEPTANCE_PENDING`, `file_count`, `ui_sha256` dan map `payload` yang identik dengan seluruh file nyata. Mode dual memakai `--receipt-x86/--source-x86` dan `--receipt-x64/--source-x64`; file yang hash-nya sama di kedua arsitektur dipin sekali, file yang berbeda dipin per arsitektur dengan filter `IsX64Arch`/`IsX86Arch`. `AyoJamaahPayload.iss` sekarang hanya receipt historis 2.1.0; `AcceptedPayload.iss` lebih lama lagi. Setiap file tetap di-hash-pin saat compile; perubahan payload memerlukan receipt/review baru, bukan wildcard.
 
 Halaman opsional **Mulai dari baru** muncul hanya jika `%APPDATA%\PrayerAutomation\config.json` ditemukan. Opsi ini menghapus folder pengaturan dan value Run `PrayerAutomation` setelah payload tertulis; jurnal lock screen di `%LOCALAPPDATA%` tidak disentuh. Jika aplikasi masih berjalan, pengguna dapat memilih penutupan normal atau, setelah konfirmasi terpisah, penutupan paksa. Opsi Jalankan dan shortcut desktop tetap unchecked. Pengamanan recovery dan penolakan override tidak dilonggarkan oleh pergantian merek. Pemeriksaan nama executable/entrypoint lama-baru diuji dalam compiled native Inno fixture tanpa instalasi.
 
@@ -21,7 +21,15 @@ Pemasang ini membungkus **runtime C# + Rust yang sudah diterima**, bukan membang
 Jalankan dari Git Bash di root repo, tanpa elevasi:
 
 ```bash
-# 1. Hasilkan pin payload dual dari dua receipt yang sudah direview.
+# 1. Buat receipt dari dua folder portable hasil publish.
+python installer/make_payload_receipt.py \
+  --source ../AyoJamaah-build/portable-x86 --arch x86 \
+  --output ../AyoJamaah-build/receipt-x86.json
+python installer/make_payload_receipt.py \
+  --source ../AyoJamaah-build/portable-x64 --arch x64 \
+  --output ../AyoJamaah-build/receipt-x64.json
+
+# 2. Hasilkan pin payload dual dari dua receipt tersebut.
 python installer/generate_accepted_payload.py \
   --receipt-x86 ../AyoJamaah-build/receipt-x86.json \
   --source-x86 ../AyoJamaah-build/portable-x86 \
@@ -29,7 +37,7 @@ python installer/generate_accepted_payload.py \
   --source-x64 ../AyoJamaah-build/portable-x64 \
   --output installer/AyoJamaahPayload-dual.iss
 
-# 2. Compile installer.
+# 3. Compile installer.
 export TMPDIR="$LOCALAPPDATA/PrayerAutomationSmoke/scratch/prayerautomation-journal-guard-20261102"
 export TMP="$TMPDIR" TEMP="$TMPDIR"
 "$LOCALAPPDATA/Programs/Inno Setup 6/ISCC.exe" \
@@ -41,7 +49,7 @@ export TMP="$TMPDIR" TEMP="$TMPDIR"
 
 Wajib pilih `/O` baru/kosong; jangan timpa direktori installer lama. Default source/output adalah `..\dist\portable-x86`, `..\dist\portable-x64`, dan `..\dist\installer`; contoh ini memakai output terpisah. Kedua define hanya boleh menunjuk salinan payload yang cocok dengan receipt masing-masing. Perbedaan satu berkas menghentikan compiler. Berkas ekstra tidak dikemas. Mode single-arch lama masih tersedia lewat `--receipt/--source`, tetapi installer 2.1.2 menginclude `AyoJamaahPayload-dual.iss`.
 
-`generate_accepted_payload.py` memvalidasi seluruh receipt sebelum menghasilkan pin, termasuk memastikan kedua arsitektur memakai set berkas yang sama dengan receipt-nya. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru.
+`make_payload_receipt.py` dan `generate_accepted_payload.py` memvalidasi payload sebelum menghasilkan pin: receipt harus cocok persis dengan isi folder portable, arsitektur DLL harus sesuai, dan kedua arsitektur diverifikasi terhadap set berkasnya sendiri. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru.
 
 ## Batas keselamatan
 

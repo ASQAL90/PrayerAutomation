@@ -1,6 +1,6 @@
 # Installer Ayo Jama'ah! 2.1.2
 
-> **Status 2.1.2:** source installer di repo memakai versi 2.1.2, halaman opsional "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. `AyoJamaahPayload-dual.iss` masih placeholder sampai digenerate dari receipt x86/x64 yang cocok; compile akan berhenti dengan pesan jelas. `AyoJamaahPayload.iss` hanya receipt historis 2.1.0. Catatan 2.1.0 di bawah tetap menjadi riwayat artefak yang pernah dibuat.
+> **Status 2.1.2:** source installer di repo memakai versi 2.1.2, halaman opsional "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt portable x64/x86 hasil cross-build 2.1.2 (484 file unik: 9 dipin sekali, 945 entri dipin per arsitektur). Compile ISCC dan uji install/upgrade/uninstall tetap harus di Windows. `AyoJamaahPayload.iss` hanya receipt historis 2.1.0. Catatan 2.1.0 di bawah tetap menjadi riwayat artefak yang pernah dibuat.
 
 ## Kandidat finalisasi branding 11 November 2026
 
