@@ -8,6 +8,7 @@ internal sealed class AppSettings
 {
     public const string DefaultOnlineGeocodingEndpoint = "https://nominatim.openstreetmap.org";
     public const string DefaultReminderMessage = "Sebentar lagi waktu sholat {prayer} ({minutes_before} menit lagi).";
+    public const int MaxReminderMessageLength = 200;
     public static readonly string[] CorrectionKeys = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
     [JsonPropertyName("latitude")] public double Latitude { get; set; } = -6.4336368;
@@ -50,6 +51,8 @@ internal sealed class AppSettings
             : OnlineGeocodingEndpoint.Trim();
         CalculationStandard ??= "Indonesia — Kementerian Agama";
         ReminderMessage ??= DefaultReminderMessage;
+        if (ReminderMessage.Length > MaxReminderMessageLength)
+            ReminderMessage = ReminderMessage[..MaxReminderMessageLength].TrimEnd();
         ReminderMinutes = Math.Clamp(ReminderMinutes, 0, 120);
         LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 120);
         DhuhaAfterSunriseMinutes = Math.Clamp(DhuhaAfterSunriseMinutes, 0, 180);

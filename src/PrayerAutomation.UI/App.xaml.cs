@@ -25,7 +25,6 @@ public partial class App : Application
     private (bool Enabled, string Mode)? _taskbarAppearancePreview;
     private bool EffectiveTaskbarWidgetEnabled => _taskbarAppearancePreview?.Enabled ?? Settings.TaskbarWidgetEnabled;
     private string EffectiveTaskbarWidgetMode => _taskbarAppearancePreview?.Mode ?? Settings.TaskbarWidgetMode;
-    internal string? TaskbarWidgetRuntimeStatus => _taskbarPanel?.CurrentStatus;
     private MainWindow? _mainWindow;
     private Mutex? _singleInstanceMutex;
     private bool _widgetSettingEnabled;
@@ -264,7 +263,7 @@ public partial class App : Application
                 // Only renderer choice is transient. Clock and schedules always use
                 // the shared saved settings, including later successful Save updates.
                 _taskbarPanel = new TaskbarCountdownPanel(new AppSettings { TaskbarWidgetMode = mode },
-                    ShowTaskbarDetail, text => _mainWindow?.SetTaskbarWidgetRuntimeStatus(text),
+                    ShowTaskbarDetail, null,
                     null, () => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,
                         PrayerScheduleService.ResolveTimeZone(Settings.TimeZoneId)).DateTime,
                     date => PrayerScheduleService.ForDate(date, Settings), true);
@@ -278,7 +277,6 @@ public partial class App : Application
             _taskbarPanel = null;
             _taskbarWidget?.ClosePermanently();
             _taskbarWidget = null;
-            _mainWindow?.SetTaskbarWidgetRuntimeStatus("Panel taskbar nonaktif. Widget desktop tetap independen.");
         }
     }
 

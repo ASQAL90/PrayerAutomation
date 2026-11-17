@@ -20,7 +20,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private const int NoActivateToolWindow = 0x08000000 | 0x00000080 | 0x00000008;
     private readonly AppSettings _settings;
     private readonly Action _openDetail;
-    private readonly Action<string> _publishStatus;
+    private readonly Action<string>? _publishStatus;
     private readonly Func<IntPtr, TaskbarPanelSnapshot> _capture;
     private readonly Func<DateTime>? _clock;
     private readonly Func<DateTime, IReadOnlyList<PrayerEntry>>? _schedule;
@@ -50,11 +50,11 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private string? _lastStatus;
     private bool _disposed;
 
-    internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string> publishStatus,
+    internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string>? publishStatus,
         Func<IntPtr, TaskbarPanelSnapshot>? capture = null)
         : this(settings, openDetail, publishStatus, capture, null, null, true) { }
 
-    internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string> publishStatus,
+    internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string>? publishStatus,
         Func<IntPtr, TaskbarPanelSnapshot>? capture, Func<DateTime>? clock,
         Func<DateTime, IReadOnlyList<PrayerEntry>>? schedule, bool start)
     {
@@ -116,8 +116,6 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         RefreshSchedule();
         if (start) { _timer.Start(); Tick(); }
     }
-
-    internal string? CurrentStatus => _lastStatus;
 
     internal void RefreshSchedule()
     {
@@ -443,7 +441,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     {
         if (_lastStatus == text) return;
         _lastStatus = text;
-        _publishStatus(text);
+        _publishStatus?.Invoke(text);
     }
 
     private bool RestorePopupVisibility()

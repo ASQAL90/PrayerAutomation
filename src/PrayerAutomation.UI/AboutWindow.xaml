@@ -52,6 +52,8 @@
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           AutomationProperties.AutomationId="AboutCreditsScroll">
                 <StackPanel Margin="0,0,8,0">
+                    <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutVersion"
+                               Text="{x:Static local:AppBranding.VersionDisplay}" FontWeight="SemiBold" />
                     <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditAuthor"
                                Text="author : Muhammad Nashiruddin Al-Asqalani &quot;I develop as hobby&quot;" />
                     <TextBlock Style="{StaticResource CreditText}" AutomationProperties.AutomationId="AboutCreditEmail"><Run Text="email : " /><Hyperlink NavigateUri="mailto:madinalani@gmail.com" RequestNavigate="OnLinkRequestNavigate"><Run Text="madinalani@gmail.com" /></Hyperlink></TextBlock>

@@ -21,6 +21,9 @@ internal static class CorrectionInputBehavior
     public static void AttachDateCorrection(TextBox textBox, Button decreaseButton, Button increaseButton) =>
         AttachBounded(textBox, decreaseButton, increaseButton, MinimumCalendarDays, MaximumCalendarDays);
 
+    public static void AttachMinutesAfterSunrise(TextBox textBox, Button decreaseButton, Button increaseButton) =>
+        AttachBounded(textBox, decreaseButton, increaseButton, 0, 180);
+
     private static void AttachBounded(TextBox textBox, Button decreaseButton, Button increaseButton, int minimum, int maximum)
     {
         ArgumentNullException.ThrowIfNull(textBox);

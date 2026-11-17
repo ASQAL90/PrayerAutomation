@@ -11,6 +11,7 @@ using Application = System.Windows.Application;
 using Button = System.Windows.Controls.Button;
 using ComboBox = System.Windows.Controls.ComboBox;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Image = System.Windows.Controls.Image;
 using TextBox = System.Windows.Controls.TextBox;
 using UniformGrid = System.Windows.Controls.Primitives.UniformGrid;
 using Key = System.Windows.Input.Key;
@@ -967,7 +968,6 @@ public partial class MainWindow : Window
         }
         finally { _loadingSettings = false; }
         UpdateWidgetOptionStates();
-        UpdateTaskbarWidgetModeHint();
         UpdateStartupOptionStates();
         RefreshSettingsSchedulePreview();
         _savedFormBaseline = CaptureSettingsFormDraft();
@@ -1047,6 +1047,37 @@ public partial class MainWindow : Window
         }
     }
 
+    private void LockScreenPreviewImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (LockScreenPreviewImage.Source is not ImageSource source) return;
+        e.Handled = true;
+        const double chromeHeight = 48;
+        double availableWidth = SystemParameters.WorkArea.Width * 0.9;
+        double availableHeight = SystemParameters.WorkArea.Height * 0.9 - chromeHeight;
+        double aspect = source.Width > 0 && source.Height > 0 ? source.Width / source.Height : 16.0 / 9.0;
+        double width = Math.Min(availableWidth, availableHeight * aspect);
+        var window = new Window
+        {
+            Title = "Pratinjau gambar lock screen",
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = width,
+            Height = width / aspect + chromeHeight,
+            MinWidth = 480,
+            MinHeight = 300,
+            Background = MakeBrush(ThemeManager.Current.Surface),
+            Content = new Image { Source = source, Stretch = Stretch.Uniform, Margin = new Thickness(12) }
+        };
+        AutomationProperties.SetName(window, "Pratinjau gambar lock screen diperbesar");
+        window.PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key != Key.Escape) return;
+            args.Handled = true;
+            window.Close();
+        };
+        window.ShowDialog();
+    }
+
     private void RefreshLockScreenSafety(string? status = null)
     {
         if (LockScreenCheckBox is null || LockScreenSafetyText is null || LockScreenStatus is null)
@@ -1070,12 +1101,9 @@ public partial class MainWindow : Window
         RefreshLockScreenSafety(message);
     }
 
-    internal void SetTaskbarWidgetRuntimeStatus(string message) => TaskbarWidgetStatus.Text = message;
-
     private void TaskbarWidgetModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSettings) return;
-        UpdateTaskbarWidgetModeHint();
         ApplyTaskbarAppearancePreview();
     }
 
@@ -1089,12 +1117,6 @@ public partial class MainWindow : Window
         if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string mode ||
             mode != "popup") return;
         _applyTaskbarAppearancePreview(TaskbarWidgetEnabledCheckBox.IsChecked == true, mode);
-    }
-
-    private void UpdateTaskbarWidgetModeHint()
-    {
-        if (TaskbarWidgetModeHint is null) return;
-        TaskbarWidgetModeHint.Text = "Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11.";
     }
 
     private void UpdateWidgetOptionStates()
@@ -1541,9 +1563,6 @@ public partial class MainWindow : Window
         TaskbarWidgetEnabledCheckBox.IsChecked = availability.CanEnable && _settings.TaskbarWidgetEnabled;
         TaskbarWidgetEnabledCheckBox.ToolTip = availability.Message;
         TaskbarWidgetModeBox.IsEnabled = availability.CanEnable;
-        TaskbarWidgetStatus.Text = availability.CanEnable
-            ? (Application.Current as App)?.TaskbarWidgetRuntimeStatus ?? availability.Message
-            : availability.Message;
     }
 
     private static string DescribeLocationProvider(ProviderLocation provider)
@@ -1645,6 +1664,12 @@ public partial class MainWindow : Window
             error = "Waktu pengingat harus berupa bilangan bulat 0–120 menit.";
             return false;
         }
+        string reminderMessage = ReminderMessageBox.Text.Trim();
+        if (reminderMessage.Length > AppSettings.MaxReminderMessageLength)
+        {
+            error = $"Pesan pengingat maksimal {AppSettings.MaxReminderMessageLength} karakter.";
+            return false;
+        }
         if (!TryInt(LockScreenDurationBox.Text, 1, 120, out int lockScreenDurationMinutes))
         {
             error = "Lama tampil gambar lock screen harus berupa bilangan bulat 1–120 menit.";
@@ -1699,9 +1724,9 @@ public partial class MainWindow : Window
         candidate.RemindersEnabled = ReminderEnabledCheckBox.IsChecked == true;
         candidate.AutoLockEnabled = AutoLockEnabledCheckBox.IsChecked == true;
         candidate.ReminderMinutes = reminderMinutes;
-        candidate.ReminderMessage = string.IsNullOrWhiteSpace(ReminderMessageBox.Text)
+        candidate.ReminderMessage = string.IsNullOrEmpty(reminderMessage)
             ? AppSettings.DefaultReminderMessage
-            : ReminderMessageBox.Text.Trim();
+            : reminderMessage;
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string taskbarMode ||
@@ -1770,6 +1795,7 @@ public partial class MainWindow : Window
         CorrectionInputBehavior.Attach(CorrectionIshaBox, CorrectionIshaDecreaseButton, CorrectionIshaIncreaseButton);
         CorrectionInputBehavior.AttachDateCorrection(CalendarDateCorrectionBox, CalendarDateCorrectionDecreaseButton, CalendarDateCorrectionIncreaseButton);
         CorrectionInputBehavior.AttachDateCorrection(HijriDateCorrectionBox, HijriDateCorrectionDecreaseButton, HijriDateCorrectionIncreaseButton);
+        CorrectionInputBehavior.AttachMinutesAfterSunrise(DhuhaAfterSunriseBox, DhuhaAfterSunriseDecreaseButton, DhuhaAfterSunriseIncreaseButton);
     }
 
     private static bool TryDouble(string text, out double value) =>
