@@ -4,74 +4,72 @@
 [![Unduh](https://img.shields.io/badge/unduh-Windows%20x64-0078D6?logo=windows)](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip)
 [![Situs](https://img.shields.io/badge/situs-asqal90.github.io%2FPrayerAutomation-0e9f6e)](https://asqal90.github.io/PrayerAutomation/)
 
-Aplikasi jadwal sholat untuk Windows. Perhitungan jadwal ada di library Rust, tampilan dan integrasi Windows pakai C# WPF. Ada kalender Hijriyah, widget di desktop, dan pengingat teks tanpa suara.
+Aplikasi jadwal sholat untuk Windows. Hitung jadwal pakai library Rust, tampilan dan integrasi Windows pakai WPF. Ada kalender Hijriyah, widget, dan pengingat teks. Tanpa suara atau adzan.
 
-**Unduh:** [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip) untuk Windows 10 (build 19041 ke atas) dan Windows 11, x64.
+**Unduh:** [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip). Windows 10 (build 19041 ke atas) dan Windows 11, x64.
 
-## Status 2.1.2
+## Status
 
-Nama di layar adalah Ayo Jama'ah!, file executable-nya `AyoJamaah.exe`. Portable dan installer yang saya simpan di `dist/` belum diunggah ke halaman Releases. Keduanya belum ditandatangani, jadi SmartScreen akan memberi peringatan saat pertama dijalankan. Nama publisher di metadata file juga belum terverifikasi.
+Versi sekarang 2.1.2. Nama di layar "Ayo Jama'ah!", file-nya `AyoJamaah.exe`. Portable dan installernya belum saya upload ke Releases, dan belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
-Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Nomor versi tampil di title bar dan halaman Tentang; koreksi penanggalan Hijriyah diberi label dan sejajar dengan kolom Ashar, koreksi Masehi dihapus karena mengikuti tanggal komputer, koreksi Duha punya tombol −/+, pesan pengingat dibatasi 200 karakter, popup pengingat tidak memakai title bar, dan pratinjau lock screen bisa diperbesar dengan klik. Installer memakai NSIS agar bisa dibangun langsung dari perangkat ini: halaman "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Include payload digenerate dari receipt kedua arsitektur; Inno Setup disimpan sebagai referensi legacy. Yang tersisa adalah uji install/upgrade/uninstall dan verifikasi visual di Windows.
+Yang berubah di 2.1.2: panel taskbar jadi popup saja, ada pratinjau gambar lock screen di Pengaturan, estimasi jadwal harian dipindah ke atas form lokasi, publish win-x86 ikut disediakan, plus perapihan kecil lain (koreksi Hijriyah diberi label, koreksi Masehi dihapus karena ikut tanggal komputer, koreksi Duha pakai tombol −/+). Installer pakai NSIS — bisa dibangun dari perangkat mana pun, payload dual x86+x64.
 
-Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua. Perubahan UI 2.1.2 baru diverifikasi secara statis, belum lewat penerimaan visual di Windows.
+Baru diuji di Windows 11. Visual UI 2.1.2 belum diverifikasi di Windows.
 
 ## Fitur
 
-- Jadwal sholat harian, beberapa metode perhitungan, pilihan timezone, dan koreksi menit.
-- Kalender Masehi dan Hijriyah. Tanggal Masehi mengikuti komputer; koreksi tampilan hanya tersedia untuk penanggalan Hijriyah.
-- Tiga widget: Essential, Minimalist, dan Detail. Tema dan posisinya bisa diatur.
-- Panel taskbar berbentuk popup dengan pilihan tampilan Minimalist atau Detail.
-- Pengingat berupa teks saja, tanpa suara atau adzan.
-- Lokasi bisa diisi manual, diperkirakan dari jaringan, atau diambil dari Windows Location Services.
-- Pencarian nama tempat offline memakai data GeoNames, tanpa request jaringan.
-- Pilihan startup Windows, auto-lock sesi, dan gambar lock screen sementara.
+- Jadwal sholat harian, beberapa metode, timezone, koreksi menit.
+- Kalender Masehi dan Hijriyah. Tanggal Masehi ikut komputer; koreksi cuma untuk penanggalan Hijriyah.
+- Tiga widget: Essential, Minimalist, Detail. Tema dan posisi bebas diatur.
+- Panel taskbar berbentuk popup.
+- Pengingat teks saja, tanpa suara atau adzan.
+- Lokasi bisa manual, perkiraan dari jaringan, atau dari Windows Location Services.
+- Cari nama tempat offline pakai data GeoNames.
+- Startup Windows, auto-lock, dan gambar lock screen sementara.
 
-Jadwal yang muncul adalah hasil hitung aplikasi, bukan pengumuman resmi. Satu metode belum tentu cocok untuk semua daerah, dan kalibrasi lokal tidak otomatis berlaku di tempat lain.
+Jadwal di aplikasi bukan pengumuman resmi. Satu metode belum tentu pas untuk semua daerah, dan kalibrasi satu tempat belum tentu berlaku untuk tempat lain.
 
 ## Sebelum dipakai
 
-1. Jalankan dengan akun Windows biasa, bukan Run as administrator.
-2. Untuk versi portable, jangan pisahkan EXE dari DLL dan folder pendampingnya. Ini bukan aplikasi single-file.
-3. Profil disimpan di `%APPDATA%\PrayerAutomation\config.json` dan dipakai bersama oleh portable maupun installer. Memindahkan folder aplikasi tidak membuat profil baru.
-4. Di profil baru, startup Windows aktif secara default, sedangkan auto-lock dan gambar lock screen mati. Kalau tidak mau aplikasi jalan saat login, matikan lewat Pengaturan.
+1. Jalankan sebagai user biasa, bukan Run as administrator.
+2. Versi portable: jangan pisah EXE dari DLL dan folder pendampingnya.
+3. Profil disimpan di `%APPDATA%\PrayerAutomation\config.json`. Portable dan installer pakai profil yang sama.
+4. Di profil baru, startup Windows nyala secara default. Auto-lock dan gambar lock screen mati. Kalau gak mau jalan waktu login, matikan dari Pengaturan.
 5. Coba dulu di satu PC, jangan langsung di PC kerja.
 
-Installer memasang per-user ke `%LOCALAPPDATA%\Programs\PrayerAutomation`. Nama profil, namespace, mutex, dan AppId lama sengaja tidak diubah supaya upgrade tidak menghapus pengaturan. Installer juga tidak mereset profil atau membersihkan instalasi lama. Keluar dulu dari versi lama lewat menu Keluar, lalu tunggu proses pemulihan selesai.
+Installer memasang per-user ke `%LOCALAPPDATA%\Programs\PrayerAutomation`. Nama profil, namespace, dan mutex dibiarkan turunan supaya upgrade tidak menghapus pengaturan. Keluar dulu dari versi lama lewat menu Keluar.
 
 ## Cara pakai
 
 1. Buka `AyoJamaah.exe`.
-2. Masuk ke Pengaturan dan cek lokasi, koordinat, timezone, serta metode. Preset lokasi bukan posisi Anda.
+2. Masuk Pengaturan, cek lokasi, koordinat, timezone, dan metode. Preset lokasi bukan posisi Anda.
 3. Atur pengingat, widget, dan startup. Untuk percobaan tampilan, biarkan auto-lock dan gambar lock screen mati.
-4. Klik Simpan pengaturan. Perubahan tema dan widget langsung terlihat, tapi belum tersimpan sebelum Anda klik Simpan.
-5. Kalau menutup jendela dengan perubahan yang belum disimpan, muncul pilihan Simpan, Buang perubahan, atau Kembali mengedit.
+4. Klik Simpan. Tema dan widget langsung berubah, tapi belum tersimpan sebelum Anda klik Simpan.
+5. Kalau tutup jendela dengan perubahan belum disimpan, muncul pilihan Simpan, Buang perubahan, atau Kembali mengedit.
 6. Tombol X dan minimize menyembunyikan jendela ke tray. Untuk benar-benar keluar, pakai menu Keluar.
-
-Mode taskbar memakai popup WPF; backend XAML Island/WinUI sudah dihapus pada 2.1.2. Kalau popup tidak muncul di konfigurasi Explorer tertentu, cek pengaturan panel taskbar di tab Pengaturan.
 
 ## Lokasi dan jaringan
 
-- Jadwal, kalender, konversi timezone, dan pencarian nama tempat dihitung lokal.
-- Tombol perkiraan jaringan memanggil `ipapi.co` dan `ipwho.is`. IP publik Anda terlihat oleh penyedia itu, dan hasilnya bisa menunjuk gateway, proxy, atau VPN.
-- Lokasi perangkat memakai Windows Location Services, bukan selalu GPS.
-- Nominatim sudah tidak dipakai di build aktif. Kodenya masih ada untuk perbandingan.
+- Jadwal, kalender, timezone, dan pencarian nama tempat dihitung lokal.
+- Tombol jaringan memanggil `ipapi.co` dan `ipwho.is`. IP publik Anda terlihat oleh penyedia itu; hasil bisa menunjuk gateway, proxy, atau VPN.
+- Lokasi perangkat pakai Windows Location Services, tidak selalu GPS.
+- Nominatim sudah tidak dipakai di build yang jalan; kodenya masih ada untuk perbandingan.
 
 ## Struktur repo
 
 | Path | Isi |
 |---|---|
 | `src/PrayerAutomation.UI/` | Form WPF, tray, widget, pengaturan, adapter Windows |
-| `src/Shared/` | Geometri ikon yang dipakai oleh proyek C# |
+| `src/Shared/` | Geometri ikon yang dipakai C# |
 | `src/rust-core/` | Perhitungan jadwal dan kalender, diekspor sebagai `prayer_core.dll` |
 | `installer/` | Installer NSIS per-user; Inno Setup disimpan sebagai referensi legacy |
-| `tests/` | Fixture dan smoke test, cakupannya berbeda-beda |
-| `docs/` | Panduan, audit, atribusi, `prompts/`, dan `progress/` |
+| `tests/` | Fixture dan smoke test |
+| `docs/` | Panduan, audit, `prompts/`, dan `progress/` |
 | `dist/` | Installer dan portable lokal, tidak ikut Git |
 
 ## Build
 
-Yang dibutuhkan: .NET SDK yang mendukung `net10.0-windows10.0.26100.0`, Rust dengan edition 2024 dan target `x86_64-pc-windows-gnu` (tambahkan `i686-pc-windows-gnu` untuk x86) beserta linker MinGW yang sesuai, dan paket NuGet sesuai `PackageReference`. Restore pertama butuh jaringan.
+Butuh: .NET SDK untuk `net10.0-windows10.0.26100.0`, Rust edition 2024 dengan target `x86_64-pc-windows-gnu` (tambah `i686-pc-windows-gnu` untuk x86), dan linker MinGW. Restore pertama butuh jaringan.
 
 ```bash
 cargo test --workspace --release --locked --target x86_64-pc-windows-gnu
@@ -79,27 +77,25 @@ dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:
 dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 --self-contained true -o ../AyoJamaah-build/portable-x86
 ```
 
-`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer NSIS butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish: buat receipt dengan `installer/make_payload_receipt.py`, lalu jalankan `python3 installer/build_installer_nsis.py` (atau `ayojamaah-build installer`) untuk memvalidasi receipt, menghasilkan include payload, dan mengompilasi installer (lihat [panduan installer](installer/README_ID.md)).
+Installer NSIS dibangun terpisah: buat receipt payload dengan `installer/make_payload_receipt.py`, lalu jalankan `python3 installer/build_installer_nsis.py` (lihat [panduan installer](installer/README_ID.md)).
 
 ## Pengujian
 
-Perubahan 2.1.2 divalidasi statis: `cargo test`, `cargo fmt --check`, dan `cargo clippy -D warnings` lulus; source C#/XAML dan skrip installer direview tanpa build WPF di mesin ini. Compile NSIS dan validasi payload dilakukan di perangkat ini, tetapi eksekusi installer tetap harus di Windows. Build dan publish Windows, smoke test UI, serta penerimaan visual belum dijalankan untuk 2.1.2. Sebelumnya, pada 11 November 2026, fixture branding lulus 57/57 dan fixture perubahan belum disimpan lulus 99/99 terhadap DLL 2.1.0.
+2.1.2 baru divalidasi statis: `cargo test`, `cargo fmt --check`, `cargo clippy -D warnings` lulus; source C#/XAML direview tanpa build WPF di mesin ini. Compile NSIS dan validasi payload jalan di perangkat ini. Install/upgrade/uninstall dan verifikasi visual tetap harus di Windows.
 
-Yang belum tercakup: UI/UX normal 2.1.2, fokus dan modal sungguhan, Explorer, mixed-DPI, auto-hide, serta instalasi, upgrade, dan uninstall penuh.
-
-Pemulihan gambar lock screen, terutama untuk Spotlight, belum selesai sepenuhnya. Lulus build dan test tidak berarti gambar kembali normal secara visual.
+Belum tercakup: UI/UX normal 2.1.2, fokus dan modal sungguhan, Explorer, mixed-DPI, auto-hide, serta instalasi/upgrade/uninstall penuh. Pemulihan gambar lock screen, terutama untuk Spotlight, belum selesai sepenuhnya.
 
 Jangan jalankan semua test sekaligus. `tests/SingleInstanceSmoke` menjalankan produk dengan profil nyata, dan test lain perlu ditinjau dulu.
 
 ## Lisensi
 
-Source aplikasi memakai MIT, lihat [`LICENSE`](LICENSE). Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani.
+Source aplikasi pakai MIT, lihat [`LICENSE`](LICENSE). Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani.
 
-Komponen pihak ketiga tetap ikut lisensinya masing-masing: paket NuGet (GeoTimeZone, TimeZoneConverter), data GeoTimeZone/ODbL, dan GeoNames. Rinciannya ada di [inventaris third-party](docs/THIRD_PARTY_NOTICES.md). Dokumen itu bukan clearance hukum untuk seluruh paket rilis.
+Komponen pihak ketiga ikut lisensinya masing-masing: paket NuGet (GeoTimeZone, TimeZoneConverter), data GeoTimeZone/ODbL, dan GeoNames. Rincian ada di [inventaris third-party](docs/THIRD_PARTY_NOTICES.md).
 
 ## Dokumentasi
 
 - [Indeks dokumentasi](docs/README.md)
 - [Status distribusi](docs/DISTRIBUTION_ID.md)
 - [Batas pemulihan lock screen](docs/LOCKSCREEN_LIMITATIONS_ID.md)
-- [Asal source dan adaptasi](docs/SOURCE_ORIGINS_ID.md)
+- [Asal source dan penghargaan](docs/SOURCE_ORIGINS_ID.md)
