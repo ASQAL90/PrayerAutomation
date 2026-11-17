@@ -308,7 +308,7 @@
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
                                     </Grid>
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="1" Margin="8,3,0,0" VerticalAlignment="Top">
                                         <Button Name="DetectNetworkLocationButton" AutomationProperties.AutomationId="DetectNetworkLocationButton" Content="Perkiraan dari jaringan" Click="DetectNetworkLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="NetworkLocationStatus" AutomationProperties.AutomationId="NetworkLocationStatus" Text="Perkiraan dari IP publik. VPN/gateway dapat meleset. Bukan GPS." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                         <Button Name="DetectGpsLocationButton" AutomationProperties.AutomationId="DetectGpsLocationButton" Content="Lokasi perangkat / GPS" Click="DetectGpsLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
