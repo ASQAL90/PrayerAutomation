@@ -1,6 +1,6 @@
 """Build a payload receipt from a published portable folder.
 The receipt is an explicit file map with SHA-256 pins; no wildcard, no build,
-no launch, no installation. Consumed by generate_accepted_payload.py. Stdlib only.
+no launch, no installation. Consumed by generate_nsis_payload.py and build_installer_nsis.py (via payload_receipt.py). Stdlib only.
 """
 from __future__ import annotations
 import argparse

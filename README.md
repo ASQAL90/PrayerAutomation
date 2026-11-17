@@ -62,7 +62,7 @@ Installer memasang per-user ke `%LOCALAPPDATA%\Programs\PrayerAutomation`. Nama 
 | `src/PrayerAutomation.UI/` | Form WPF, tray, widget, pengaturan, adapter Windows |
 | `src/Shared/` | Geometri ikon yang dipakai C# |
 | `src/rust-core/` | Perhitungan jadwal dan kalender, diekspor sebagai `prayer_core.dll` |
-| `installer/` | Installer NSIS per-user; Inno Setup disimpan sebagai referensi legacy |
+| `installer/` | Installer NSIS per-user |
 | `tests/` | Fixture dan smoke test |
 | `docs/` | Panduan, audit, `prompts/`, dan `progress/` |
 | `dist/` | Installer dan portable lokal, tidak ikut Git |

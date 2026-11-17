@@ -16,7 +16,7 @@
 Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.1.2**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): jalur NSIS 2.1.2; Inno Setup dan kandidat 2.1.0 di bagian berikutnya adalah riwayat.
+- [Installer](INSTALLER_ID.md): jalur NSIS 2.1.2.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.

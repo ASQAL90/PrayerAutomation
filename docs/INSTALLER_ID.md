@@ -1,6 +1,6 @@
 # Installer Ayo Jama'ah! 2.1.2
 
-> **Status 2.1.2:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup tetap disimpan sebagai referensi legacy dan tidak lagi menjadi jalur build utama. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.1.2 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
+> **Status 2.1.2:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup sudah dihapus; NSIS satu-satunya jalur installer. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.1.2 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
 
 ## Jalur build NSIS
 
@@ -47,7 +47,7 @@ Tidak ada silent install/uninstall, `/ALLUSERS`, impor opsi, restart otomatis, a
 
 ## Pengaman dan batasannya
 
-Perilaku yang dipertahankan dari `installer/SafetyGuard.iss`:
+Perilaku pengaman (yang diport dari desain pengaman Inno yang kini dihapus):
 
 - Lokasi wajib `%LOCALAPPDATA%\Programs\PrayerAutomation`; ancestor junction/symlink/reparse dan folder instalasi Python lama ditolak.
 - Jurnal `%LOCALAPPDATA%\PrayerAutomation\LockScreen\lock-screen-restore.json` (dan variannya) memblokir install/uninstall. Jurnal tidak dihapus atau diperbaiki oleh installer.
@@ -57,11 +57,11 @@ Perilaku yang dipertahankan dari `installer/SafetyGuard.iss`:
 - Sebelum menulis payload NSIS baru, entri manifest lama dihapus agar file stale tidak tertinggal — kecuali berkas yang juga ada di payload baru (akan ditimpa di tempat; daftar payload per arsitektur dibundel sebagai `AyoJamaahPayloadFiles-x64.txt`/`-x86.txt`). Penghapusan berkas stale memakai `DeleteFileW` dengan percobaan ulang (4×, 250 ms) dan melaporkan kode galat Windows. Untuk instalasi Inno lama tanpa manifest NSIS, `$INSTDIR` dibersihkan setelah boundary check.
 - Hanya union path payload yang dihapus saat uninstall; `%APPDATA%\PrayerAutomation` dan data pengguna tidak disentuh.
 
-Batasan yang berbeda dari Inno:
+Batasan:
 
 - Deteksi proses memakai nama image, image path, dan session ID. Tidak ada pembacaan owner SID atau command line seperti di Inno/WMI. Proses legacy yang dijalankan dari interpreter sistem di luar folder produk belum tentu terdeteksi.
 - Mutex global yang tidak dapat dipastikan pemiliknya tetap memblokir operasi, termasuk kemungkinan dari sesi lain.
-- Preflight memeriksa file target sebelum penulisan; tidak ada recheck per-file seperti `CheckPayloadWrite` Inno. Proteksi sharing Windows tetap berlaku saat file ditulis.
+- Preflight memeriksa file target sebelum penulisan; tanpa recheck per-file. Proteksi sharing Windows tetap berlaku saat file ditulis.
 - Tidak ada IPC shutdown; installer tidak mengirim `WM_CLOSE`. Penutupan paksa hanya lewat `TerminateProcess` setelah konfirmasi eksplisit.
 
 ## Pengaturan dan upgrade
@@ -81,27 +81,3 @@ Batasan yang berbeda dari Inno:
 - Verifikasi visual halaman kustom, shortcut, entri registry, dan hasil uninstall.
 - Pemeriksaan tanda tangan/SmartScreen: installer belum ditandatangani.
 
-## Inno Setup legacy
-
-`installer/PrayerAutomation.iss`, `installer/SafetyGuard.iss`, `installer/AyoJamaahPayload-dual.iss`, dan `installer/generate_accepted_payload.py` disimpan sebagai referensi perilaku dan riwayat. `AyoJamaahPayload-dual.iss` masih valid sebagai pin legacy, tetapi build utama tidak lagi memakainya. Dokumentasi Inno di bawah dipertahankan sebagai riwayat, bukan instruksi rilis aktif.
-
-## Riwayat Inno 2.0.0
-
-UI/UX rilis 2.0.0 dinyatakan **LOLOS oleh pengguna pada 30 Oktober 2026**. Installer Inno membungkus portable yang sama; nomor assembly aplikasi tidak diubah.
-
-> **Installer Inno lama masih WIP.** Pengguna melaporkan instalasi normal berhasil. Source review menemukan installer/uninstaller lama belum memeriksa jurnal pemulihan lock screen persisten ketika proses/mutex sudah hilang setelah crash/reboot. Artefak SHA-256 `b47583cdcc434f649c2dbc4e027b455be4320ae9143c487abeb34be19c6d5886` dan uninstaller lamanya **tidak ikut diperbaiki**. Jangan gunakan sebagai bukti pengaman baru.
-
-Kandidat pengaman Inno 2 November 2026: **29 skenario/266 PASS**, termasuk jurnal biasa, quarantine invalid, interrupted writing, suffix tidak dikenal, direktori tidak terbaca, dan reparse. Payload saat itu masih 485 file accepted lama. Kandidat terpisah: `<evidence>/2026-11-02-installer-journal-guard/artifact-final/PrayerAutomationSetup-2.0.0.exe` (SHA-256 `9c7758b256c2045fc82cf2f5ac94ecd24370ca920e691b1dc467a0906dfa58b7`). Callback uninstall diuji di Setup-host fixture, bukan host uninstaller native.
-
-## Lokasi artefak lama
-
-```text
-../PrayerAutomation-releases/2.0.0/installer/PrayerAutomationSetup-2.0.0.exe
-../PrayerAutomation-releases/2.0.0/portable/PrayerAutomation.UI.exe
-```
-
-Portable Inno yang dipaketkan berisi **485 berkas**. Setiap nama dan SHA-256 dipin saat compile; runtime tidak dibuild ulang. Bukti build, PE manifest, dan hash artefak tersimpan di `<evidence>/2026-10-30-installer-release/child-installer/`.
-
-Belum ada klaim pemasangan/upgrade/uninstall penuh pada VM bersih, pengguna/sesi kedua, atau penutupan aplikasi nyata. Installer belum ditandatangani.
-
-[Detail build dan payload](../installer/README_ID.md) · [Panduan aplikasi](prompts/PROGRAM_DOCUMENTATION_ID.md) · [Catatan arsip Python](LEGACY_PYTHON_ID.md)

@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_accepted_payload import validated_payload  # noqa: E402
+from payload_receipt import validated_payload  # noqa: E402
 from generate_nsis_payload import render, render_files_list, write_output  # noqa: E402
 
 APP_VERSION = "2.1.2"
