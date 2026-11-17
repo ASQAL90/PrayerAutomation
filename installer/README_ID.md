@@ -37,7 +37,7 @@ Payload tidak dibangun ulang oleh installer. Kalau portable berubah, buat receip
 
 ## Perilaku installer
 
-- Per-user, tanpa elevasi, lokasi tetap `%LOCALAPPDATA%\Programs\PrayerAutomation`.
+- Per-user; bisa dijalankan tanpa atau dengan elevasi (mis. komputer satu akun administrator), tetap dipasang ke `%LOCALAPPDATA%\Programs\PrayerAutomation`.
 - Halaman info, halaman opsional **Mulai dari baru**, halaman progres, dan halaman akhir.
 - Pilihan Jalankan aplikasi dan pintasan desktop tidak dicentang.
 - Payload x64/x86 dipilih otomatis dari arsitektur Windows.

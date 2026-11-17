@@ -95,7 +95,6 @@ Var SafetyProblem
 Var SafetyDetails
 Var SafetyPath
 Var SafetyPath2
-Var SafetyElevated
 Var SafetyRecoveryExists
 Var SafetyCandidate
 Var InspectPid
@@ -233,12 +232,10 @@ Function .onInit
     Quit
   ${EndIf}
 
-  Call CheckElevated
-  ${If} $SafetyElevated != 0
-    MessageBox MB_ICONSTOP "Pemasang ini hanya untuk pengguna saat ini. Jangan jalankan sebagai administrator."
-    SetErrorLevel 2
-    Quit
-  ${EndIf}
+  ; Elevated is allowed on single-account administrator machines. The
+  ; installation target stays per-user; the token only changes privileges for
+  ; the lifetime of this process and is never used for machine-wide writes.
+  ; Unprivileged runs are unaffected.
 
   StrCpy $SafetyUninstall 0
   Call ValidateInstallTarget
@@ -283,7 +280,7 @@ Function InfoPageCreate
   ${NSD_CreateMLText} 0 0 100% 96u ""
   Pop $1
   ${NSD_SetText} $1 \
-    "${APP_NAME} ${APP_VERSION} dipasang tanpa hak administrator.$\r$\n$\r$\n\
+    "${APP_NAME} ${APP_VERSION} dipasang untuk pengguna saat ini.$\r$\n$\r$\n\
 Pengaturan di folder profil pengguna dipertahankan, kecuali Anda memilih Mulai dari baru pada halaman berikutnya (halaman itu hanya muncul jika pengaturan lama ditemukan). Skema lama yang tidak dikenal tidak dijamin kompatibel.$\r$\n$\r$\n\
 Jika aplikasi berjalan, pilih Keluar dari menu tray/aplikasi. Tombol X atau minimize hanya menyembunyikan jendela. Jika pemulihan lock screen belum terverifikasi, tunggu pemulihan atau batalkan pemasangan. Penutupan paksa hanya ditawarkan setelah konfirmasi dan dapat mengganggu pemulihan yang belum selesai.$\r$\n$\r$\n\
 Aplikasi tidak dijalankan otomatis. Setelah memilih menjalankannya, periksa pengaturan startup dan lock screen yang tersimpan."
@@ -382,25 +379,6 @@ Function CheckUnsafeCommandLine
   ${EndIf}
 FunctionEnd
 
-Function CheckElevated
-  StrCpy $SafetyElevated 0
-  System::Call 'kernel32::GetCurrentProcess() p .r0'
-  System::Call 'advapi32::OpenProcessToken(p r0, i 0x0008, *p .r1) i .r2'
-  ${If} $2 == 0
-    Return
-  ${EndIf}
-  System::Alloc 4
-  Pop $3
-  System::Call 'advapi32::GetTokenInformation(p r1, i 20, p r3, i 4, *i .r4) i .r5'
-  ${If} $5 != 0
-    System::Call '*$3(i .r6)'
-    ${If} $6 != 0
-      StrCpy $SafetyElevated 1
-    ${EndIf}
-  ${EndIf}
-  System::Free $3
-  System::Call 'kernel32::CloseHandle(p r1)'
-FunctionEnd
 
 Function ReviewPreviousInstallations
   StrCpy $SafetyProblem ""
