@@ -647,7 +647,7 @@ internal static class CopyHumanizeSmoke
             .Select(name => { CheckBox x = fixture.Field<CheckBox>(name); return new { name, x.IsChecked, x.IsEnabled,
                 x.Visibility, templateIdentity = RuntimeHelpers.GetHashCode(x.Template) }; }),
         values = new[] { "LocationNameBox", "LatitudeBox", "LongitudeBox", "TimeZoneBox", "LockScreenDurationBox",
-            "ReminderMinutesBox", "CalendarDateCorrectionBox", "HijriDateCorrectionBox", "CorrectionFajrBox" }
+            "ReminderMinutesBox", "HijriDateCorrectionBox", "CorrectionFajrBox" }
             .Select(name => { System.Windows.Controls.Control x = name == "TimeZoneBox" ? fixture.Field<ComboBox>(name) : fixture.Field<TextBox>(name);
                 string text = x is ComboBox combo ? combo.Text : ((TextBox)x).Text; return new { name, Text = text, x.IsEnabled,
                 x.MinHeight, width = double.IsNaN(x.Width) ? "Auto" : x.Width.ToString(CultureInfo.InvariantCulture),

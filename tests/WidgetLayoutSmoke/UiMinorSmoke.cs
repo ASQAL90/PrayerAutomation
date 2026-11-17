@@ -148,7 +148,7 @@ internal static class UiMinorSmoke
             foreach (string theme in themes)
             {
                 fixture.Select("ThemeBox", theme);
-                foreach (string name in new[] { "LocationNameBox", "CorrectionFajrBox", "CalendarDateCorrectionBox", "HijriDateCorrectionBox" })
+                foreach (string name in new[] { "LocationNameBox", "CorrectionFajrBox", "HijriDateCorrectionBox" })
                 {
                     TextBox box = fixture.Field<TextBox>(name);
                     string original = box.Text;
@@ -327,7 +327,7 @@ internal static class UiMinorSmoke
         {
             string saved = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
             string[] prayers = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
-            string[] dates = ["CalendarDateCorrection", "HijriDateCorrection"];
+            string[] dates = ["HijriDateCorrection"];
             TextBox reference = fixture.Field<TextBox>("CorrectionFajrBox");
             double baselineWidth = reference.ActualWidth, baselineHeight = reference.ActualHeight;
             Assert(baselineWidth > 0 && baselineHeight > 0 && reference.Width == 54 && reference.MinHeight == 28,
@@ -386,14 +386,12 @@ internal static class UiMinorSmoke
                 Assert(JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == saved,
                     "Theme/layout drafts must not alter saved settings.");
             }
-            VerifyBoundedEditor(application, fixture, "CalendarDateCorrection", 7);
             VerifyBoundedEditor(application, fixture, "HijriDateCorrection", 7);
             VerifyBoundedEditor(application, fixture, "CorrectionFajr", 30);
             fixture.InvokeMain("RefreshSettingsSchedulePreview");
             Pump(application);
             string preview = PreviewText(fixture);
             Assert(preview.Length > 0, "The real native-pure prayer preview must be realized before checking calendar-only corrections.");
-            fixture.Field<TextBox>("CalendarDateCorrectionBox").Text = "7";
             fixture.Field<TextBox>("HijriDateCorrectionBox").Text = "-7";
             fixture.InvokeMain("RefreshSettingsSchedulePreview");
             Pump(application);
@@ -402,10 +400,9 @@ internal static class UiMinorSmoke
                 "Date/minute helper edits must remain unsaved until Save.");
             fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
             Pump(application);
-            Assert(fixture.Field<TextBox>("CalendarDateCorrectionBox").Text == "0" && fixture.Field<TextBox>("HijriDateCorrectionBox").Text == "0" &&
+            Assert(fixture.Field<TextBox>("HijriDateCorrectionBox").Text == "0" &&
                    JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == saved,
                 "Cancel must restore date correction defaults and keep saved settings unchanged.");
-            fixture.Field<TextBox>("CalendarDateCorrectionBox").Text = "1";
             fixture.Field<TextBox>("HijriDateCorrectionBox").Text = "-1";
             fixture.Field<TextBox>("CorrectionFajrBox").Text = "1";
             fixture.InvokeMain("SaveSettings_Click", fixture.MainWindow, new RoutedEventArgs());
@@ -415,8 +412,7 @@ internal static class UiMinorSmoke
             foreach (string name in SafetyFlags)
                 Assert(fixture.SettingsType.GetProperty(name, I)!.GetValue(restored) is false,
                     "Fail closed: saved/deserialized fixture consequential flags must stay false.");
-            Assert((int)fixture.SettingsType.GetProperty("CalendarDateCorrectionDays", I)!.GetValue(restored)! == 1 &&
-                   (int)fixture.SettingsType.GetProperty("HijriDateCorrectionDays", I)!.GetValue(restored)! == -1 &&
+            Assert((int)fixture.SettingsType.GetProperty("HijriDateCorrectionDays", I)!.GetValue(restored)! == -1 &&
                    fixture.Field<TabControl>("MainTabs").SelectedIndex == 2 && !fixture.StartupValue,
                 "Save must preserve the existing date values, safe startup choice and selected settings tab.");
             Console.WriteLine("UI_MINOR_SIZE_SAVE_READBACK " + fixture.SavePath);

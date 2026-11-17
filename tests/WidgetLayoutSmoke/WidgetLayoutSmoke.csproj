@@ -11,6 +11,8 @@
       <Aliases>ProductUi</Aliases>
     </ProjectReference>
     <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AppBranding.cs" Link="AppBranding.cs" />
+    <Compile Include="../../src/Shared/PrayerIconPaths.cs" Link="Shared/PrayerIconPaths.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/PrayerScheduleService.cs" Link="PrayerScheduleService.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />

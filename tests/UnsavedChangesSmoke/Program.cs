@@ -244,8 +244,8 @@ internal static class Program
         Invoke("LoadHijriCalendar_Click",Window,new RoutedEventArgs());
         Invoke("SelectGregorianDate",new DateTime(2026,12,7));
         Check("calendar_tabs_years_dates_do_not_dirty_settings",!Dirty() && Confirm() && Prompts == 0);
-        Check("raw_snapshot_covers_30_values",Draft().Length == 30);
-        foreach (string n in new[]{"LocationNameBox","LatitudeBox","LongitudeBox","CorrectionFajrBox","CorrectionSunriseBox","CorrectionDhuhaBox","CorrectionDhuhrBox","CorrectionAsrBox","CorrectionMaghribBox","CorrectionIshaBox","DhuhaAfterSunriseBox","CalendarDateCorrectionBox","HijriDateCorrectionBox","ReminderMinutesBox","ReminderMessageBox","LockScreenDurationBox"})
+        Check("raw_snapshot_covers_28_values",Draft().Length == 28);
+        foreach (string n in new[]{"LocationNameBox","LatitudeBox","LongitudeBox","CorrectionFajrBox","CorrectionSunriseBox","CorrectionDhuhaBox","CorrectionDhuhrBox","CorrectionAsrBox","CorrectionMaghribBox","CorrectionIshaBox","DhuhaAfterSunriseBox","HijriDateCorrectionBox","ReminderMinutesBox","ReminderMessageBox","LockScreenDurationBox"})
         {
             TextBox box = Control<TextBox>(n); string old = box.Text;
             Quiet(()=>box.Text = old + " invalid raw draft "); bool dirty = Dirty();
@@ -258,7 +258,7 @@ internal static class Program
         ComboBox method = Control<ComboBox>("MethodBox"); int oldMethod = method.SelectedIndex;
         Quiet(()=>method.SelectedIndex = (oldMethod + 1) % method.Items.Count); bool methodDirty = Dirty(); Quiet(()=>method.SelectedIndex = oldMethod);
         Check("calculation_method_dirty_and_revert",methodDirty && !Dirty());
-        foreach (string n in new[]{"ThemeBox","WidgetModeBox","WidgetMotionBox","WidgetPositionBox","TaskbarWidgetModeBox"})
+        foreach (string n in new[]{"ThemeBox","WidgetModeBox","WidgetMotionBox","WidgetPositionBox"})
         {
             ComboBox combo = Control<ComboBox>(n); object oldItem = combo.SelectedItem;
             Quiet(()=>combo.SelectedIndex = (combo.SelectedIndex + 1) % combo.Items.Count); bool changed = Dirty();
@@ -287,11 +287,10 @@ internal static class Program
             Control<TextBox>("ReminderMinutesBox").Text = invalid ? "not a number " : "17";
             Control<TextBox>("CorrectionFajrBox").Text = "+3";
             Control<TextBox>("CorrectionIshaBox").Text = "-4";
-            Control<TextBox>("CalendarDateCorrectionBox").Text = "+2";
             Control<TextBox>("HijriDateCorrectionBox").Text = "-1";
             Control<TextBox>("LockScreenDurationBox").Text = "19";
             Control<TextBox>("DhuhaAfterSunriseBox").Text = "27";
-            foreach (string n in new[]{"ThemeBox","WidgetModeBox","WidgetMotionBox","WidgetPositionBox","TaskbarWidgetModeBox"})
+            foreach (string n in new[]{"ThemeBox","WidgetModeBox","WidgetMotionBox","WidgetPositionBox"})
             {
                 ComboBox c = Control<ComboBox>(n); c.SelectedIndex = (c.SelectedIndex + 1) % c.Items.Count;
             }
@@ -370,7 +369,7 @@ internal static class Program
         Check("save_callback_reentrancy_is_blocked",!nestedSave && !nestedConfirm);
         Check("save_establishes_new_raw_baseline_and_preserves_tab",!Dirty() && Control<TabControl>("MainTabs").SelectedIndex == 1);
         using var persisted = JsonDocument.Parse(File.ReadAllText(SavePath));
-        Check("save_corrections_and_date_values_roundtrip",persisted.RootElement.GetProperty("corrections").GetProperty("Fajr").GetInt32() == 3 && persisted.RootElement.GetProperty("corrections").GetProperty("Isha").GetInt32() == -4 && persisted.RootElement.GetProperty("calendar_date_correction_days").GetInt32() == 2 && persisted.RootElement.GetProperty("hijri_date_correction_days").GetInt32() == -1);
+        Check("save_corrections_and_date_values_roundtrip",persisted.RootElement.GetProperty("corrections").GetProperty("Fajr").GetInt32() == 3 && persisted.RootElement.GetProperty("corrections").GetProperty("Isha").GetInt32() == -4 && persisted.RootElement.GetProperty("hijri_date_correction_days").GetInt32() == -1);
         Check("save_file_equals_active_synthetic_settings",Json() == File.ReadAllText(SavePath));
         int p = Prompts; Check("saved_clean_confirm_never_saves_again",Confirm() && Prompts == p && SaveWrites == writes + 1);
         Control<TextBox>("ReminderMessageBox").Text = "Direct Save button fixture";

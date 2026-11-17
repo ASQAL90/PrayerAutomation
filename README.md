@@ -12,14 +12,14 @@ Aplikasi jadwal sholat untuk Windows. Perhitungan jadwal ada di library Rust, ta
 
 Nama di layar adalah Ayo Jama'ah!, file executable-nya `AyoJamaah.exe`. Portable dan installer yang saya simpan di `dist/` belum diunggah ke halaman Releases. Keduanya belum ditandatangani, jadi SmartScreen akan memberi peringatan saat pertama dijalankan. Nama publisher di metadata file juga belum terverifikasi.
 
-Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Nomor versi tampil di title bar dan halaman Tentang; koreksi tanggal sejajar dengan kolom Ashar, koreksi Duha punya tombol −/+, pesan pengingat dibatasi 200 karakter, popup pengingat tidak memakai title bar, dan pratinjau lock screen bisa diperbesar dengan klik. Installer menambah halaman "Mulai dari baru", opsi penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Payload 2.1.2 sudah dipublish di luar repo dan `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt kedua arsitektur; yang tersisa adalah compile installer dan uji install/upgrade/uninstall di Windows.
+Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Nomor versi tampil di title bar dan halaman Tentang; koreksi penanggalan Hijriyah diberi label dan sejajar dengan kolom Ashar, koreksi Masehi dihapus karena mengikuti tanggal komputer, koreksi Duha punya tombol −/+, pesan pengingat dibatasi 200 karakter, popup pengingat tidak memakai title bar, dan pratinjau lock screen bisa diperbesar dengan klik. Installer menambah halaman "Mulai dari baru", opsi penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Payload 2.1.2 sudah dipublish di luar repo dan `AyoJamaahPayload-dual.iss` sudah digenerate dari receipt kedua arsitektur; yang tersisa adalah compile installer dan uji install/upgrade/uninstall di Windows.
 
 Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua. Perubahan UI 2.1.2 baru diverifikasi secara statis, belum lewat penerimaan visual di Windows.
 
 ## Fitur
 
 - Jadwal sholat harian, beberapa metode perhitungan, pilihan timezone, dan koreksi menit.
-- Kalender Masehi dan Hijriyah, termasuk koreksi tampilan tanggal.
+- Kalender Masehi dan Hijriyah. Tanggal Masehi mengikuti komputer; koreksi tampilan hanya tersedia untuk penanggalan Hijriyah.
 - Tiga widget: Essential, Minimalist, dan Detail. Tema dan posisinya bisa diatur.
 - Panel taskbar berbentuk popup dengan pilihan tampilan Minimalist atau Detail.
 - Pengingat berupa teks saja, tanpa suara atau adzan.

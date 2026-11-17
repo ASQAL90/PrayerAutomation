@@ -78,9 +78,6 @@ internal static class PrayerUiLogic
 
     public static DateTime PrayerScheduleDate(DateTime locationLocalTime) => locationLocalTime.Date;
 
-    public static DateTime CalendarDisplayDate(DateTime locationLocalTime, int correctionDays) =>
-        locationLocalTime.Date.AddDays(correctionDays);
-
     public static PrayerPresentation PresentationFor(string key) =>
         Presentations.TryGetValue(key, out PrayerPresentation? presentation)
             ? presentation

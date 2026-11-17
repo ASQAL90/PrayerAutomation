@@ -61,7 +61,7 @@ Contoh uji setelah auto-lock/consent gambar dinonaktifkan oleh pengguna:
 
 Core Rust menghitung jadwal lokal; build aktif tidak memerlukan AlAdhan untuk perhitungan rutinnya. Nama metode dan koreksi menit tidak membuktikan kesesuaian jadwal resmi Kemenag/Muhammadiyah sepanjang tahun. Verifikasi resmi memerlukan tanggal, lokasi, timezone, parameter, dan pembandingan beberapa musim yang sama.
 
-Koreksi waktu menggunakan menit bertanda `−30` sampai `+30`. Tombol koreksi tanggal Masehi/Hijriyah memiliki rentang `±7` hari dan hanya menggeser tampilan kalender, bukan tanggal perhitungan jadwal. Semua helper `−/+` memakai style Button yang sama; empat helper tanggal tidak memiliki chrome terpisah.
+Koreksi waktu menggunakan menit bertanda `−30` sampai `+30`. Tombol koreksi penanggalan Hijriyah memiliki rentang `±7` hari dan hanya menggeser tampilan kalender Hijriyah, bukan tanggal perhitungan jadwal. Tanggal Masehi mengikuti tanggal komputer dan tidak lagi dapat dikoreksi. Semua helper `−/+` memakai style Button yang sama; dua helper tanggal tidak memiliki chrome terpisah.
 
 **Terbit dan Duha tidak memicu reminder, auto-lock, atau gambar sementara.** Ketiga scheduler memakai Subuh, Dzuhur, Ashar, Maghrib, dan Isya.
 
@@ -72,7 +72,7 @@ Koreksi waktu menggunakan menit bertanda `−30` sampai `+30`. Tombol koreksi ta
 | Zona waktu | Acuan jam untuk lokasi yang dipilih |
 | Metode hitung | Parameter perhitungan jadwal; nama metode bukan jaminan jadwal resmi |
 | Koreksi waktu sholat | Menambah atau mengurangi menit pada waktu terkait |
-| Koreksi kalender | Menggeser tanggal tampilan saja, bukan hari perhitungan jadwal |
+| Koreksi penanggalan hijriyah | Menggeser tanggal Hijriyah yang tampil; tanggal Masehi mengikuti komputer |
 | Cari nama offline | Memperkirakan nama permukiman dari koordinat form tanpa jaringan |
 | Cari nama online | Mengirim posisi Windows terbaru dan IP publik ke server setelah izin dan tombol |
 | Kunci Windows saat lima waktu sholat | Opsi penguncian sesi, terpisah dari pengingat dan gambar sementara |

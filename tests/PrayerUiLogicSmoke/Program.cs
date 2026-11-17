@@ -271,7 +271,6 @@ foreach (string prayerKey in new[] { "Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr",
 }
 foreach ((string editorName, string decreaseName, string increaseName, string decreaseLabel, string increaseLabel) in new[]
          {
-             ("CalendarDateCorrectionBox", "CalendarDateCorrectionDecreaseButton", "CalendarDateCorrectionIncreaseButton", "Kurangi koreksi tanggal Masehi", "Tambah koreksi tanggal Masehi"),
              ("HijriDateCorrectionBox", "HijriDateCorrectionDecreaseButton", "HijriDateCorrectionIncreaseButton", "Kurangi koreksi tanggal Hijriyah", "Tambah koreksi tanggal Hijriyah")
          })
 {
@@ -389,11 +388,9 @@ string codeBehind = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Mai
 Assert(codeBehind.Contains("CorrectionInputBehavior.Attach", StringComparison.Ordinal) &&
        codeBehind.Contains("CorrectionInputBehavior.TryParseCorrection", StringComparison.Ordinal),
     "Prayer correction controls must use the filtered editor behavior and the same bounded save/preview parser.");
-Assert(codeBehind.Contains("CorrectionInputBehavior.AttachDateCorrection(CalendarDateCorrectionBox, CalendarDateCorrectionDecreaseButton, CalendarDateCorrectionIncreaseButton)", StringComparison.Ordinal) &&
-       codeBehind.Contains("CorrectionInputBehavior.AttachDateCorrection(HijriDateCorrectionBox, HijriDateCorrectionDecreaseButton, HijriDateCorrectionIncreaseButton)", StringComparison.Ordinal) &&
-       codeBehind.Contains("CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text", StringComparison.Ordinal) &&
+Assert(codeBehind.Contains("CorrectionInputBehavior.AttachDateCorrection(HijriDateCorrectionBox, HijriDateCorrectionDecreaseButton, HijriDateCorrectionIncreaseButton)", StringComparison.Ordinal) &&
        codeBehind.Contains("CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text", StringComparison.Ordinal),
-    "Both calendar date corrections must use filtered ±7-day editors and the same bounded save parser.");
+    "The Hijri date correction must use a filtered ±7-day editor and the same bounded save parser.");
 Assert(codeBehind.Contains("AutoLockEnabledCheckBox.IsChecked = _settings.AutoLockEnabled", StringComparison.Ordinal) &&
        codeBehind.Contains("candidate.AutoLockEnabled = AutoLockEnabledCheckBox.IsChecked == true", StringComparison.Ordinal) &&
        codeBehind.Contains("destination.AutoLockEnabled = source.AutoLockEnabled", StringComparison.Ordinal),
@@ -635,8 +632,6 @@ Assert(!ordinaryMarker.IsToday && ordinaryMarker.BorderThickness == 1,
 DateTime locationLocalNow = new(2026, 10, 19, 23, 55, 0);
 Assert(PrayerUiLogic.PrayerScheduleDate(locationLocalNow) == new DateTime(2026, 10, 19),
     "Prayer times must be calculated for the location's actual date.");
-Assert(PrayerUiLogic.CalendarDisplayDate(locationLocalNow, -1) == new DateTime(2026, 10, 18),
-    "Calendar correction may shift displayed dates without changing the prayer schedule date.");
 
 WidgetMarqueeContentSmoke.VerifyOfflineHadithContent(countdownSchedule);
 Console.WriteLine("PASS: layout grouping/scrolling, widget setting lifecycle, countdown, GPS status handling, safe lock-screen gate, startup registration, calendar markers, and presentation logic.");

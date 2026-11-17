@@ -549,7 +549,7 @@ internal sealed class ScheduleWidgetWindow : Window
     private void UpdateMarqueeContent(DateTime now)
     {
         if (_scheduleError is not null) return;
-        DateTime calendarDate = now.Date.AddDays(_settings.CalendarDateCorrectionDays);
+        DateTime calendarDate = now.Date;
         NativeCalendarDate hijri = NativePrayerCore.HijriDate(calendarDate.AddDays(_settings.HijriDateCorrectionDays));
         _marqueeContent = WidgetMarqueeContent.Build(now, _settings, hijri, GetScheduleForDate(now.Date),
             PrayerUiLogic.NextPrayerAfter(now, GetScheduleForDate),

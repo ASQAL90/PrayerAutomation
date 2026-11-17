@@ -343,7 +343,6 @@ public partial class MainWindow : Window
 
     private void MoveCalendarCorrectionEditorsBesideDates()
     {
-        MoveToHost(CalendarDateCorrectionBox.Parent as FrameworkElement, GregorianDateCorrectionHost);
         MoveToHost(HijriDateCorrectionBox.Parent as FrameworkElement, HijriDateCorrectionHost);
     }
 
@@ -863,13 +862,8 @@ public partial class MainWindow : Window
         {
             now = DateTime.Now;
         }
-        return PrayerUiLogic.CalendarDisplayDate(now, GetCalendarDateCorrectionDays());
+        return now.Date;
     }
-
-    private int GetCalendarDateCorrectionDays() =>
-        !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox?.Text, out int days)
-            ? days
-            : _settings.CalendarDateCorrectionDays;
 
     private int GetHijriDateCorrectionDays() =>
         !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox?.Text, out int days)
@@ -898,7 +892,7 @@ public partial class MainWindow : Window
     {
         TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(settings.TimeZoneId);
         DateTime locationLocalNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime;
-        return PrayerUiLogic.CalendarDisplayDate(locationLocalNow, settings.CalendarDateCorrectionDays);
+        return locationLocalNow.Date;
     }
 
     private static int MondayBasedWeekday(DateTime date) => ((int)date.DayOfWeek + 6) % 7;
@@ -944,8 +938,6 @@ public partial class MainWindow : Window
             ReminderMinutesBox.Text = _settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
             ReminderMessageBox.Text = _settings.ReminderMessage;
             WidgetEnabledCheckBox.IsChecked = _settings.WidgetEnabled;
-            TaskbarWidgetModeBox.SelectedItem = TaskbarWidgetModeBox.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(item => item.Tag as string == _settings.TaskbarWidgetMode);
             WidgetModeBox.SelectedItem = WidgetModeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WidgetMode, StringComparison.OrdinalIgnoreCase));
             WidgetMotionBox.SelectedItem = WidgetMotionBox.Items.OfType<ComboBoxItem>()
@@ -955,7 +947,6 @@ public partial class MainWindow : Window
             ThemeBox.SelectedItem = ThemeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.ThemeId, StringComparison.OrdinalIgnoreCase));
             DhuhaAfterSunriseBox.Text = _settings.DhuhaAfterSunriseMinutes.ToString(CultureInfo.InvariantCulture);
-            CalendarDateCorrectionBox.Text = _settings.CalendarDateCorrectionDays.ToString(CultureInfo.InvariantCulture);
             HijriDateCorrectionBox.Text = _settings.HijriDateCorrectionDays.ToString(CultureInfo.InvariantCulture);
             StartupEnabledCheckBox.IsChecked = _settings.StartupEnabled;
             StartHiddenCheckBox.IsChecked = _settings.StartHidden;
@@ -1101,23 +1092,13 @@ public partial class MainWindow : Window
         RefreshLockScreenSafety(message);
     }
 
-    private void TaskbarWidgetModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_loadingSettings) return;
-        ApplyTaskbarAppearancePreview();
-    }
-
     private void TaskbarPreviewOptions_Changed(object sender, RoutedEventArgs e)
     {
         if (!_loadingSettings) ApplyTaskbarAppearancePreview();
     }
 
-    private void ApplyTaskbarAppearancePreview()
-    {
-        if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string mode ||
-            mode != "popup") return;
-        _applyTaskbarAppearancePreview(TaskbarWidgetEnabledCheckBox.IsChecked == true, mode);
-    }
+    private void ApplyTaskbarAppearancePreview() =>
+        _applyTaskbarAppearancePreview(TaskbarWidgetEnabledCheckBox.IsChecked == true, "popup");
 
     private void UpdateWidgetOptionStates()
     {
@@ -1173,10 +1154,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CalendarCorrectionInput_Changed(object sender, TextChangedEventArgs e)
+    private void HijriCorrectionInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (_loadingSettings ||
-            !CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text, out _) ||
             !CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out _))
             return;
 
@@ -1385,10 +1365,9 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (!CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text, out int calendarCorrection) ||
-            !CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
+        if (!CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
         {
-            error = "Koreksi tanggal harus berada pada rentang ±7 hari.";
+            error = "Koreksi tanggal Hijriyah harus berada pada rentang ±7 hari.";
             return false;
         }
 
@@ -1411,7 +1390,6 @@ public partial class MainWindow : Window
         candidate.CalculationStandard = method.Name;
         candidate.DhuhaAfterSunriseMinutes = dhuhaAfterSunrise;
         candidate.Corrections = corrections;
-        candidate.CalendarDateCorrectionDays = calendarCorrection;
         candidate.HijriDateCorrectionDays = hijriCorrection;
         candidate.LocationName = LocationNameBox.Text.Trim();
         candidate.Normalize();
@@ -1562,7 +1540,6 @@ public partial class MainWindow : Window
         TaskbarWidgetEnabledCheckBox.IsEnabled = availability.CanEnable;
         TaskbarWidgetEnabledCheckBox.IsChecked = availability.CanEnable && _settings.TaskbarWidgetEnabled;
         TaskbarWidgetEnabledCheckBox.ToolTip = availability.Message;
-        TaskbarWidgetModeBox.IsEnabled = availability.CanEnable;
     }
 
     private static string DescribeLocationProvider(ProviderLocation provider)
@@ -1680,11 +1657,6 @@ public partial class MainWindow : Window
             error = "Jarak Duha setelah terbit harus berupa bilangan bulat 0–180 menit.";
             return false;
         }
-        if (!CorrectionInputBehavior.TryParseDateCorrection(CalendarDateCorrectionBox.Text, out int calendarCorrection))
-        {
-            error = "Koreksi tanggal Masehi harus berada pada rentang −7 sampai +7 hari.";
-            return false;
-        }
         if (!CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
         {
             error = "Koreksi tanggal Hijriyah harus berada pada rentang −7 sampai +7 hari.";
@@ -1729,13 +1701,7 @@ public partial class MainWindow : Window
             : reminderMessage;
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
-        if ((TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag is not string taskbarMode ||
-            taskbarMode != "popup")
-        {
-            error = "Pilih Popup independen.";
-            return false;
-        }
-        candidate.TaskbarWidgetMode = taskbarMode;
+        candidate.TaskbarWidgetMode = "popup";
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
             widgetModeItem.Tag is not string widgetMode || widgetMode is not ("essential" or "minimalist" or "detail"))
         {
@@ -1765,7 +1731,6 @@ public partial class MainWindow : Window
         candidate.WidgetPosition = widgetPosition;
         candidate.ThemeId = themeId;
         candidate.DhuhaAfterSunriseMinutes = dhuhaAfterSunrise;
-        candidate.CalendarDateCorrectionDays = calendarCorrection;
         candidate.HijriDateCorrectionDays = hijriCorrection;
         candidate.StartupEnabled = StartupEnabledCheckBox.IsChecked == true;
         candidate.StartHidden = StartHiddenCheckBox.IsChecked == true;
@@ -1793,7 +1758,6 @@ public partial class MainWindow : Window
         CorrectionInputBehavior.Attach(CorrectionAsrBox, CorrectionAsrDecreaseButton, CorrectionAsrIncreaseButton);
         CorrectionInputBehavior.Attach(CorrectionMaghribBox, CorrectionMaghribDecreaseButton, CorrectionMaghribIncreaseButton);
         CorrectionInputBehavior.Attach(CorrectionIshaBox, CorrectionIshaDecreaseButton, CorrectionIshaIncreaseButton);
-        CorrectionInputBehavior.AttachDateCorrection(CalendarDateCorrectionBox, CalendarDateCorrectionDecreaseButton, CalendarDateCorrectionIncreaseButton);
         CorrectionInputBehavior.AttachDateCorrection(HijriDateCorrectionBox, HijriDateCorrectionDecreaseButton, HijriDateCorrectionIncreaseButton);
         CorrectionInputBehavior.AttachMinutesAfterSunrise(DhuhaAfterSunriseBox, DhuhaAfterSunriseDecreaseButton, DhuhaAfterSunriseIncreaseButton);
     }
@@ -1840,7 +1804,6 @@ public partial class MainWindow : Window
         destination.ReminderMinutes = source.ReminderMinutes;
         destination.ReminderMessage = source.ReminderMessage;
         destination.DhuhaAfterSunriseMinutes = source.DhuhaAfterSunriseMinutes;
-        destination.CalendarDateCorrectionDays = source.CalendarDateCorrectionDays;
         destination.HijriDateCorrectionDays = source.HijriDateCorrectionDays;
         destination.OtherSettings = source.OtherSettings is null ? null : new(source.OtherSettings);
     }
@@ -1886,11 +1849,11 @@ public partial class MainWindow : Window
         MethodBox.SelectedValue,
         CorrectionFajrBox.Text, CorrectionSunriseBox.Text, CorrectionDhuhaBox.Text,
         CorrectionDhuhrBox.Text, CorrectionAsrBox.Text, CorrectionMaghribBox.Text, CorrectionIshaBox.Text,
-        DhuhaAfterSunriseBox.Text, CalendarDateCorrectionBox.Text, HijriDateCorrectionBox.Text,
+        DhuhaAfterSunriseBox.Text, HijriDateCorrectionBox.Text,
         ReminderEnabledCheckBox.IsChecked, ReminderMinutesBox.Text, ReminderMessageBox.Text,
         WidgetEnabledCheckBox.IsChecked, (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
         (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag, (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag,
-        TaskbarWidgetEnabledCheckBox.IsChecked, (TaskbarWidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
+        TaskbarWidgetEnabledCheckBox.IsChecked,
         (ThemeBox.SelectedItem as ComboBoxItem)?.Tag,
         StartupEnabledCheckBox.IsChecked, StartHiddenCheckBox.IsChecked, AutoLockEnabledCheckBox.IsChecked,
         LockScreenCheckBox.IsChecked, LockScreenDurationBox.Text

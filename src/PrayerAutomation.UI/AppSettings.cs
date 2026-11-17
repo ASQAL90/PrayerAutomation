@@ -36,7 +36,6 @@ internal sealed class AppSettings
     [JsonPropertyName("reminder_minutes")] public int ReminderMinutes { get; set; } = 3;
     [JsonPropertyName("reminder_message")] public string ReminderMessage { get; set; } = DefaultReminderMessage;
     [JsonPropertyName("dhuha_after_sunrise_minutes")] public int DhuhaAfterSunriseMinutes { get; set; } = 15;
-    [JsonPropertyName("calendar_date_correction_days")] public int CalendarDateCorrectionDays { get; set; }
     [JsonPropertyName("hijri_date_correction_days")] public int HijriDateCorrectionDays { get; set; }
     [JsonExtensionData] public Dictionary<string, JsonElement>? OtherSettings { get; set; }
 
@@ -56,8 +55,9 @@ internal sealed class AppSettings
         ReminderMinutes = Math.Clamp(ReminderMinutes, 0, 120);
         LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 120);
         DhuhaAfterSunriseMinutes = Math.Clamp(DhuhaAfterSunriseMinutes, 0, 180);
-        CalendarDateCorrectionDays = Math.Clamp(CalendarDateCorrectionDays, -7, 7);
         HijriDateCorrectionDays = Math.Clamp(HijriDateCorrectionDays, -7, 7);
+        // The Gregorian date follows the computer clock; drop the retired correction key.
+        OtherSettings?.Remove("calendar_date_correction_days");
         string savedWidgetMode = WidgetMode ?? "";
         bool legacyMinimalMode = string.Equals(savedWidgetMode, "minimal", StringComparison.OrdinalIgnoreCase);
         WidgetMode = WidgetSettingsLogic.NormalizeMode(savedWidgetMode);

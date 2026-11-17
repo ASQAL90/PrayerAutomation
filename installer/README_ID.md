@@ -49,7 +49,18 @@ export TMP="$TMPDIR" TEMP="$TMPDIR"
 
 Wajib pilih `/O` baru/kosong; jangan timpa direktori installer lama. Default source/output adalah `..\dist\portable-x86`, `..\dist\portable-x64`, dan `..\dist\installer`; contoh ini memakai output terpisah. Kedua define hanya boleh menunjuk salinan payload yang cocok dengan receipt masing-masing. Perbedaan satu berkas menghentikan compiler. Berkas ekstra tidak dikemas. Mode single-arch lama masih tersedia lewat `--receipt/--source`, tetapi installer 2.1.2 menginclude `AyoJamaahPayload-dual.iss`.
 
-`make_payload_receipt.py` dan `generate_accepted_payload.py` memvalidasi payload sebelum menghasilkan pin: receipt harus cocok persis dengan isi folder portable, arsitektur DLL harus sesuai, dan kedua arsitektur diverifikasi terhadap set berkasnya sendiri. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru. Kalau payload sengaja dibangun ulang, buat receipt dengan `--force` lalu generate pin dengan `--force`; keduanya menolak menimpa hasil berbeda tanpa flag itu. Kalau payload sengaja dibangun ulang, buat receipt dengan `--force` lalu generate pin dengan `--force`; keduanya menolak menimpa hasil berbeda tanpa flag itu.
+`make_payload_receipt.py` dan `generate_accepted_payload.py` memvalidasi payload sebelum menghasilkan pin: receipt harus cocok persis dengan isi folder portable, arsitektur DLL harus sesuai, dan kedua arsitektur diverifikasi terhadap set berkasnya sendiri. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru. Kalau payload sengaja dibangun ulang, buat receipt dengan `--force` lalu generate pin dengan `--force`; keduanya menolak menimpa hasil berbeda tanpa flag itu.
+
+## Alternatif build installer di Linux/Termux
+
+Selain Inno Setup, environment proot Debian di perangkat ini dapat memakai:
+
+- **NSIS** (`apt install nsis`, sudah terpasang): `makensis` mengompilasi payload x64 482 file menjadi `Setup.exe` 59 MB dengan LZMA solid dalam sekitar 4 menit. Installer NSIS berjalan di Windows x64/x86 dan mendukung shortcut, uninstaller, registry HKCU, serta mode senyap. Ini alternatif terdekat dengan Inno dan tidak memerlukan Windows untuk compile.
+- **msitools/wixl** (`apt install wixl`): mengompilasi authoring WiX v3 menjadi MSI di Linux; sudah diuji dengan MSI kecil. MSI tidak menyediakan bootstrapper `.exe`, dan payload dual-arch memerlukan dua MSI atau bootstrapper terpisah.
+- **WiX v4/v5 lewat `dotnet tool`** belum dapat dipakai karena NuGet tidak dapat diakses dan paketnya belum ada di cache.
+- **7-Zip SFX** dapat membuat self-extracting `.exe`, tetapi tanpa uninstaller atau entri registry; hanya cocok untuk distribusi portable.
+
+Inno Setup tetap menjadi jalur rilis final karena authoring, halaman kustom, dan pengaman lifecycle-nya sudah teruji. Alternatif di atas memerlukan porting logika installer serta uji install/upgrade/uninstall di Windows sebelum menggantikan Inno.
 
 ## Batas keselamatan
 

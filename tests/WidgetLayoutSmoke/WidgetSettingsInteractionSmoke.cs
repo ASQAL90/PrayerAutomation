@@ -102,7 +102,7 @@ internal static class WidgetSettingsInteractionSmoke
     {
         string[] themes = fixture.Field<ComboBox>("ThemeBox").Items.OfType<ComboBoxItem>()
             .Select(item => (string)item.Tag).ToArray();
-        string[] datePrefixes = ["CalendarDateCorrection", "HijriDateCorrection"];
+        string[] datePrefixes = ["HijriDateCorrection"];
         string[] directions = ["DecreaseButton", "IncreaseButton"];
         int checks = 0;
         foreach (string theme in themes)

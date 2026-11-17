@@ -31,7 +31,7 @@ internal static class WidgetMarqueeContent
         IReadOnlyList<PrayerEntry> schedule, PrayerCountdown? countdown,
         IReadOnlyList<CalendarObservance> observances, string? message = null)
     {
-        DateTime calendarDate = now.Date.AddDays(settings.CalendarDateCorrectionDays);
+        DateTime calendarDate = now.Date;
         var parts = new List<string>
         {
             $"Masehi: {calendarDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)}",
@@ -44,8 +44,6 @@ internal static class WidgetMarqueeContent
                 : "Berikutnya: jadwal belum tersedia",
             $"Lokasi: {settings.LocationName}"
         };
-        if (settings.CalendarDateCorrectionDays != 0)
-            parts.Add($"Koreksi tanggal kalender: {settings.CalendarDateCorrectionDays:+0;-0} hari; jam/jadwal tetap waktu lokasi");
         CalendarObservance[] fixedHolidays = observances.Where(item => item.Kind == CalendarObservanceKind.PublicHoliday).ToArray();
         if (fixedHolidays.Length > 0)
             parts.Add("Libur nasional Indonesia (tanggal tetap): " + string.Join("; ", fixedHolidays.Select(item => item.Name)));

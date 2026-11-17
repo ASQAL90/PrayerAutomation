@@ -78,7 +78,6 @@ internal static class VisualAcceptanceSmoke
     private static void VerifyDateButtons(Type type, Window window, List<string> errors)
     {
         string[] names = [
-            "CalendarDateCorrectionDecreaseButton", "CalendarDateCorrectionIncreaseButton",
             "HijriDateCorrectionDecreaseButton", "HijriDateCorrectionIncreaseButton"];
         foreach (string name in names)
         {
@@ -104,8 +103,6 @@ internal static class VisualAcceptanceSmoke
                 errors.Add($"Tombol {name} tidak terlihat utuh di viewport settings.");
         }
 
-        ClickAndCheck("CalendarDateCorrectionDecreaseButton", "CalendarDateCorrectionBox", "-1");
-        ClickAndCheck("CalendarDateCorrectionIncreaseButton", "CalendarDateCorrectionBox", "0");
         ClickAndCheck("HijriDateCorrectionDecreaseButton", "HijriDateCorrectionBox", "-1");
         ClickAndCheck("HijriDateCorrectionIncreaseButton", "HijriDateCorrectionBox", "0");
 
