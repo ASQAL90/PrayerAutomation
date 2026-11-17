@@ -6,11 +6,11 @@
 
 Aplikasi jadwal sholat untuk Windows. Hitung jadwal pakai library Rust, tampilan dan integrasi Windows pakai WPF. Ada kalender Hijriyah, widget, dan pengingat teks. Tanpa suara atau adzan.
 
-**Unduh:** [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip). Windows 10 (build 19041 ke atas) dan Windows 11, x64.
+**Unduh:** [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x64.zip) (Windows 10 build 19041 ke atas dan Windows 11) · [x86](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah-win-x86.zip) · [Installer](https://github.com/asqal90/PrayerAutomation/releases/latest/download/AyoJamaah.Setup-2.1.2.exe).
 
 ## Status
 
-Versi sekarang 2.1.2. Nama di layar "Ayo Jama'ah!", file-nya `AyoJamaah.exe`. Portable dan installernya belum saya upload ke Releases, dan belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
+Versi sekarang 2.1.2. Nama di layar "Ayo Jama'ah!", file-nya `AyoJamaah.exe`. Portable (x64/x86) dan installer sudah diunggah di [Releases](https://github.com/asqal90/PrayerAutomation/releases/latest). Belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
 Yang berubah di 2.1.2: panel taskbar jadi popup saja, ada pratinjau gambar lock screen di Pengaturan, estimasi jadwal harian dipindah ke atas form lokasi, publish win-x86 ikut disediakan, plus perapihan kecil lain (koreksi Hijriyah diberi label, koreksi Masehi dihapus karena ikut tanggal komputer, koreksi Duha pakai tombol −/+). Installer pakai NSIS — bisa dibangun dari perangkat mana pun, payload dual x86+x64.
 
