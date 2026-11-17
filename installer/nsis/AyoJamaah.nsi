@@ -841,13 +841,16 @@ FunctionEnd
 
 Function ${P}CheckProductMutex
   StrCpy $SafetyProblem ""
-  System::Call 'kernel32::OpenMutexW(i 0x00100000, i 0, w "${APP_MUTEX}") p .R1'
+  ; ?e asks the System plug-in to call GetLastError() right after the API and
+  ; push the result; the separate GetLastError() call is never valid because
+  ; the plug-in clobbers the error code itself.
+  System::Call 'kernel32::OpenMutexW(i 0x00100000, i 0, w "${APP_MUTEX}") p .R1 ?e'
+  Pop $R2
   ${If} $R1 != 0
     System::Call 'kernel32::CloseHandle(p R1)'
     StrCpy $SafetyProblem "Penanda aplikasi masih aktif. Pilih Keluar lalu tunggu sampai proses selesai. Penanda global dapat berasal dari sesi/pengguna lain; pemasang tidak menghentikannya."
     Return
   ${EndIf}
-  System::Call 'kernel32::GetLastError() i .R2'
   ${If} $R2 != 2
     StrCpy $SafetyProblem "Penanda aplikasi tidak dapat diperiksa (Windows $R2)."
   ${EndIf}
@@ -858,8 +861,8 @@ Function ${P}AcquireSafetyMutex
   ${If} $SafetyMutex != 0
     Return
   ${EndIf}
-  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "${APP_MUTEX}") p .R1'
-  System::Call 'kernel32::GetLastError() i .R2'
+  System::Call 'kernel32::CreateMutexW(p 0, i 0, w "${APP_MUTEX}") p .R1 ?e'
+  Pop $R2
   ${If} $R1 == 0
     StrCpy $SafetyProblem "Penanda pengaman pemasangan tidak dapat dibuat."
   ${ElseIf} $R2 == 183
@@ -881,9 +884,9 @@ Function ${P}CheckFileUnlocked
   ; Input: $SafetyPath. Read+write, exclusive sharing, OPEN_EXISTING only.
   ; Uses $R registers because CheckTargetFiles owns $0/$1 for FindFirst/FindNext.
   StrCpy $SafetyProblem ""
-  System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R1'
+  System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R1 ?e'
+  Pop $R2
   ${If} $R1 == -1
-    System::Call 'kernel32::GetLastError() i .R2'
     ${If} $R2 == 2
       Return
     ${ElseIf} $R2 == 3
@@ -911,9 +914,9 @@ Function ${P}CheckTargetFiles
   StrCpy $SafetyProblem ""
   FindFirst $0 $1 "$SafetyPath\*.*"
   ${If} $0 == ""
-    System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R2'
+    System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R2 ?e'
+    Pop $R3
     ${If} $R2 == -1
-      System::Call 'kernel32::GetLastError() i .R3'
       ${If} $R3 != 2
       ${AndIf} $R3 != 3
         StrCpy $SafetyProblem "Isi direktori tujuan tidak dapat diperiksa: $SafetyPath"
@@ -1021,7 +1024,8 @@ Function ${P}ValidateInstallTarget
       StrCmp "$SafetyPath" "$SafetyPath2" 0 +2
         ${ExitDo}
       StrCpy $SafetyPath2 "$SafetyPath"
-      System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .r1'
+      System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .r1 ?e'
+      Pop $2
       ${If} $1 != -1
         IntOp $2 $1 & 0x400
         ${If} $2 != 0
@@ -1034,7 +1038,6 @@ Function ${P}ValidateInstallTarget
           Return
         ${EndIf}
       ${Else}
-        System::Call 'kernel32::GetLastError() i .r2'
         ${If} $2 != 2
         ${AndIf} $2 != 3
           StrCpy $SafetyProblem "Lokasi tujuan tidak dapat diperiksa: $SafetyPath (Windows $2)"
@@ -1049,9 +1052,9 @@ Function ${P}CheckRecoveryComponent
   ; Input: $SafetyPath. Output: $SafetyRecoveryExists.
   StrCpy $SafetyProblem ""
   StrCpy $SafetyRecoveryExists 0
-  System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R1'
+  System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath") i .R1 ?e'
+  Pop $R2
   ${If} $R1 == -1
-    System::Call 'kernel32::GetLastError() i .R2'
     ${If} $R2 == 2
       Return
     ${ElseIf} $R2 == 3
@@ -1111,9 +1114,9 @@ Function ${P}CheckPersistentRecovery
     ; real enumeration failure.
     System::Alloc 1024
     Pop $R8
-    System::Call 'kernel32::FindFirstFileW(w "$SafetyPath\*", p R8) p .R9'
+    System::Call 'kernel32::FindFirstFileW(w "$SafetyPath\*", p R8) p .R9 ?e'
+    Pop $R7
     ${If} $R9 == -1
-      System::Call 'kernel32::GetLastError() i .R7'
       ${If} $R7 != 2
         StrCpy $SafetyProblem "Isi direktori pemulihan tidak dapat diverifikasi: $SafetyPath (Windows $R7)"
       ${EndIf}
