@@ -1,3 +1,4 @@
+// Smoke test verifying the Settings UI image-hold duration field: default, validation, persistence isolation from reminder minutes, and Cancel/restore behavior.
 extern alias ProductUi;
 
 using System.IO;
@@ -6,8 +7,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
+/// <summary>Verifies the Settings image-hold duration editor against the real WPF UI with isolated persistence.</summary>
 internal static class LockScreenDurationSettingsSmoke
 {
+    /// <summary>Runs the image-hold duration settings checks against an isolated widget settings fixture.</summary>
+    /// <param name="application">Application hosting the settings window.</param>
     internal static void Run(Application application)
     {
         using var fixture = new WidgetSettingsInteractionSmoke.Fixture(application,
@@ -62,10 +66,14 @@ internal static class LockScreenDurationSettingsSmoke
         Console.WriteLine("LOCKSCREEN_DURATION_SETTINGS PASS: checks=" + checks + "; real_WPF=1; saved_minutes=7; reminder_minutes=3; original_profile_writes=0; native_setters=0.");
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    /// <summary>Pumps the dispatcher with context-idle priority.</summary>
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
 }

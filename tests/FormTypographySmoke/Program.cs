@@ -12,15 +12,24 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
+/// <summary>Smoke test verifying shared settings-form typography, spacing, focus, and dropdown contrast in a real WPF window.</summary>
 internal static class Program
 {
+    /// <summary>Binding flags used for reflection access to non-public members.</summary>
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    /// <summary>Collected check failures for the final report.</summary>
     private static readonly List<string> Failures = [];
+    /// <summary>Layout measurements captured for both form widths.</summary>
     private static readonly List<object> Layouts = [];
+    /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     private static readonly string[] SafetyFlags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled", "LockScreenOptIn", "StartupEnabled", "WidgetEnabled"];
+    /// <summary>TextBlock fields expected to use the shared paragraph help typography.</summary>
     private static readonly string[] HelpFields = ["OverviewCalculationNote", "OverviewCalendarStatus", "SelectedDateDetail", "HijriSelectedDateDetail", "SettingsScheduleDateLabel", "SettingsSchedulePreviewStatus", "NetworkLocationStatus", "GpsLocationStatus", "OfflineReverseGeocodeStatus", "OnlineGeocodingEndpointInfo", "OnlineGeocodingConsentDisclosure", "OnlineReverseGeocodeStatus", "WidgetPreviewOptionsText", "LockScreenSafetyText"];
+    /// <summary>CheckBox fields whose labels must wrap with the shared typography.</summary>
     private static readonly string[] CheckboxFields = ["OnlineReverseGeocodeConsentCheckBox", "ReminderEnabledCheckBox", "WidgetEnabledCheckBox", "StartupEnabledCheckBox", "StartHiddenCheckBox", "AutoLockEnabledCheckBox", "LockScreenCheckBox"];
 
+    /// <summary>Runs the form typography smoke suite; returns 0 on success, 1 on failure.</summary>
+    /// <returns>Process exit code.</returns>
     [STAThread]
     private static int Main()
     {
@@ -236,6 +245,10 @@ internal static class Program
         return Failures.Count == 0 ? 0 : 1;
     }
 
+    /// <summary>Verifies inline and stacked label/input spacing and the correction-group gaps; returns measurements.</summary>
+    /// <param name="content">Settings tab content root to inspect.</param>
+    /// <param name="window">Owning window used for the shared FieldLabel resource lookup.</param>
+    /// <returns>Spacing measurements and containment counts.</returns>
     private static object VerifyFormSpacing(FrameworkElement content, Window window)
     {
         var gaps = new List<object>();
@@ -314,6 +327,9 @@ internal static class Program
             method_width = selectedText?.ActualWidth, method_height = selectedText?.ActualHeight, method_expected_height = methodExpectedHeight };
     }
 
+    /// <summary>Measures the wrapped height of the realized text using actual WPF layout.</summary>
+    /// <param name="text">TextBlock to measure.</param>
+    /// <returns>Measured height in DIP.</returns>
     private static double RealizedTextHeight(TextBlock text)
     {
         var measured = new TextBlock
@@ -330,6 +346,12 @@ internal static class Program
         return measured.DesiredSize.Height;
     }
 
+    /// <summary>Verifies dropdown popup item contrast across all themes, selectors, and item states.</summary>
+    /// <param name="window">Main window under test.</param>
+    /// <param name="application">Application used to apply theme presets.</param>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="tabs">Main tab control used to switch tabs.</param>
+    /// <param name="output">Output directory for captured screenshots.</param>
     private static void VerifyDropdownText(Window window, Application application, Assembly assembly, TabControl tabs, string output)
     {
         Type manager = assembly.GetType("PrayerAutomation.UI.ThemeManager", true)!;
@@ -403,10 +425,20 @@ internal static class Program
         Console.WriteLine("FORM_DROPDOWN_TEXT_CONTRAST themes=" + themes + " selectors=7 checks=" + checks + " minimum=" + minimum.ToString("0.000", CultureInfo.InvariantCulture) + ":1.");
     }
 
+    /// <summary>Computes the WCAG contrast ratio between two colors.</summary>
+    /// <param name="a">First color.</param>
+    /// <param name="b">Second color.</param>
+    /// <returns>Contrast ratio (>= 1).</returns>
     private static double Contrast(Color a, Color b)
     {
+        /// <summary>Computes relative luminance of a color.</summary>
+        /// <param name="c">Color to evaluate.</param>
+        /// <returns>Relative luminance.</returns>
         static double L(Color c)
         {
+            /// <summary>Linearizes one 8-bit channel value.</summary>
+            /// <param name="value">Channel value 0-255.</param>
+            /// <returns>Linearized channel.</returns>
             static double C(byte value) { double x = value / 255d; return x <= .04045 ? x / 12.92 : Math.Pow((x + .055) / 1.055, 2.4); }
             return .2126 * C(c.R) + .7152 * C(c.G) + .0722 * C(c.B);
         }
@@ -414,8 +446,18 @@ internal static class Program
         return (Math.Max(x, y) + .05) / (Math.Min(x, y) + .05);
     }
 
+    /// <summary>Determines whether an element is treated as an input control for spacing checks.</summary>
+    /// <param name="element">Element to test.</param>
+    /// <returns>True for buttons, text boxes, and combo boxes.</returns>
     private static bool IsInput(FrameworkElement element) => element is Button or TextBox or ComboBox;
+    /// <summary>Bounds of an element relative to an ancestor visual.</summary>
+    /// <param name="element">Element to measure.</param>
+    /// <param name="ancestor">Ancestor visual used as the coordinate origin.</param>
+    /// <returns>Element bounds in ancestor coordinates.</returns>
     private static Rect Bounds(FrameworkElement element, Visual ancestor) => element.TransformToAncestor(ancestor).TransformBounds(new Rect(element.RenderSize));
+    /// <summary>Builds formatted text metrics matching the TextBlock's typography.</summary>
+    /// <param name="text">Source text block.</param>
+    /// <returns>Formatted text for measurement.</returns>
     private static FormattedText TextMetrics(TextBlock text)
     {
         var formatted = new FormattedText(text.Text, CultureInfo.CurrentCulture, text.FlowDirection,
@@ -424,8 +466,14 @@ internal static class Program
         if (!double.IsNaN(text.LineHeight)) formatted.LineHeight = text.LineHeight;
         return formatted;
     }
+    /// <summary>Bounds of the rendered ink of a TextBlock relative to an ancestor visual.</summary>
+    /// <param name="text">Text block to measure.</param>
+    /// <param name="ancestor">Ancestor visual used as the coordinate origin.</param>
+    /// <returns>Ink bounds in ancestor coordinates.</returns>
     private static Rect TextInkBounds(TextBlock text, Visual ancestor) => text.TransformToAncestor(ancestor).TransformBounds(TextMetrics(text).BuildGeometry(new Point()).Bounds);
 
+    /// <summary>Creates the product application with its implicit WPF startup callback aborted exactly once.</summary>
+    /// <returns>The created application, with startup suppressed.</returns>
     private static Application CreateApplicationWithoutStartup()
     {
         FieldInfo callbackField = typeof(DispatcherOperation).GetField("_method", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -442,6 +490,9 @@ internal static class Program
         VerifyStartupAbsent(application);
         return application;
 
+        /// <summary>Aborts the single implicit WPF startup callback while it is still pending; throws on any unexpected shape.</summary>
+        /// <param name="sender">Event sender (unused).</param>
+        /// <param name="e">Dispatcher hook event carrying the posted operation.</param>
         void AbortStartup(object? sender, DispatcherHookEventArgs e)
         {
             if (callbackField.GetValue(e.Operation) is not Delegate callback || callback.Method.DeclaringType != typeof(Application) || callback.Method.Name != "<.ctor>b__1_0") return;
@@ -452,6 +503,8 @@ internal static class Program
         }
     }
 
+    /// <summary>Fails closed when any consequential startup object was created on the application.</summary>
+    /// <param name="application">Application to inspect.</param>
     private static void VerifyStartupAbsent(Application application)
     {
         foreach (string name in new[] { "_singleInstanceMutex", "_tray", "_reminders", "_autoLock", "_lockScreenScheduler", "_widget" })
@@ -459,16 +512,34 @@ internal static class Program
                 throw new InvalidOperationException("Fail closed: no startup/session actions may run (" + name + ").");
     }
 
+    /// <summary>Reflects a field from the window, cast to the requested type.</summary>
+    /// <typeparam name="T">Field value type.</typeparam>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="name">Field name.</param>
+    /// <returns>The field value.</returns>
     private static T Field<T>(Window window, string name) => (T)window.GetType().GetField(name, Members)!.GetValue(window)!;
+    /// <summary>Records a failure message when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must hold.</param>
+    /// <param name="failure">Failure message recorded when false.</param>
     private static void Check(bool condition, string failure) { if (!condition) Failures.Add(failure); }
+    /// <summary>Truncates a string to 70 characters for reports.</summary>
+    /// <param name="value">Value to shorten.</param>
+    /// <returns>The original or truncated value.</returns>
     private static string Short(string value) => value.Length <= 70 ? value : value[..70] + "…";
+    /// <summary>Pumps the dispatcher at ContextIdle priority.</summary>
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+    /// <summary>Enumerates a dependency object and its descendants depth-first.</summary>
+    /// <param name="root">Root to enumerate.</param>
+    /// <returns>The root followed by all descendants.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         yield return root;
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
             foreach (DependencyObject child in Descendants(VisualTreeHelper.GetChild(root, i))) yield return child;
     }
+    /// <summary>Renders an element to a PNG file with the themed background brush.</summary>
+    /// <param name="element">Element to capture.</param>
+    /// <param name="path">Destination PNG path.</param>
     private static void Capture(FrameworkElement element, string path)
     {
         element.UpdateLayout();

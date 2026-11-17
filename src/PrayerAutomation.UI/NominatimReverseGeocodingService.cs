@@ -7,8 +7,10 @@ using System.Text.Json;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Reverse-geocodes GPS coordinates via an online Nominatim-compatible service with caching and rate limiting.</summary>
 internal sealed class NominatimReverseGeocodingService
 {
+    /// <summary>Default Nominatim base URL.</summary>
     internal const string DefaultBaseUri = "https://nominatim.openstreetmap.org";
     private static readonly HttpClient SharedHttpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private static readonly SemaphoreSlim RequestGate = new(1, 1);
@@ -21,11 +23,18 @@ internal sealed class NominatimReverseGeocodingService
     private static DateTimeOffset _lastRequestStartedUtc = DateTimeOffset.MinValue;
     private readonly HttpClient _httpClient;
 
+    /// <summary>Initializes the service, optionally with a caller-provided HTTP client.</summary>
+    /// <param name="httpClient">Client to use; the shared client is used when null.</param>
     internal NominatimReverseGeocodingService(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? SharedHttpClient;
     }
 
+    /// <summary>Validates and normalizes a user-provided service base URL (HTTPS, no credentials/query/fragment, not an /reverse endpoint).</summary>
+    /// <param name="value">Candidate base URL; falls back to the default when null/empty.</param>
+    /// <param name="baseUri">The normalized base URI.</param>
+    /// <param name="error">Validation error message when normalization fails.</param>
+    /// <returns>True when the URL is usable.</returns>
     internal static bool TryNormalizeBaseUri(string? value, out Uri baseUri, out string error)
     {
         baseUri = new Uri(DefaultBaseUri, UriKind.Absolute);
@@ -57,6 +66,14 @@ internal sealed class NominatimReverseGeocodingService
         return true;
     }
 
+    /// <summary>Reverse-geocodes the current device location; requires explicit user consent and GPS/Wi-Fi/cellular source.</summary>
+    /// <param name="acquireCurrentLocation">Acquires the current device location.</param>
+    /// <param name="endpointBaseUri">Base URL of the geocoding service.</param>
+    /// <param name="userConsentGranted">Must be true; online geocoding sends coordinates to the network.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The resolved location.</returns>
+    /// <exception cref="InvalidOperationException">Consent missing, location unavailable, or source not GPS/Wi-Fi/cellular.</exception>
+    /// <exception cref="ArgumentException"><paramref name="endpointBaseUri"/> is invalid.</exception>
     internal async Task<OnlineLocationResult> ReverseGeocodeCurrentAsync(
         Func<CancellationToken, Task<DeviceLocationResult>> acquireCurrentLocation,
         string endpointBaseUri,
@@ -123,6 +140,11 @@ internal sealed class NominatimReverseGeocodingService
         }
     }
 
+    /// <summary>Builds the /reverse request URI for the given coordinates.</summary>
+    /// <param name="baseUri">Normalized service base URI.</param>
+    /// <param name="latitude">Latitude text.</param>
+    /// <param name="longitude">Longitude text.</param>
+    /// <returns>The request URI.</returns>
     private static Uri BuildRequestUri(Uri baseUri, string latitude, string longitude)
     {
         string endpoint = baseUri.AbsoluteUri.TrimEnd('/') + "/reverse";
@@ -131,6 +153,11 @@ internal sealed class NominatimReverseGeocodingService
         return new UriBuilder(endpoint) { Query = query }.Uri;
     }
 
+    /// <summary>Reads a response body with a hard size cap; throws when exceeded.</summary>
+    /// <param name="content">The response content to read.</param>
+    /// <param name="cancellationToken">Token to cancel the read.</param>
+    /// <returns>The response body as text.</returns>
+    /// <exception cref="InvalidDataException">The body exceeds the size cap.</exception>
     private static async Task<string> ReadLimitedResponseAsync(HttpContent content, CancellationToken cancellationToken)
     {
         if (content.Headers.ContentLength is long length && length > MaximumResponseBytes)
@@ -151,6 +178,10 @@ internal sealed class NominatimReverseGeocodingService
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
 
+    /// <summary>Parses a Nominatim /reverse response into a location result.</summary>
+    /// <param name="json">Response body.</param>
+    /// <returns>The parsed location.</returns>
+    /// <exception cref="InvalidDataException">Address details or license attribution are missing or unusable.</exception>
     private static OnlineLocationResult ParseResponse(string json)
     {
         using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 16 });
@@ -172,6 +203,10 @@ internal sealed class NominatimReverseGeocodingService
         return new OnlineLocationResult(city, region, country, displayName, attribution);
     }
 
+    /// <summary>Returns the first non-empty trimmed string among the given properties.</summary>
+    /// <param name="element">The parent element.</param>
+    /// <param name="propertyNames">Property names to try in order.</param>
+    /// <returns>The first non-empty value, or empty string.</returns>
     private static string FirstString(JsonElement element, params string[] propertyNames)
     {
         foreach (string propertyName in propertyNames)
@@ -186,6 +221,10 @@ internal sealed class NominatimReverseGeocodingService
         return "";
     }
 
+    /// <summary>Looks up a cache entry, dropping expired entries.</summary>
+    /// <param name="key">Cache key.</param>
+    /// <param name="result">The cached result on hit.</param>
+    /// <returns>True on a fresh cache hit.</returns>
     private static bool TryGetCached(string key, out OnlineLocationResult result)
     {
         lock (CacheLock)
@@ -204,6 +243,9 @@ internal sealed class NominatimReverseGeocodingService
         return false;
     }
 
+    /// <summary>Adds a result to the memory cache, evicting expired and oldest entries as needed.</summary>
+    /// <param name="key">Cache key.</param>
+    /// <param name="result">The result to cache.</param>
     private static void AddToCache(string key, OnlineLocationResult result)
     {
         lock (CacheLock)
@@ -220,9 +262,11 @@ internal sealed class NominatimReverseGeocodingService
         }
     }
 
+    /// <summary>Cache entry with its expiration time.</summary>
     private sealed record CacheEntry(OnlineLocationResult Result, DateTimeOffset ExpiresAtUtc);
 }
 
+/// <summary>Location resolved by the online reverse-geocoding service, including license attribution.</summary>
 internal sealed record OnlineLocationResult(
     string CityName,
     string RegionName,

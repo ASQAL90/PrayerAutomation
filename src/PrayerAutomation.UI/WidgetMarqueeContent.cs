@@ -2,6 +2,7 @@ using System.Globalization;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Builds the marquee line text from date, Hijri date, prayer times, countdown, and observances.</summary>
 internal static class WidgetMarqueeContent
 {
     private static readonly CultureInfo IndonesianCulture = CultureInfo.GetCultureInfo("id-ID");
@@ -19,6 +20,9 @@ internal static class WidgetMarqueeContent
             "Sahih Muslim 1005", "https://sunnah.com/muslim:1005")
     ];
 
+    /// <summary>Returns the rotating religious message for the given completed marquee cycle count.</summary>
+    /// <param name="completedCycles">Number of completed marquee cycles.</param>
+    /// <returns>The message text including reference and source URL.</returns>
     internal static string ReligiousMessageAt(long completedCycles)
     {
         int index = (int)(completedCycles % ReligiousMessages.Length);
@@ -27,6 +31,15 @@ internal static class WidgetMarqueeContent
         return $"Hadis (ringkasan makna Indonesia): {message.Meaning} — {message.Reference} | {message.SourceUrl}";
     }
 
+    /// <summary>Builds the full marquee content string.</summary>
+    /// <param name="now">Location-local current time.</param>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="hijri">Hijri date to display.</param>
+    /// <param name="schedule">Prayer times for today.</param>
+    /// <param name="countdown">The next-prayer countdown, if available.</param>
+    /// <param name="observances">Calendar observances for today.</param>
+    /// <param name="message">Optional religious message override.</param>
+    /// <returns>The combined marquee text.</returns>
     internal static string Build(DateTime now, AppSettings settings, NativeCalendarDate hijri,
         IReadOnlyList<PrayerEntry> schedule, PrayerCountdown? countdown,
         IReadOnlyList<CalendarObservance> observances, string? message = null)

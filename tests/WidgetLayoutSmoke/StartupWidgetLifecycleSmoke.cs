@@ -10,11 +10,15 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Fixture = WidgetSettingsInteractionSmoke.Fixture;
 
+/// <summary>Smoke test verifying widget startup lifecycle races with drafts, saves, discards, and shutdown.</summary>
 internal static class StartupWidgetLifecycleSmoke
 {
+    /// <summary>Binding flags for instance members.</summary>
     private const BindingFlags I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    /// <summary>Set once widget isolation metadata has been installed.</summary>
     private static bool _isolationInstalled;
 
+    /// <summary>Installs metadata overrides isolating the widget window from activation, topmost, and hit testing.</summary>
     public static void InstallWidgetIsolation()
     {
         if (_isolationInstalled) return;
@@ -33,6 +37,8 @@ internal static class StartupWidgetLifecycleSmoke
         _isolationInstalled = true;
     }
 
+    /// <summary>Runs all startup-lifecycle cases against isolated fixtures.</summary>
+    /// <param name="application">Application used to host the isolated fixtures.</param>
     public static void Run(Application application)
     {
         var failures = new List<string>();
@@ -162,6 +168,11 @@ internal static class StartupWidgetLifecycleSmoke
         Assert(failures.Count == 0, string.Join(Environment.NewLine, failures));
         Console.WriteLine($"WIDGET_STARTUP_LIFECYCLE PASS: cases={cases} actual checkbox/motion/Cancel/Save/tray, initial-null, saved-disabled, manual-hidden, shutdown; production sole-await replay only.");
 
+        /// <summary>Runs one fixture case, replaying suspended startup before verifying.</summary>
+        /// <param name="name">Case name.</param>
+        /// <param name="enabled">Whether the saved widget setting is enabled.</param>
+        /// <param name="preexisting">Whether the fixture starts with a widget already present.</param>
+        /// <param name="verify">Case body receiving the fixture and the startup-tail replay.</param>
         void Case(string name, bool enabled, bool preexisting, Action<Fixture, StartupTailReplay> verify)
         {
             cases++;
@@ -182,7 +193,12 @@ internal static class StartupWidgetLifecycleSmoke
         }
     }
 
+    /// <summary>Serializes the fixture settings for comparison.</summary>
+    /// <param name="fixture">Isolated fixture.</param>
+    /// <returns>The serialized settings JSON.</returns>
     private static string Serialize(Fixture fixture) => JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
+    /// <summary>Clicks the real Save button and verifies the synthetic persistence readback.</summary>
+    /// <param name="fixture">Isolated fixture.</param>
     private static void Save(Fixture fixture)
     {
         fixture.Field<Button>("SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -198,6 +214,9 @@ internal static class StartupWidgetLifecycleSmoke
             saved.RootElement.GetProperty("widget_motion").GetString() == fixture.SelectedTag("WidgetMotionBox"),
             "The isolated persistence file must read back the actual widget draft saved by the production handler.");
     }
+    /// <summary>Discards changes via the cancel button or the tray close path.</summary>
+    /// <param name="fixture">Isolated fixture.</param>
+    /// <param name="tray">When true, closes via the window close (tray) path; otherwise clicks Batalkan perubahan.</param>
     private static void Discard(Fixture fixture, bool tray)
     {
         if (tray) fixture.MainWindow.Close();
@@ -206,6 +225,8 @@ internal static class StartupWidgetLifecycleSmoke
         Pump();
         if (tray) Assert(!fixture.MainWindow.IsVisible, "The actual Closing event must hide the main window to the tray.");
     }
+    /// <summary>Clicks the widget's real hide button and verifies the window is hidden.</summary>
+    /// <param name="widget">Widget window to hide.</param>
     private static void HideWidget(Window widget)
     {
         Descendants(widget).OfType<Button>().Single(button => button.Content as string == "×")
@@ -213,9 +234,17 @@ internal static class StartupWidgetLifecycleSmoke
         Pump();
         Assert(!widget.IsVisible, "The actual widget hide button must hide the real window.");
     }
+    /// <summary>Finds a descendant element by its automation ID, or null when absent.</summary>
+    /// <typeparam name="T">Element type to match.</typeparam>
+    /// <param name="root">Root to search.</param>
+    /// <param name="id">Automation ID to match.</param>
+    /// <returns>The matching element, or null.</returns>
     private static T? Find<T>(DependencyObject root, string id) where T : DependencyObject =>
         Descendants(root).OfType<T>().SingleOrDefault(element =>
             System.Windows.Automation.AutomationProperties.GetAutomationId(element) == id);
+    /// <summary>Enumerates a visual node's descendants depth-first, excluding the node itself.</summary>
+    /// <param name="root">Root to enumerate from.</param>
+    /// <returns>All descendants of the node.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
@@ -225,23 +254,38 @@ internal static class StartupWidgetLifecycleSmoke
             foreach (DependencyObject descendant in Descendants(child)) yield return descendant;
         }
     }
+    /// <summary>Pumps the dispatcher at ContextIdle priority.</summary>
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 
     // Never invoke OnStartup: replay only its verified, already-suspended sole await.
+    /// <summary>Replays only the verified suspended await tail of production OnStartup, never the initial prefix.</summary>
     private sealed class StartupTailReplay : IDisposable
     {
+        /// <summary>Compiler-generated state machine instance.</summary>
         private readonly object _machine;
+        /// <summary>Reflected MoveNext method.</summary>
         private readonly MethodInfo _moveNext;
+        /// <summary>Reflected state field.</summary>
         private readonly FieldInfo _state;
+        /// <summary>Isolated fixture under test.</summary>
         private readonly Fixture _fixture;
+        /// <summary>Completion source used to release the awaited Task.</summary>
         private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        /// <summary>Set once the replayed tail finished.</summary>
         private bool _finished;
+        /// <summary>Error captured from the replayed tail, if any.</summary>
         private Exception? _error;
 
+        /// <summary>Creates the replay guard; does not complete until <see cref="Complete"/> is called.</summary>
+        /// <param name="application">Application instance placed as the machine owner.</param>
+        /// <param name="fixture">Isolated fixture holding the window under test.</param>
         public StartupTailReplay(Application application, Fixture fixture)
         {
             _fixture = fixture;
@@ -283,6 +327,7 @@ internal static class StartupWidgetLifecycleSmoke
             });
             Console.WriteLine($"STARTUP_REPLAY_GUARD PASS: production=OnStartup sole-await=0 resume-offset={resumeOffset} prefix-calls=0 startup-objects=null.");
         }
+        /// <summary>Completes the awaited Task and pumps until the replayed tail finishes.</summary>
         public void Complete()
         {
             Assert(!_finished, "Startup recovery must be completed only once.");
@@ -298,7 +343,9 @@ internal static class StartupWidgetLifecycleSmoke
             finally { timeout.Stop(); poll.Stop(); }
             Assert(_finished && _error is null, "Controlled production startup continuation failed: " + _error);
         }
+        /// <summary>Completes the replay when it has not finished yet.</summary>
         public void Dispose() { if (!_finished && !_completion.Task.IsCompleted) Complete(); }
+        /// <summary>Fails closed when any startup object was created on the application.</summary>
         private void VerifyNoStartupObjects()
         {
             foreach (string name in new[] { "_singleInstanceMutex", "_tray", "_reminders", "_autoLock", "_lockScreenScheduler" })
@@ -307,6 +354,12 @@ internal static class StartupWidgetLifecycleSmoke
         }
     }
 
+    /// <summary>Verifies the compiled OnStartup IL resumes only at the suspended await, never in the initial prefix.</summary>
+    /// <param name="method">MoveNext method to inspect.</param>
+    /// <param name="state">State field.</param>
+    /// <param name="owner">Owner field.</param>
+    /// <param name="awaiter">Awaiter field.</param>
+    /// <returns>IL offset of the verified resume target.</returns>
     private static int VerifyResumeOnly(MethodInfo method, FieldInfo state, FieldInfo owner, FieldInfo awaiter)
     {
         Instruction[] il = Decode(method).ToArray();
@@ -350,6 +403,11 @@ internal static class StartupWidgetLifecycleSmoke
                 "Fail closed: resumed awaiter cleanup must not reach any startup prefix or unrelated field.");
         return target;
     }
+    /// <summary>Maps a loc/stloc opcode to its local index, or -1 when not a local access.</summary>
+    /// <param name="op">Opcode to inspect.</param>
+    /// <param name="operand">Opcode operand.</param>
+    /// <param name="store">True to handle stores; false for loads.</param>
+    /// <returns>The local index, or -1.</returns>
     private static int LocalIndex(OpCode op, object? operand, bool store)
     {
         OpCode[] small = store ? [OpCodes.Stloc_0, OpCodes.Stloc_1, OpCodes.Stloc_2, OpCodes.Stloc_3]
@@ -360,7 +418,11 @@ internal static class StartupWidgetLifecycleSmoke
             return Convert.ToInt32(operand);
         return -1;
     }
+    /// <summary>Decoded IL instruction (offset, opcode, operand).</summary>
     private sealed record Instruction(int Offset, OpCode OpCode, object? Operand);
+    /// <summary>Decodes method body IL into instructions; fails closed on unsupported operand types.</summary>
+    /// <param name="method">Method to decode.</param>
+    /// <returns>The decoded instruction sequence.</returns>
     private static IEnumerable<Instruction> Decode(MethodInfo method)
     {
         byte[] bytes = method.GetMethodBody()!.GetILAsByteArray()!;
@@ -404,6 +466,8 @@ internal static class StartupWidgetLifecycleSmoke
             }
             yield return new Instruction(offset, op, operand);
         }
+        /// <summary>Reads a little-endian 32-bit integer at the cursor and advances it.</summary>
+        /// <returns>The decoded integer.</returns>
         int ReadInt() { int value = BitConverter.ToInt32(bytes, cursor); cursor += 4; return value; }
     }
 }
@@ -411,11 +475,16 @@ internal static class StartupWidgetLifecycleSmoke
 // WPF queues startup at Send priority in its constructor even without Run.
 // Abort only that exact callback before any Dispatcher pump; retain the actual
 // product App type so its compiled BAML resources still load without imitation.
+/// <summary>Isolated WPF application factory suppressing the implicit constructor startup callback.</summary>
 internal static class WpfApplicationIsolation
 {
+    /// <summary>Aborted implicit startup operation, if any.</summary>
     private static DispatcherOperation? _startup;
+    /// <summary>Number of aborted implicit startup callbacks.</summary>
     private static int _abortedCallbacks;
 
+    /// <summary>Creates the product application with its implicit startup callback aborted exactly once.</summary>
+    /// <returns>The created application, with startup suppressed.</returns>
     internal static Application Create()
     {
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -431,6 +500,9 @@ internal static class WpfApplicationIsolation
         }
         finally { dispatcher.Hooks.OperationPosted -= AbortStartup; }
 
+        /// <summary>Aborts the implicit WPF startup callback while pending; throws on any unexpected shape.</summary>
+        /// <param name="sender">Event sender (unused).</param>
+        /// <param name="e">Dispatcher hook event carrying the posted operation.</param>
         void AbortStartup(object? sender, DispatcherHookEventArgs e)
         {
             if (callbackField.GetValue(e.Operation) is not Delegate callback ||
@@ -443,6 +515,8 @@ internal static class WpfApplicationIsolation
         }
     }
 
+    /// <summary>Fails closed unless exactly one implicit startup callback was aborted and no startup objects exist.</summary>
+    /// <param name="application">Application to verify.</param>
     internal static void Verify(Application application)
     {
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;

@@ -3,14 +3,23 @@ using System.Reflection;
 using PrayerAutomation.UI;
 using static Program;
 
+/// <summary>Verifies scheduler safety behavior: lease/journal handling, fail-closed paths, and recovery timing.</summary>
 internal static class SafetyChecks
 {
+    /// <summary>Reads a non-public instance field from the scheduler via reflection.</summary>
+    /// <param name="scheduler">Scheduler instance to inspect.</param>
+    /// <param name="name">Field name.</param>
+    /// <returns>The field value.</returns>
     private static object? Field(object scheduler, string name) => scheduler.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(scheduler);
+    /// <summary>Requires that the action throws <see cref="IOException"/>, recording the check under the given name.</summary>
+    /// <param name="action">Action expected to fail.</param>
+    /// <param name="name">Check label.</param>
     private static async Task ExpectIo(Func<Task> action, string name)
     {
         bool failed = false; try { await action(); } catch (IOException) { failed = true; }
         Check(failed, name);
     }
+    /// <summary>Runs all scheduler safety scenarios against the fake backends, leases, and power seams.</summary>
     internal static async Task RunAsync()
     {
         var lease = new RecordingLease(); var backend = new FakeBackend(); var store = new MemoryStore();

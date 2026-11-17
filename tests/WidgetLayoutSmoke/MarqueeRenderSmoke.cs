@@ -10,10 +10,13 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
+/// <summary>Smoke test verifying the essential-mode marquee never renders blank frames while scrolling.</summary>
 internal static class MarqueeRenderSmoke
 {
+    /// <summary>Binding flags for instance members.</summary>
     private const BindingFlags I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
+    /// <summary>Runs the marquee render smoke test and writes evidence JSON.</summary>
     public static void Run()
     {
         Assembly assembly = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
@@ -76,6 +79,10 @@ internal static class MarqueeRenderSmoke
                 "Repeated marquee text must remain visible at the right side before, at, and after cycle wrap.");
             Console.WriteLine($"MARQUEE_RENDER PASS: frames={samples.Count} full/narrow short/production dpi=96/144 empty=0 right-side-entry verified.");
 
+            /// <summary>Captures render samples for production and short text at full and narrow widths.</summary>
+            /// <param name="name">Content label for the samples.</param>
+            /// <param name="text">Marquee text to render.</param>
+            /// <param name="normalWidth">Baseline viewport width.</param>
             void CaptureCases(string name, string text, double normalWidth)
             {
                 foreach (double width in new[] { normalWidth, 180d })
@@ -108,6 +115,9 @@ internal static class MarqueeRenderSmoke
         finally { window.Close(); }
     }
 
+    /// <summary>Enumerates a visual node and its descendants depth-first.</summary>
+    /// <param name="node">Root to enumerate.</param>
+    /// <returns>The descendants of the node, excluding the node itself.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject node)
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
@@ -118,6 +128,10 @@ internal static class MarqueeRenderSmoke
         }
     }
 
+    /// <summary>Renders the viewport to a bitmap at the given DPI and counts ink pixels, including the right quarter.</summary>
+    /// <param name="viewport">Element to render.</param>
+    /// <param name="dpi">Render DPI.</param>
+    /// <returns>Total ink pixels and ink pixels in the right quarter.</returns>
     private static (int Ink, int RightInk) RenderInk(FrameworkElement viewport, int dpi)
     {
         var rect = new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight);
@@ -152,11 +166,15 @@ internal static class MarqueeRenderSmoke
         return (ink, rightInk);
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    /// <summary>One sampled marquee render measurement.</summary>
     private sealed record Sample(string Content, double ViewportWidth, int RenderDpi, double Phase,
         int InkPixels, int RightQuarterInkPixels, double LineWidth, double LayoutSlotWidth, double? ClipWidth);
 }

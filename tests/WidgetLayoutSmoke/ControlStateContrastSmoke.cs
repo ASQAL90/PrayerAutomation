@@ -1,3 +1,4 @@
+// Smoke test verifying WCAG-style foreground/background contrast of themed WPF controls in normal, hover, pressed, selected, disabled and popup states across all themes.
 extern alias ProductUi;
 
 using System.Collections;
@@ -9,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
+/// <summary>Verifies theme-aware control state contrast against the product's theme catalog.</summary>
 internal static class ControlStateContrastSmoke
 {
     private static readonly BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
@@ -19,6 +21,9 @@ internal static class ControlStateContrastSmoke
     private static readonly DependencyPropertyKey HighlightedKey = (DependencyPropertyKey)typeof(ComboBoxItem)
         .GetField("IsHighlightedPropertyKey", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
 
+    /// <summary>Applies every theme in turn, measures control state contrast, and reports results via console and the errors list.</summary>
+    /// <param name="application">Application whose themes are applied.</param>
+    /// <param name="errors">Accumulator for contrast failures.</param>
     internal static void Run(Application application, List<string> errors)
     {
         Assembly assembly = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
@@ -150,6 +155,10 @@ internal static class ControlStateContrastSmoke
         apply.Invoke(null, [application, "light"]);
         Console.WriteLine($"CONTROL_STATE_CONTRAST themes={themes.Length} checks={checks} minimum={minimum:0.000}:1 failures={errors.Count - initialErrors}");
 
+        /// <summary>Checks one foreground/background pair, records the ratio, and appends an error when below 4.5:1.</summary>
+        /// <param name="foreground">Measured foreground brush.</param>
+        /// <param name="background">Measured background brush.</param>
+        /// <param name="label">Check label used in error messages.</param>
         void Check(Brush? foreground, Brush? background, string label)
         {
             checks++;
@@ -164,6 +173,10 @@ internal static class ControlStateContrastSmoke
         }
     }
 
+    /// <summary>Returns the brush of the first opaque descendant border, falling back to the control or window background.</summary>
+    /// <param name="control">Control to inspect.</param>
+    /// <param name="fallback">Fallback brush when neither yields an opaque surface.</param>
+    /// <returns>The surface brush, or null.</returns>
     private static Brush? Surface(Control control, Brush fallback)
     {
         control.ApplyTemplate();
@@ -171,8 +184,14 @@ internal static class ControlStateContrastSmoke
             ?? (Opaque(control.Background) ? control.Background : fallback);
     }
 
+    /// <summary>Returns true when the brush is fully opaque solid color.</summary>
+    /// <param name="brush">Brush to test.</param>
+    /// <returns>True when opaque solid color.</returns>
     private static bool Opaque(Brush? brush) => brush is SolidColorBrush color && color.Color.A == 255 && brush.Opacity == 1;
 
+    /// <summary>Enumerates visual descendants of a node.</summary>
+    /// <param name="node">Root visual.</param>
+    /// <returns>Descendant dependency objects in depth-first order.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject node)
     {
         if (node is not Visual && node is not System.Windows.Media.Media3D.Visual3D) yield break;
@@ -184,12 +203,23 @@ internal static class ControlStateContrastSmoke
         }
     }
 
+    /// <summary>Pumps the dispatcher with context-idle priority.</summary>
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
 
+    /// <summary>Computes the WCAG contrast ratio between two colors.</summary>
+    /// <param name="a">First color.</param>
+    /// <param name="b">Second color.</param>
+    /// <returns>Contrast ratio (1.0 or higher).</returns>
     private static double Ratio(Color a, Color b)
     {
+        /// <summary>Relative luminance of a color (WCAG formula).</summary>
+        /// <param name="c">Color to evaluate.</param>
+        /// <returns>Relative luminance between 0 and 1.</returns>
         static double L(Color c)
         {
+            /// <summary>Linearizes one sRGB channel (WCAG formula).</summary>
+            /// <param name="value">Channel value 0-255.</param>
+            /// <returns>Linearized channel value.</returns>
             static double C(byte value)
             {
                 double x = value / 255.0;

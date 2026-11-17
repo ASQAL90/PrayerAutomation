@@ -2,8 +2,11 @@ using System.IO;
 using System.Security.Cryptography;
 using PrayerAutomation.UI;
 
+/// <summary>Verifies native apply/restore/maintenance boundaries preserve user-selected lock-screen sources and modes.</summary>
 internal static class LockScreenNativeBoundarySmoke
 {
+    /// <summary>Verifies a user source change at the native apply-mode boundary preserves the user's mode and image without writes.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyApplyModeBoundaryPreservesUserImageAsync(string root)
     {
         string directory = Path.Combine(root, "apply-mode-boundary-spotlight");
@@ -35,6 +38,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("PASS: native apply-mode boundary preserves a new user source and Slideshow mode without rollback writes.");
     }
 
+    /// <summary>Verifies a user source change at the native restore-mode boundary refuses the write and later recovery preserves it.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyRestoreModeBoundaryPreservesUserImageAsync(string root)
     {
         int cases = 0;
@@ -82,6 +87,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine($"LOCKSCREEN_RESTORE_MODE_BOUNDARIES PASS: cases={cases}; previous_modes=Spotlight,Slideshow,Picture; user_source_and_mode_preserved=1; real_native_writes=0.");
     }
 
+    /// <summary>Verifies Spotlight restore recovery succeeds without an original image URI, using only the saved mode.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifySpotlightRecoveryWithoutOriginalImageAsync(string root)
     {
         string directory = Path.Combine(root, "spotlight-mode-only");
@@ -123,6 +130,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("PASS: production Spotlight capture/restart recovery requires only the saved mode, not an original image URI.");
     }
 
+    /// <summary>Verifies Picture mode capture stores a verified copy of the original image and restore returns it.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyPictureCaptureRestoreAsync(string root)
     {
         string directory = Path.Combine(root, "picture-backup");
@@ -153,6 +162,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("PASS: production Picture capture/restore copies and verifies the original image; active restore files survive cleanup.");
     }
 
+    /// <summary>Verifies the backend rechecks source ownership at the native setter and refuses a changed user picture.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyPreparationRecheckAsync(string root)
     {
         string directory = Path.Combine(root, "preparation-recheck");
@@ -181,6 +192,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("PASS: production backend rechecks ownership at the injected native setter boundary and preserves a changed user picture.");
     }
 
+    /// <summary>Verifies a configured image lease survives mode-only Windows drift and restores at the deadline.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyConfiguredLeaseSurvivesModeDriftAsync(string root)
     {
         int checks = 0;
@@ -237,6 +250,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("LOCKSCREEN_MODE_DRIFT_HOLD PASS: checks=" + checks + "; modes=2; selected_minutes=7; early_drift_seconds=3; different_user_source_preserved=1; real_native_writes=0.");
     }
 
+    /// <summary>Verifies the polling scheduler repairs confirmed mode drift promptly and restores at expiry.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifySchedulerMaintainsModeDriftAsync(string root)
     {
         DateTimeOffset start = new(2026, 10, 23, 8, 0, 0, TimeSpan.Zero);
@@ -280,6 +295,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("LOCKSCREEN_SCHEDULER_MODE_HOLD PASS: checks=" + checks + "; modes=2; polling_seconds=1; saved_minutes=7; native_calls=isolated-only.");
     }
 
+    /// <summary>Verifies maintenance rechecks source ownership at the image and mode write boundaries and refuses changes.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyMaintenanceBoundaryPreservesUserImageAsync(string root)
     {
         DateTimeOffset start = new(2026, 10, 23, 8, 0, 0, TimeSpan.Zero);
@@ -319,6 +336,8 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine("LOCKSCREEN_MAINTENANCE_BOUNDARIES PASS: checks=" + checks + "; boundaries=image,mode; external_source_preserved=1; real_native_writes=0.");
     }
 
+    /// <summary>Verifies failed or unknown active recovery backs off for thirty seconds and resumes one-second polling after success.</summary>
+    /// <param name="root">Directory holding the synthetic fixture files.</param>
     internal static async Task VerifyActiveRecoveryBackoffAsync(string root)
     {
         int checks = 0;
@@ -380,40 +399,73 @@ internal static class LockScreenNativeBoundarySmoke
         Console.WriteLine($"LOCKSCREEN_ACTIVE_BACKOFF PASS: checks={checks}; cases=2; failed_retry_seconds=30; resumed_poll_seconds=1; real_native_writes=0.");
     }
 
+    /// <summary>Requires the condition and throws otherwise.</summary>
+    /// <param name="condition">Condition that must hold.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 }
 
+/// <summary>Isolated <see cref="ILockScreenNativePlatform"/> with injectable mode flags, failures, and write-boundary callbacks.</summary>
 internal sealed class IsolatedLockScreenPlatform : ILockScreenNativePlatform
 {
+    /// <summary>Slideshow and spotlight mode flags currently reported by the fake.</summary>
     internal (int SlideshowEnabled, int SpotlightEnabled) ModeFlags { get; set; }
+    /// <summary>Current image path reported by the fake, or null when unavailable.</summary>
     internal string? CurrentImagePath { get; set; }
+    /// <summary>When true, Spotlight mode hides the image URI after mode writes.</summary>
     internal bool HideImageInSpotlight { get; set; }
+    /// <summary>When true, the first Spotlight mode write throws once after restoring Spotlight.</summary>
     internal bool FailOnceAfterSpotlightModeWrite { get; set; }
+    /// <summary>Number of confirmed mode writes.</summary>
     internal int ModeWriteCalls { get; private set; }
+    /// <summary>Number of individual mode-flag value writes.</summary>
     internal int ModeValueWriteCalls { get; private set; }
+    /// <summary>Number of mode-flag value writes performed by the most recent <see cref="WriteModeFlags"/> call.</summary>
     internal int LastModeValueWriteCalls { get; private set; }
+    /// <summary>Number of ownership-guard invocations.</summary>
     internal int ModeGuardCalls { get; private set; }
+    /// <summary>Number of compatibility reads for mode flag values.</summary>
     internal int ModeCompatibilityReadCalls { get; private set; }
+    /// <summary>Number of image writes applied.</summary>
     internal int ImageWriteCalls { get; private set; }
+    /// <summary>Number of current-image read attempts.</summary>
     internal int ImageReadCalls { get; private set; }
+    /// <summary>Callback invoked before an image write; used to inject user changes or failures.</summary>
     internal Action? BeforeImageWrite { get; set; }
+    /// <summary>Callback invoked after an image write.</summary>
     internal Action? AfterImageWrite { get; set; }
+    /// <summary>Callback invoked before a mode write; used to inject user changes.</summary>
     internal Action? BeforeModeWrite { get; set; }
+    /// <summary>Callback invoked after the first mode-flag value write.</summary>
     internal Action? AfterFirstModeValueWrite { get; set; }
+    /// <summary>Callback invoked after the ownership guard runs.</summary>
     internal Action? AfterModeOwnershipGuard { get; set; }
+    /// <summary>Optional provider for an incompatible mode flag value.</summary>
     internal Func<int>? ReadIncompatibleModeFlag { get; set; }
 
+    /// <summary>Reports the platform as supported.</summary>
+    /// <returns>Always true.</returns>
     public bool IsSupported() => true;
+    /// <summary>Returns the fake mode flags.</summary>
+    /// <returns>The slideshow and spotlight mode flags.</returns>
     public (int SlideshowEnabled, int SpotlightEnabled) ReadModeFlags() => ModeFlags;
+    /// <summary>Returns the fake current image path, counting the read.</summary>
+    /// <returns>The current image path.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the synthetic image URI is unavailable.</exception>
     public string GetCurrentLocalImagePath()
     {
         ImageReadCalls++;
         return CurrentImagePath ?? throw new InvalidOperationException("Synthetic unavailable lock-screen image URI.");
     }
 
+    /// <summary>Simulates applying an image after the ownership guard allows it; honors injected callbacks and failures.</summary>
+    /// <param name="imagePath">Image path to apply.</param>
+    /// <param name="canWrite">Ownership guard; when it returns false the write is refused.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A completed task when the write is allowed.</returns>
     public Task SetImageAsync(string imagePath, Func<bool> canWrite, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -425,10 +477,15 @@ internal sealed class IsolatedLockScreenPlatform : ILockScreenNativePlatform
         return Task.CompletedTask;
     }
 
+    /// <summary>Simulates writing mode flags through the compatibility path, honoring injected callbacks and one-shot interruption.</summary>
+    /// <param name="slideshowEnabled">Slideshow mode flag to write.</param>
+    /// <param name="spotlightEnabled">Spotlight mode flag to write.</param>
+    /// <param name="canWrite">Optional ownership guard forwarded to the native writer.</param>
     public void WriteModeFlags(int slideshowEnabled, int spotlightEnabled, Func<bool>? canWrite = null)
     {
         BeforeModeWrite?.Invoke();
         LastModeValueWriteCalls = 0;
+        /// <summary>Records one mode-flag value write and confirms the first one.</summary>
         void ValueWritten()
         {
             ModeValueWriteCalls++;
@@ -439,6 +496,9 @@ internal sealed class IsolatedLockScreenPlatform : ILockScreenNativePlatform
                 AfterFirstModeValueWrite?.Invoke();
             }
         }
+        /// <summary>Reads a mode flag through the compatibility path, honoring an injected incompatible-value provider.</summary>
+        /// <param name="slideshow">True to read the slideshow flag; false for spotlight.</param>
+        /// <returns>The flag value.</returns>
         int ReadModeValue(bool slideshow)
         {
             ModeCompatibilityReadCalls++;

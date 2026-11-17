@@ -1,10 +1,14 @@
+// Smoke test verifying lock-screen scheduler recovery: startup retry, disable retry, in-flight stop draining, and Spotlight status wording.
 using System.IO;
 using System.Reflection;
 using System.Windows.Threading;
 using PrayerAutomation.UI;
 
+/// <summary>Verifies scheduler recovery behavior via STA dispatcher fixtures and fake backends.</summary>
 internal static class LockScreenSchedulerRecoverySmoke
 {
+    /// <summary>Verifies a failed startup restore retains its journal, arms the recovery timer, honors backoff, and retries.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     internal static Task VerifyStartupRetryAsync(DateTimeOffset start) => InStaAsync(async () =>
     {
         var backend = new FakeLockScreenBackend(LockScreenBackgroundMode.Picture);
@@ -27,6 +31,8 @@ internal static class LockScreenSchedulerRecoverySmoke
         Console.WriteLine("PASS: startup recovery failure retains the journal, arms a timer, honors backoff and retries.");
     });
 
+    /// <summary>Verifies disabling the feature during a restore failure keeps a recovery timer, honors backoff, and restores without reapplying.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     internal static Task VerifyDisableRetryAsync(DateTimeOffset start) => InStaAsync(async () =>
     {
         bool enabled = true;
@@ -52,6 +58,8 @@ internal static class LockScreenSchedulerRecoverySmoke
         Console.WriteLine("PASS: disable recovery failure retains a timer, backs off and restores without a new apply.");
     });
 
+    /// <summary>Verifies StopAndRestoreAsync drains an in-flight apply and leaves the scheduler recovery-only.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     internal static Task VerifyStopInFlightAsync(DateTimeOffset start) => InStaAsync(async () =>
     {
         var resumeApply = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -81,6 +89,8 @@ internal static class LockScreenSchedulerRecoverySmoke
         Console.WriteLine("PASS: Exit drains in-flight apply, blocks remaining triggers and keeps recovery-only intent.");
     });
 
+    /// <summary>Verifies a Spotlight recovery status promises only mode restoration, not Picture-only image restoration.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     internal static Task VerifySpotlightStatusAsync(DateTimeOffset start) => InStaAsync(async () =>
     {
         var backend = new FakeLockScreenBackend(LockScreenBackgroundMode.Spotlight);
@@ -96,13 +106,23 @@ internal static class LockScreenSchedulerRecoverySmoke
         Console.WriteLine("PASS: recovery status distinguishes mode restoration from Picture-only original-image restoration.");
     });
 
+    /// <summary>Creates a scheduler with no prayer triggers and a UTC timezone.</summary>
+    /// <param name="enabled">Enabled predicate for the feature.</param>
+    /// <param name="transaction">Transaction owned by the scheduler.</param>
+    /// <returns>The configured scheduler.</returns>
     private static LockScreenImageScheduler CreateScheduler(Func<bool> enabled, LockScreenImageTransaction transaction) => new(
         enabled, _ => Array.Empty<LockScreenPrayerTrigger>(), () => TimeZoneInfo.Utc, "prayer.png", transaction);
 
+    /// <summary>Returns true when the scheduler's internal recovery timer is enabled.</summary>
+    /// <param name="scheduler">Scheduler to inspect.</param>
+    /// <returns>True when the recovery timer is enabled.</returns>
     private static bool TimerEnabled(LockScreenImageScheduler scheduler) =>
         typeof(LockScreenImageScheduler).GetField("_timer", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(scheduler)
             is DispatcherTimer { IsEnabled: true };
 
+    /// <summary>Runs the given test body on a dedicated STA thread with a WPF dispatcher.</summary>
+    /// <param name="test">Async test body to execute.</param>
+    /// <returns>A task completing when the test body finished or failed.</returns>
     private static Task InStaAsync(Func<Task> test)
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -123,6 +143,9 @@ internal static class LockScreenSchedulerRecoverySmoke
         return completion.Task;
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

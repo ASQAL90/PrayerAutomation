@@ -21,6 +21,7 @@ using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Main application window: overview, calendar, settings, and schedule preview UI.</summary>
 public partial class MainWindow : Window
 {
     private static readonly CultureInfo IndonesianCulture = CultureInfo.GetCultureInfo("id-ID");
@@ -78,20 +79,40 @@ public partial class MainWindow : Window
     // as soon as the window is shown.
     private bool _calendarViewsLoaded;
 
+    /// <summary>Initializes the window with the default settings store and startup registration.</summary>
+    /// <param name="settings">Application settings.</param>
     internal MainWindow(AppSettings settings)
         : this(settings, SettingsStore.Save, StartupRegistration.SetEnabled, StartupRegistration.IsEnabled)
     {
     }
 
+    /// <summary>Initializes the window with injectable save/startup delegates.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="saveSettings">Persists settings.</param>
+    /// <param name="setStartupEnabled">Sets the startup registration.</param>
+    /// <param name="isStartupEnabled">Reads the startup registration.</param>
     internal MainWindow(AppSettings settings, Action<AppSettings> saveSettings,
         Action<bool, bool> setStartupEnabled, Func<bool> isStartupEnabled)
         : this(settings, saveSettings, setStartupEnabled, isStartupEnabled, null) { }
 
+    /// <summary>Initializes the window, optionally overriding the lock-screen safety probe.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="saveSettings">Persists settings.</param>
+    /// <param name="setStartupEnabled">Sets the startup registration.</param>
+    /// <param name="isStartupEnabled">Reads the startup registration.</param>
+    /// <param name="inspectLockScreenSafety">Optional lock-screen safety probe override.</param>
     internal MainWindow(AppSettings settings, Action<AppSettings> saveSettings,
         Action<bool, bool> setStartupEnabled, Func<bool> isStartupEnabled,
         Func<LockScreenSafetyInfo>? inspectLockScreenSafety)
         : this(settings, saveSettings, setStartupEnabled, isStartupEnabled, inspectLockScreenSafety, null) { }
 
+    /// <summary>Initializes the window, optionally overriding the lock-screen probe and settings-error logger.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="saveSettings">Persists settings.</param>
+    /// <param name="setStartupEnabled">Sets the startup registration.</param>
+    /// <param name="isStartupEnabled">Reads the startup registration.</param>
+    /// <param name="inspectLockScreenSafety">Optional lock-screen safety probe override.</param>
+    /// <param name="logSettingsError">Optional logger for settings errors.</param>
     internal MainWindow(AppSettings settings, Action<AppSettings> saveSettings,
         Action<bool, bool> setStartupEnabled, Func<bool> isStartupEnabled,
         Func<LockScreenSafetyInfo>? inspectLockScreenSafety, Action<string, Exception>? logSettingsError)
@@ -168,8 +189,10 @@ public partial class MainWindow : Window
             SettingsStatusLabel.Text = SettingsStore.LoadWarning;
     }
 
+    /// <summary>Allows the window to close instead of hiding to the tray.</summary>
     internal void AllowClose() => _allowClose = true;
 
+    /// <summary>Selects the calendar tab and loads the calendar views.</summary>
     internal void SelectCalendarTab()
     {
         MainTabs.SelectedIndex = 1;
@@ -177,12 +200,14 @@ public partial class MainWindow : Window
         Activate();
     }
 
+    /// <summary>Selects the settings tab.</summary>
     internal void SelectSettingsTab()
     {
         MainTabs.SelectedIndex = 2;
         Activate();
     }
 
+    /// <summary>Refreshes overview, calendar, and schedule preview after a theme change.</summary>
     internal void RefreshThemeDependentViews()
     {
         if (_calendarViewsLoaded)
@@ -191,12 +216,16 @@ public partial class MainWindow : Window
         RefreshSettingsSchedulePreview();
     }
 
+    /// <summary>Loads the calendar views the first time the calendar tab is selected.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
     private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.Source == MainTabs && MainTabs.SelectedIndex == 1)
             EnsureCalendarViewsLoaded();
     }
 
+    /// <summary>Refreshes the overview tab: date, location summary, reminder status, and today's schedule.</summary>
     internal void RefreshOverview()
     {
         UpdateClock();
@@ -240,6 +269,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Creates the error text shown when the schedule cannot be calculated.</summary>
+    /// <param name="text">The message to display.</param>
+    /// <returns>The configured TextBlock.</returns>
     private TextBlock CreateScheduleErrorText(string text) => new()
     {
         Text = text,
@@ -247,6 +279,9 @@ public partial class MainWindow : Window
         Foreground = MakeBrush(ThemeManager.Current.ErrorText)
     };
 
+    /// <summary>Clears a schedule grid and recreates its column definitions.</summary>
+    /// <param name="target">The grid to reset.</param>
+    /// <param name="columns">Number of star-width columns to create.</param>
     private static void ResetScheduleGrid(Grid target, int columns)
     {
         target.Children.Clear();
@@ -256,6 +291,11 @@ public partial class MainWindow : Window
             target.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
     }
 
+    /// <summary>Renders prayer schedule cards into a grid.</summary>
+    /// <param name="target">The grid to fill.</param>
+    /// <param name="entries">Prayer entries to render.</param>
+    /// <param name="columns">Number of columns in the grid.</param>
+    /// <param name="footerFactory">Optional factory for per-entry footer content.</param>
     private static void RenderScheduleEntries(Grid target, IReadOnlyList<PrayerEntry> entries, int columns,
         Func<PrayerEntry, UIElement?>? footerFactory = null)
     {
@@ -275,6 +315,10 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Creates a card UI element for one prayer entry.</summary>
+    /// <param name="entry">The prayer entry.</param>
+    /// <param name="footer">Optional footer element.</param>
+    /// <returns>The card element.</returns>
     private static UIElement CreatePrayerScheduleCard(PrayerEntry entry, UIElement? footer = null)
     {
         ThemePalette palette = ThemeManager.Current;
@@ -341,11 +385,15 @@ public partial class MainWindow : Window
         return item;
     }
 
+    /// <summary>Moves the Hijri correction editor next to its date cell.</summary>
     private void MoveCalendarCorrectionEditorsBesideDates()
     {
         MoveToHost(HijriDateCorrectionBox.Parent as FrameworkElement, HijriDateCorrectionHost);
     }
 
+    /// <summary>Reparents an editor element into another panel.</summary>
+    /// <param name="editor">The element to move; no-op when null or parentless.</param>
+    /// <param name="host">The destination panel.</param>
     private static void MoveToHost(FrameworkElement? editor, System.Windows.Controls.Panel host)
     {
         if (editor is null || editor.Parent is not System.Windows.Controls.Panel parent) return;
@@ -353,6 +401,9 @@ public partial class MainWindow : Window
         host.Children.Add(editor);
     }
 
+    /// <summary>Returns the repositioned correction editor for a prayer entry, or null for unsupported keys.</summary>
+    /// <param name="entry">The prayer entry.</param>
+    /// <returns>The editor element.</returns>
     private UIElement? CreatePrayerCorrectionEditor(PrayerEntry entry)
     {
         StackPanel? editor = entry.Key switch
@@ -378,6 +429,10 @@ public partial class MainWindow : Window
         return editor;
     }
 
+    /// <summary>Creates the prayer icon image for a key/presentation pair.</summary>
+    /// <param name="key">Prayer key.</param>
+    /// <param name="presentation">Icon presentation (brush, kind, description).</param>
+    /// <returns>The icon image.</returns>
     private static UIElement CreatePrayerIcon(string key, PrayerPresentation presentation)
     {
         var icon = new System.Windows.Controls.Image
@@ -392,6 +447,7 @@ public partial class MainWindow : Window
         return icon;
     }
 
+    /// <summary>Initializes the Gregorian and Hijri year selector ranges around today.</summary>
     private void InitializeYearSelectors()
     {
         DateTime today = GetCalendarToday();
@@ -420,6 +476,7 @@ public partial class MainWindow : Window
         HijriYearBox.SelectedItem = currentHijriYear;
     }
 
+    /// <summary>Resets the calendar view state to today and re-renders both calendars.</summary>
     private void RefreshCalendarViews()
     {
         DateTime correctedToday = GetCalendarToday();
@@ -446,6 +503,7 @@ public partial class MainWindow : Window
         RenderHijriYear(_selectedHijriYear);
     }
 
+    /// <summary>Renders the calendar views on first demand.</summary>
     private void EnsureCalendarViewsLoaded()
     {
         if (_calendarViewsLoaded) return;
@@ -453,6 +511,8 @@ public partial class MainWindow : Window
         RefreshCalendarViews();
     }
 
+    /// <summary>Renders a full Gregorian year grid with date buttons and observance markers.</summary>
+    /// <param name="year">The year to render.</param>
     private void RenderGregorianYear(int year)
     {
         CalendarGrid.Children.Clear();
@@ -548,6 +608,12 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Creates a button for one Gregorian date cell.</summary>
+    /// <param name="date">The cell date.</param>
+    /// <param name="today">Today's date for marker styling.</param>
+    /// <param name="observances">Calendar observances for the date.</param>
+    /// <param name="isSelected">Whether the date is the current selection.</param>
+    /// <returns>The date button.</returns>
     private Button CreateGregorianDateButton(DateTime date, DateTime today, IReadOnlyList<CalendarObservance> observances, bool isSelected)
     {
         CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(date, today, isSelected, observances);
@@ -615,6 +681,8 @@ public partial class MainWindow : Window
         return button;
     }
 
+    /// <summary>Renders a full Hijri year grid with date buttons and observance markers.</summary>
+    /// <param name="year">The Hijri year to render.</param>
     private void RenderHijriYear(int year)
     {
         HijriCalendarGrid.Children.Clear();
@@ -703,6 +771,14 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Creates a button for one Hijri date cell.</summary>
+    /// <param name="year">Hijri year.</param>
+    /// <param name="month">Hijri month (1-12).</param>
+    /// <param name="day">Hijri day.</param>
+    /// <param name="gregorianDate">Gregorian date backing the cell.</param>
+    /// <param name="calendarToday">Today's date for marker styling.</param>
+    /// <param name="isActiveDate">Whether the cell is the current selection.</param>
+    /// <returns>The date button.</returns>
     private Button CreateHijriDateButton(int year, int month, int day, DateTime gregorianDate, DateTime calendarToday, bool isActiveDate)
     {
         IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays());
@@ -771,6 +847,8 @@ public partial class MainWindow : Window
         return button;
     }
 
+    /// <summary>Selects a Gregorian date and updates button states and the detail caption.</summary>
+    /// <param name="date">The date to select.</param>
     private void SelectGregorianDate(DateTime date)
     {
         _selectedGregorianDate = date.Date;
@@ -780,6 +858,10 @@ public partial class MainWindow : Window
         UpdateGregorianSelection(_selectedGregorianDate);
     }
 
+    /// <summary>Applies marker styling and selection state to a date button.</summary>
+    /// <param name="date">The cell date.</param>
+    /// <param name="button">The button to update.</param>
+    /// <param name="today">Today's date for marker styling.</param>
     private void UpdateGregorianDateButton(DateTime date, Button button, DateTime today)
     {
         bool isSelected = date == _selectedGregorianDate;
@@ -815,6 +897,8 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Updates the selected-date caption with observances and the corrected Hijri date.</summary>
+    /// <param name="date">The selected date.</param>
     private void UpdateGregorianSelection(DateTime date)
     {
         try
@@ -836,6 +920,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Selects a Hijri date and updates the detail caption.</summary>
+    /// <param name="year">Hijri year.</param>
+    /// <param name="month">Hijri month (1-12).</param>
+    /// <param name="day">Hijri day.</param>
+    /// <param name="gregorianDate">Gregorian date backing the cell.</param>
     private void SelectHijriDate(int year, int month, int day, DateTime gregorianDate)
     {
         string name = NativePrayerCore.HijriMonthName(month);
@@ -845,15 +934,22 @@ public partial class MainWindow : Window
         AutomationProperties.SetName(HijriSelectedDateDetail, HijriSelectedDateDetail.Text);
     }
 
+    /// <summary>Computes the corrected Hijri date for a Gregorian date.</summary>
+    /// <param name="date">The Gregorian date.</param>
+    /// <returns>The corrected Hijri date.</returns>
     private NativeCalendarDate HijriForCalendarDate(DateTime date) =>
         NativePrayerCore.HijriDate(date.Date.AddDays(GetHijriDateCorrectionDays()));
 
+    /// <summary>Returns the current time in the configured time zone.</summary>
+    /// <returns>The location-local current time.</returns>
     private DateTime GetLocationNow()
     {
         TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(_settings.TimeZoneId);
         return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).DateTime;
     }
 
+    /// <summary>Returns today in the location time zone; falls back to local date on failure.</summary>
+    /// <returns>Today's date.</returns>
     private DateTime GetCalendarToday()
     {
         DateTime now;
@@ -865,11 +961,15 @@ public partial class MainWindow : Window
         return now.Date;
     }
 
+    /// <summary>Returns the Hijri date correction entered in the form (0 while loading settings).</summary>
+    /// <returns>The correction in days.</returns>
     private int GetHijriDateCorrectionDays() =>
         !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox?.Text, out int days)
             ? days
             : _settings.HijriDateCorrectionDays;
 
+    /// <summary>Returns the date for which prayer times are scheduled; falls back to tomorrow after Isha.</summary>
+    /// <returns>The schedule date.</returns>
     private DateTime GetPrayerScheduleDate()
     {
         DateTime now;
@@ -881,6 +981,9 @@ public partial class MainWindow : Window
         return PrayerUiLogic.PrayerScheduleDate(now);
     }
 
+    /// <summary>Returns the schedule date for settings; tomorrow after Isha time, otherwise today.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <returns>The schedule date.</returns>
     private static DateTime GetPrayerScheduleDate(AppSettings settings)
     {
         TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(settings.TimeZoneId);
@@ -888,6 +991,9 @@ public partial class MainWindow : Window
         return PrayerUiLogic.PrayerScheduleDate(locationLocalNow);
     }
 
+    /// <summary>Returns today in the settings' time zone; falls back to local date on failure.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <returns>Today's date.</returns>
     private static DateTime GetCalendarToday(AppSettings settings)
     {
         TimeZoneInfo zone = PrayerScheduleService.ResolveTimeZone(settings.TimeZoneId);
@@ -895,8 +1001,12 @@ public partial class MainWindow : Window
         return locationLocalNow.Date;
     }
 
+    /// <summary>Returns the Monday-based weekday index (Monday=0).</summary>
+    /// <param name="date">The date to convert.</param>
+    /// <returns>Weekday index, Monday=0.</returns>
     private static int MondayBasedWeekday(DateTime date) => ((int)date.DayOfWeek + 6) % 7;
 
+    /// <summary>Updates the clock and date displays in the overview and schedule tabs.</summary>
     private void UpdateClock()
     {
         DateTime now;
@@ -908,6 +1018,7 @@ public partial class MainWindow : Window
         ClockLabel.Text = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Loads current settings into the settings form controls.</summary>
     private void PopulateSettingsForm()
     {
         _locationRequestVersion++;
@@ -964,16 +1075,25 @@ public partial class MainWindow : Window
         _savedFormBaseline = CaptureSettingsFormDraft();
     }
 
+    /// <summary>Returns the stored correction for a prayer as text, defaulting to "0".</summary>
+    /// <param name="key">Prayer key.</param>
+    /// <returns>The correction in minutes as text.</returns>
     private string Correction(string key) => _settings.Corrections.TryGetValue(key, out int value)
         ? value.ToString(CultureInfo.InvariantCulture)
         : "0";
 
+    /// <summary>Refreshes the schedule preview when the calculation method changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
     private void MethodBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSettings || MethodBox.SelectedItem is not CalculationMethod) return;
         RefreshSettingsSchedulePreview();
     }
 
+    /// <summary>Applies a live theme preview when the theme selection changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
     private void ThemeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSettings || ThemeBox.SelectedItem is not ComboBoxItem themeItem ||
@@ -983,6 +1103,9 @@ public partial class MainWindow : Window
         _applyThemePreview(themeId);
     }
 
+    /// <summary>Updates widget option states and applies an appearance preview when the mode changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
     private void WidgetModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSettings) return;
@@ -990,12 +1113,16 @@ public partial class MainWindow : Window
         ApplyWidgetAppearancePreview();
     }
 
+    /// <summary>Applies an appearance preview when widget preview options change.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void WidgetPreviewOptions_Changed(object sender, RoutedEventArgs e)
     {
         if (!_loadingSettings)
             ApplyWidgetAppearancePreview();
     }
 
+    /// <summary>Computes the widget appearance from the form and forwards it to the app for live preview.</summary>
     private void ApplyWidgetAppearancePreview()
     {
         string mode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? _settings.WidgetMode;
@@ -1005,18 +1132,23 @@ public partial class MainWindow : Window
             WidgetEnabledCheckBox.IsChecked == true, mode, motion, position);
     }
 
+    /// <summary>Applies the startup registration when the startup checkbox changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void StartupEnabled_Changed(object sender, RoutedEventArgs e)
     {
         if (!_loadingSettings)
             UpdateStartupOptionStates();
     }
 
+    /// <summary>Enables/disables the start-hidden checkbox based on the startup checkbox state.</summary>
     private void UpdateStartupOptionStates()
     {
         if (StartHiddenCheckBox is not null && StartupEnabledCheckBox is not null)
             StartHiddenCheckBox.IsEnabled = true;
     }
 
+    /// <summary>Loads the lock-screen preview image and safety text into the settings tab.</summary>
     private void LoadLockScreenPreview()
     {
         if (LockScreenPreviewImage is null) return;
@@ -1038,6 +1170,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Reloads the lock-screen preview image when it is clicked.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse button event arguments.</param>
     private void LockScreenPreviewImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (LockScreenPreviewImage.Source is not ImageSource source) return;
@@ -1069,6 +1204,8 @@ public partial class MainWindow : Window
         window.ShowDialog();
     }
 
+    /// <summary>Re-evaluates lock-screen safety and updates the checkbox, safety text, and status.</summary>
+    /// <param name="status">Optional status override to display.</param>
     private void RefreshLockScreenSafety(string? status = null)
     {
         if (LockScreenCheckBox is null || LockScreenSafetyText is null || LockScreenStatus is null)
@@ -1082,6 +1219,8 @@ public partial class MainWindow : Window
         LockScreenStatus.Visibility = status is null ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>
+    /// <param name="message">Status message to display.</param>
     internal void SetLockScreenStatus(string message)
     {
         if (!Dispatcher.CheckAccess())
@@ -1092,14 +1231,19 @@ public partial class MainWindow : Window
         RefreshLockScreenSafety(message);
     }
 
+    /// <summary>Applies a taskbar appearance preview when taskbar options change.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void TaskbarPreviewOptions_Changed(object sender, RoutedEventArgs e)
     {
         if (!_loadingSettings) ApplyTaskbarAppearancePreview();
     }
 
+    /// <summary>Computes the taskbar appearance from the form and forwards it to the app for live preview.</summary>
     private void ApplyTaskbarAppearancePreview() =>
         _applyTaskbarAppearancePreview(TaskbarWidgetEnabledCheckBox.IsChecked == true, "popup");
 
+    /// <summary>Enables/disables widget option controls based on the current mode selection.</summary>
     private void UpdateWidgetOptionStates()
     {
         if (WidgetMotionBox is null || WidgetPositionBox is null ||
@@ -1116,6 +1260,9 @@ public partial class MainWindow : Window
         WidgetPositionLabel.IsEnabled = true;
     }
 
+    /// <summary>Schedules a save-free schedule preview refresh when a settings input changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Text changed event arguments.</param>
     private void SettingsPreviewInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (!_loadingSettings)
@@ -1154,6 +1301,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Refreshes the Hijri calendar after the correction input changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Text changed event arguments.</param>
     private void HijriCorrectionInput_Changed(object sender, TextChangedEventArgs e)
     {
         if (_loadingSettings ||
@@ -1166,6 +1316,7 @@ public partial class MainWindow : Window
         RefreshSettingsSchedulePreview();
     }
 
+    /// <summary>Debounces the location search input before running it.</summary>
     private void QueueLocationSearch()
     {
         CloseLocationSuggestions();
@@ -1173,6 +1324,9 @@ public partial class MainWindow : Window
             _locationSearchTimer.Start();
     }
 
+    /// <summary>Timer handler; runs the offline location search for the pending query.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
     private async void LocationSearchTimer_Tick(object? sender, EventArgs e)
     {
         _locationSearchTimer.Stop();
@@ -1192,6 +1346,10 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Applies search results to the suggestion list when the version is current.</summary>
+    /// <param name="version">Search generation captured when the request started.</param>
+    /// <param name="query">The query that produced the results.</param>
+    /// <param name="results">Search results to display.</param>
     private void CompleteLocationSearch(int version, string query, IReadOnlyList<OfflineLocationSuggestion> results)
     {
         if (_loadingSettings || _allowClose || version != _locationSearchVersion ||
@@ -1204,6 +1362,8 @@ public partial class MainWindow : Window
             : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
     }
 
+    /// <summary>Fills the location form fields from a chosen suggestion.</summary>
+    /// <param name="suggestion">The chosen suggestion.</param>
     private void ApplyLocationSuggestion(OfflineLocationSuggestion suggestion)
     {
         if (!LocationSuggestionsList.Items.Contains(suggestion)) return;
@@ -1234,6 +1394,7 @@ public partial class MainWindow : Window
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
 
+    /// <summary>Closes and clears the location suggestion popup.</summary>
     private void CloseLocationSuggestions()
     {
         _locationSearchVersion++;
@@ -1242,8 +1403,14 @@ public partial class MainWindow : Window
         LocationSuggestionsList.ItemsSource = null;
     }
 
+    /// <summary>Closes the suggestions when the popup closes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
     private void LocationSuggestionsPopup_Closed(object? sender, EventArgs e) => CloseLocationSuggestions();
 
+    /// <summary>Closes suggestions when focus leaves the location box.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Focus event arguments.</param>
     private void LocationNameBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
@@ -1253,6 +1420,9 @@ public partial class MainWindow : Window
         }));
     }
 
+    /// <summary>Handles arrow/enter/escape keys in the location box to drive the suggestion list.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Key event arguments.</param>
     private void LocationNameBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { CloseLocationSuggestions(); e.Handled = true; }
@@ -1270,6 +1440,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Handles enter/escape keys in the suggestion list.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Key event arguments.</param>
     private void LocationSuggestionsList_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { CloseLocationSuggestions(); e.Handled = true; }
@@ -1280,6 +1453,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Applies the suggestion under the mouse when clicked.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse button event arguments.</param>
     private void LocationSuggestionsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is DependencyObject origin &&
@@ -1291,6 +1467,7 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Recomputes and renders the schedule preview from the settings form.</summary>
     private void RefreshSettingsSchedulePreview()
     {
         if (_loadingSettings) return;
@@ -1332,6 +1509,10 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Reads the form into a candidate settings object for preview validation.</summary>
+    /// <param name="candidate">The parsed candidate on success.</param>
+    /// <param name="error">Validation error message on failure.</param>
+    /// <returns>True when the form is valid for preview.</returns>
     private bool TryReadSchedulePreviewSettings(out AppSettings? candidate, out string error)
     {
         candidate = null;
@@ -1396,6 +1577,9 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>Detects approximate location via IP geolocation providers and fills the form.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private async void DetectNetworkLocation_Click(object sender, RoutedEventArgs e)
     {
         Button button = DetectNetworkLocationButton;
@@ -1449,6 +1633,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Detects device location via GPS/Wi-Fi/cellular and fills the form.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private async void DetectGpsLocation_Click(object sender, RoutedEventArgs e)
     {
         Button button = DetectGpsLocationButton;
@@ -1534,6 +1721,7 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Enables/disables the taskbar widget controls based on platform support.</summary>
     private void UpdateTaskbarWidgetAvailability()
     {
         TaskbarWidgetAvailability availability = TaskbarWidgetSupport.Inspect();
@@ -1542,6 +1730,9 @@ public partial class MainWindow : Window
         TaskbarWidgetEnabledCheckBox.ToolTip = availability.Message;
     }
 
+    /// <summary>Formats a provider name, city/region/country for display.</summary>
+    /// <param name="provider">The provider location.</param>
+    /// <returns>The description text.</returns>
     private static string DescribeLocationProvider(ProviderLocation provider)
     {
         string place = string.Join(", ", new[] { provider.City, provider.Region, provider.CountryCode }
@@ -1549,6 +1740,10 @@ public partial class MainWindow : Window
         return $"{provider.ProviderName}: {(string.IsNullOrWhiteSpace(place) ? "lokasi tidak tersedia" : place)}";
     }
 
+    /// <summary>Combines two provider locations into a display location name.</summary>
+    /// <param name="first">First provider location.</param>
+    /// <param name="second">Second provider location.</param>
+    /// <returns>The combined location name.</returns>
     private static string CombineLocationName(ProviderLocation first, ProviderLocation second)
     {
         string? city = string.IsNullOrWhiteSpace(first.City) ? second.City : first.City;
@@ -1560,8 +1755,13 @@ public partial class MainWindow : Window
         return string.IsNullOrWhiteSpace(result) ? "Perkiraan lokasi jaringan" : result;
     }
 
+    /// <summary>Saves the settings form when the save button is clicked.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void SaveSettings_Click(object sender, RoutedEventArgs e) => TrySaveSettings();
 
+    /// <summary>Validates, normalizes, and persists the settings form; refreshes dependent views.</summary>
+    /// <returns>True when settings were saved.</returns>
     private bool TrySaveSettings()
     {
         if (_savingSettings) return false;
@@ -1608,6 +1808,10 @@ public partial class MainWindow : Window
         finally { _savingSettings = false; }
     }
 
+    /// <summary>Reads and validates the full settings form.</summary>
+    /// <param name="candidate">The parsed settings on success.</param>
+    /// <param name="error">Validation error message on failure.</param>
+    /// <returns>True when the form is valid.</returns>
     private bool TryReadSettings(out AppSettings? candidate, out string error)
     {
         candidate = null;
@@ -1738,6 +1942,8 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>Enumerates the per-prayer correction input boxes with their keys.</summary>
+    /// <returns>Key/box pairs for the correction editors.</returns>
     private IEnumerable<(string Key, TextBox Box)> CorrectionBoxes()
     {
         yield return ("Fajr", CorrectionFajrBox);
@@ -1749,6 +1955,7 @@ public partial class MainWindow : Window
         yield return ("Isha", CorrectionIshaBox);
     }
 
+    /// <summary>Attaches numeric input behavior to the correction boxes.</summary>
     private void AttachCorrectionEditors()
     {
         CorrectionInputBehavior.Attach(CorrectionFajrBox, CorrectionFajrDecreaseButton, CorrectionFajrIncreaseButton);
@@ -1762,14 +1969,27 @@ public partial class MainWindow : Window
         CorrectionInputBehavior.AttachMinutesAfterSunrise(DhuhaAfterSunriseBox, DhuhaAfterSunriseDecreaseButton, DhuhaAfterSunriseIncreaseButton);
     }
 
+    /// <summary>Parses an invariant-culture double.</summary>
+    /// <param name="text">The input text.</param>
+    /// <param name="value">The parsed value on success.</param>
+    /// <returns>True when parsing succeeded.</returns>
     private static bool TryDouble(string text, out double value) =>
         double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
         || double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.CurrentCulture, out value);
 
+    /// <summary>Parses an invariant-culture integer within a range.</summary>
+    /// <param name="text">The input text.</param>
+    /// <param name="minimum">Inclusive minimum.</param>
+    /// <param name="maximum">Inclusive maximum.</param>
+    /// <param name="value">The parsed value on success.</param>
+    /// <returns>True when parsing succeeded and the value is in range.</returns>
     private static bool TryInt(string text, int minimum, int maximum, out int value) =>
         int.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value)
         && value >= minimum && value <= maximum;
 
+    /// <summary>Creates a deep copy of settings via serialization-equivalent field copy.</summary>
+    /// <param name="source">Settings to copy.</param>
+    /// <returns>The cloned settings.</returns>
     private static AppSettings CloneSettings(AppSettings source)
     {
         string json = System.Text.Json.JsonSerializer.Serialize(source);
@@ -1777,6 +1997,9 @@ public partial class MainWindow : Window
             ?? throw new InvalidOperationException("Pengaturan tidak dapat disalin.");
     }
 
+    /// <summary>Copies settings field-by-field from source to destination.</summary>
+    /// <param name="source">The settings to copy from.</param>
+    /// <param name="destination">The settings to copy into.</param>
     private static void CopySettings(AppSettings source, AppSettings destination)
     {
         destination.Latitude = source.Latitude;
@@ -1808,6 +2031,9 @@ public partial class MainWindow : Window
         destination.OtherSettings = source.OtherSettings is null ? null : new(source.OtherSettings);
     }
 
+    /// <summary>Discards the form edits and restores saved settings.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void CancelSettings_Click(object sender, RoutedEventArgs e)
     {
         if (HasUnsavedSettingsChanges())
@@ -1819,6 +2045,7 @@ public partial class MainWindow : Window
         SettingsStatusLabel.Text = "Perubahan form dibatalkan; pengaturan tersimpan tidak berubah.";
     }
 
+    /// <summary>Restores the form, theme, and widget/taskbar appearance to saved settings.</summary>
     internal void RestoreSavedSettingsPreview()
     {
         PopulateSettingsForm();
@@ -1827,6 +2054,7 @@ public partial class MainWindow : Window
         _restoreTaskbarAppearancePreview();
     }
 
+    /// <summary>Restores the theme to the saved theme id.</summary>
     internal void RestoreSavedThemePreview()
     {
         bool wasLoading = _loadingSettings;
@@ -1843,6 +2071,8 @@ public partial class MainWindow : Window
 
     // Compare raw form values, not validated settings: invalid text is still a draft.
     // Calendar selectors, suggestions and runtime/status labels are intentionally absent.
+    /// <summary>Captures the current form control values as a comparison baseline.</summary>
+    /// <returns>The captured field values.</returns>
     private object?[] CaptureSettingsFormDraft() =>
     [
         LocationNameBox.Text, LatitudeBox.Text, LongitudeBox.Text, TimeZoneBox.Text,
@@ -1859,9 +2089,14 @@ public partial class MainWindow : Window
         LockScreenCheckBox.IsChecked, LockScreenDurationBox.Text
     ];
 
+    /// <summary>Returns true when the form differs from the saved baseline.</summary>
+    /// <returns>True when there are unsaved changes.</returns>
     internal bool HasUnsavedSettingsChanges() => _savedFormBaseline is not null &&
         !_savedFormBaseline.SequenceEqual(CaptureSettingsFormDraft());
 
+    /// <summary>Prompts to save/discard/cancel when the form has unsaved changes.</summary>
+    /// <param name="discardOnly">Skip the save option and only allow discard/cancel.</param>
+    /// <returns>True when it is safe to proceed.</returns>
     internal bool ConfirmUnsavedSettingsChanges(bool discardOnly = false)
     {
         if (_resolvingUnsavedChanges || _savingSettings) return false;
@@ -1883,6 +2118,9 @@ public partial class MainWindow : Window
         finally { _resolvingUnsavedChanges = false; }
     }
 
+    /// <summary>Shows the unsaved-changes dialog and maps the result to a choice.</summary>
+    /// <param name="discardOnly">Restrict the dialog to discard/cancel.</param>
+    /// <returns>The user's choice.</returns>
     private UnsavedChangesChoice ShowUnsavedChangesDialog(bool discardOnly)
     {
         if (!IsVisible) Show();
@@ -1892,8 +2130,14 @@ public partial class MainWindow : Window
         return dialog.Choice;
     }
 
+    /// <summary>Requests application shutdown from the exit button.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void Exit_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ShutdownApplication();
 
+    /// <summary>Renders the selected Gregorian year from the year selector.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void LoadCalendar_Click(object sender, RoutedEventArgs e)
     {
         if (CalendarYearBox.SelectedItem is not int year) return;
@@ -1903,11 +2147,27 @@ public partial class MainWindow : Window
         RenderGregorianYear(year);
     }
 
+    /// <summary>Moves the Gregorian year selector back one year.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void PreviousGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, -1, hijri: false);
+    /// <summary>Moves the Gregorian year selector forward one year.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void NextGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, 1, hijri: false);
+    /// <summary>Moves the Hijri year selector back one year.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void PreviousHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, -1, hijri: true);
+    /// <summary>Moves the Hijri year selector forward one year.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void NextHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, 1, hijri: true);
 
+    /// <summary>Shifts a year selector by a delta and re-renders the calendar.</summary>
+    /// <param name="selector">The year ComboBox to shift.</param>
+    /// <param name="delta">Year delta (+1/-1).</param>
+    /// <param name="hijri">True for the Hijri calendar; false for Gregorian.</param>
     private void MoveYear(ComboBox selector, int delta, bool hijri)
     {
         if (selector.SelectedIndex < 0) return;
@@ -1918,6 +2178,9 @@ public partial class MainWindow : Window
         else LoadCalendar_Click(this, new RoutedEventArgs());
     }
 
+    /// <summary>Renders the selected Hijri year from the year selector.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
     private void LoadHijriCalendar_Click(object sender, RoutedEventArgs e)
     {
         if (HijriYearBox.SelectedItem is not int year) return;
@@ -1925,6 +2188,9 @@ public partial class MainWindow : Window
         RenderHijriYear(year);
     }
 
+    /// <summary>Cancels close to hide to the tray unless allowed; prompts for unsaved changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Cancel event arguments.</param>
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _locationRequestVersion++;
@@ -1950,16 +2216,29 @@ public partial class MainWindow : Window
         FooterStatus.Text = "Aplikasi tetap aktif di area notifikasi sistem.";
     }
 
+    /// <summary>Returns true for exceptions that indicate the native core failed to load.</summary>
+    /// <param name="ex">The exception to classify.</param>
+    /// <returns>True when the exception is a native-core failure.</returns>
     private static bool IsNativeCoreFailure(Exception ex) =>
         ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException or TypeInitializationException;
 
+    /// <summary>Returns true for exceptions that indicate a schedule calculation failure.</summary>
+    /// <param name="ex">The exception to classify.</param>
+    /// <returns>True when the exception is a schedule failure.</returns>
     private static bool IsScheduleFailure(Exception ex) =>
         IsNativeCoreFailure(ex) || ex is InvalidOperationException or TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException;
 
+    /// <summary>Formats a time of day as HH:mm.</summary>
+    /// <param name="time">The time to format.</param>
+    /// <returns>The formatted time.</returns>
     private static string FormatTime(TimeSpan time) => time.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
 
+    /// <summary>Creates a SolidColorBrush from a color string.</summary>
+    /// <param name="color">The color string, e.g. "#RRGGBB".</param>
+    /// <returns>The brush.</returns>
     private static SolidColorBrush MakeBrush(string color) =>
         (SolidColorBrush)new BrushConverter().ConvertFromString(color)!;
 
+    /// <summary>Calculation method catalog entry: native ID, name, time zone, and Fajr/Isha angles.</summary>
     private sealed record CalculationMethod(int Id, string Name, string TimeZoneId, double FajrAngle, double IshaAngle);
 }

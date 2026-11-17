@@ -5,6 +5,7 @@ using System.Text;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Reverse-geocodes coordinates against a bundled offline geonames dataset (cities1000).</summary>
 internal sealed class OfflineReverseGeocoder
 {
     private const double DefaultMaximumDistanceKm = 75.0;
@@ -21,8 +22,14 @@ internal sealed class OfflineReverseGeocoder
         _cities = cities;
     }
 
+    /// <summary>The lazily loaded shared instance backed by the bundled dataset.</summary>
     internal static OfflineReverseGeocoder Bundled => BundledData.Value;
 
+    /// <summary>Loads an offline dataset from tab-separated text.</summary>
+    /// <param name="reader">Reader for the TSV dataset (name, region, country, lat, lon, code).</param>
+    /// <returns>The loaded geocoder.</returns>
+    /// <exception cref="InvalidDataException">A row is invalid or the dataset contains no settlements.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="reader"/> is null.</exception>
     internal static OfflineReverseGeocoder Load(TextReader reader)
     {
         ArgumentNullException.ThrowIfNull(reader);
@@ -58,6 +65,12 @@ internal sealed class OfflineReverseGeocoder
         return new OfflineReverseGeocoder(cities);
     }
 
+    /// <summary>Finds the nearest settlement to a coordinate within a maximum distance.</summary>
+    /// <param name="latitude">Latitude in degrees.</param>
+    /// <param name="longitude">Longitude in degrees.</param>
+    /// <param name="maximumDistanceKm">Maximum distance in kilometers; negative or non-finite values throw.</param>
+    /// <returns>The nearest settlement, or null when none is within range.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Coordinates or distance are invalid.</exception>
     internal OfflineLocationResult? FindNearest(
         double latitude,
         double longitude,
@@ -103,6 +116,10 @@ internal sealed class OfflineReverseGeocoder
     // Settlement names only, not exhaustive street/village coverage. All query words
     // must prefix a word in city/region/country/code; city matches rank ahead of context.
     // Require two letters/digits, at most 128 UTF-16 units after trimming, and cap at 50.
+    /// <summary>Searches settlements by name prefix words; city matches rank ahead of context.</summary>
+    /// <param name="query">Search text; all words must prefix a word in city/region/country/code.</param>
+    /// <param name="maxResults">Maximum results to return (capped at 50).</param>
+    /// <returns>Matching suggestions, or an empty list for blank/short/oversized queries.</returns>
     internal IReadOnlyList<OfflineLocationSuggestion> Search(string query, int maxResults = 8)
     {
         if (maxResults <= 0 || string.IsNullOrWhiteSpace(query))
@@ -141,10 +158,17 @@ internal sealed class OfflineReverseGeocoder
             .ToArray();
     }
 
+    /// <summary>Returns true when text starts with the word or contains it after a space.</summary>
+    /// <param name="text">Normalized search text.</param>
+    /// <param name="word">Normalized word to match.</param>
+    /// <returns>True on prefix match.</returns>
     private static bool MatchesWordPrefix(string text, string word) =>
         text.StartsWith(word, StringComparison.Ordinal) ||
         text.Contains(" " + word, StringComparison.Ordinal);
 
+    /// <summary>Normalizes text for search: strips diacritics, upper-cases, collapses separators.</summary>
+    /// <param name="value">Raw input text.</param>
+    /// <returns>The normalized text; empty when normalization fails.</returns>
     private static string NormalizeSearchText(string value)
     {
         string decomposed;
@@ -178,6 +202,8 @@ internal sealed class OfflineReverseGeocoder
         return normalized.ToString();
     }
 
+    /// <summary>Loads the bundled geonames dataset from the application directory.</summary>
+    /// <returns>The loaded geocoder.</returns>
     private static OfflineReverseGeocoder LoadBundledData()
     {
         string path = Path.Combine(AppContext.BaseDirectory, "geonames", DataFileName);
@@ -187,10 +213,20 @@ internal sealed class OfflineReverseGeocoder
         return Load(reader);
     }
 
+    /// <summary>Checks WGS84 latitude/longitude ranges.</summary>
+    /// <param name="latitude">Latitude in degrees.</param>
+    /// <param name="longitude">Longitude in degrees.</param>
+    /// <returns>True when both are finite and in range.</returns>
     private static bool ValidCoordinates(double latitude, double longitude) =>
         double.IsFinite(latitude) && latitude is >= -90 and <= 90 &&
         double.IsFinite(longitude) && longitude is >= -180 and <= 180;
 
+    /// <summary>Computes the great-circle distance between two points using the haversine formula.</summary>
+    /// <param name="latitude1">Latitude of the first point in degrees.</param>
+    /// <param name="longitude1">Longitude of the first point in degrees.</param>
+    /// <param name="latitude2">Latitude of the second point in degrees.</param>
+    /// <param name="longitude2">Longitude of the second point in degrees.</param>
+    /// <returns>Distance in kilometers.</returns>
     private static double DistanceKm(double latitude1, double longitude1, double latitude2, double longitude2)
     {
         const double earthRadiusKm = 6371.0088;
@@ -203,8 +239,12 @@ internal sealed class OfflineReverseGeocoder
         return earthRadiusKm * 2 * Math.Asin(Math.Sqrt(Math.Clamp(haversine, 0, 1)));
     }
 
+    /// <summary>Converts degrees to radians.</summary>
+    /// <param name="degrees">Value in degrees.</param>
+    /// <returns>Value in radians.</returns>
     private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180.0);
 
+    /// <summary>A city record in the offline dataset with precomputed search keys.</summary>
     private sealed record OfflineCity(
         string CityName,
         string RegionName,
@@ -213,12 +253,15 @@ internal sealed class OfflineReverseGeocoder
         double Longitude,
         string CountryCode)
     {
+        /// <summary>Normalized city name used for search ranking.</summary>
         internal string SearchName { get; } = NormalizeSearchText(CityName);
+        /// <summary>Normalized "city region country code" text used for matching.</summary>
         internal string SearchText { get; } = NormalizeSearchText(
             $"{CityName} {RegionName} {CountryName} {CountryCode}");
     }
 }
 
+/// <summary>A settlement suggestion returned by search.</summary>
 internal sealed record OfflineLocationSuggestion(
     string CityName,
     string RegionName,
@@ -227,6 +270,7 @@ internal sealed record OfflineLocationSuggestion(
     double Latitude,
     double Longitude);
 
+/// <summary>The result of a nearest-settlement lookup.</summary>
 internal sealed record OfflineLocationResult(
     string CityName,
     string RegionName,

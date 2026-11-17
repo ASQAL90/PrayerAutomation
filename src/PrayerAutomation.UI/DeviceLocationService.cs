@@ -2,11 +2,14 @@ using Windows.Devices.Geolocation;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Detects device location via the Windows Geolocation API, with access checks and error mapping.</summary>
 internal sealed class DeviceLocationService
 {
     private static readonly TimeSpan MaximumPositionAge = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan PositionTimeout = TimeSpan.FromSeconds(30);
 
+    /// <summary>Requests location access and returns a single position fix.</summary>
+    /// <returns>A result describing success, or the failure reason (permission, timeout, invalid data, unavailable).</returns>
     public async Task<DeviceLocationResult> DetectAsync()
     {
         // RequestAccessAsync must be called by the foreground UI thread before reading location.
@@ -59,6 +62,9 @@ internal sealed class DeviceLocationService
         }
     }
 
+    /// <summary>Maps a Windows position source to the app-level source enum.</summary>
+    /// <param name="source">The Windows position source.</param>
+    /// <returns>The mapped source.</returns>
     private static DeviceLocationSource MapSource(PositionSource source) => source switch
     {
         PositionSource.Satellite => DeviceLocationSource.Satellite,

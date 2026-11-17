@@ -5,6 +5,7 @@ using Windows.System.UserProfile;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Safety probe result for the lock-screen image feature.</summary>
 internal sealed record LockScreenSafetyInfo(
     bool ProfileApiSupported,
     LockScreenBackgroundMode BackgroundMode,
@@ -13,12 +14,15 @@ internal sealed record LockScreenSafetyInfo(
     bool CanChangeTemporarily,
     string Message);
 
+/// <summary>Probes Windows lock-screen state to decide whether the temporary-image feature is safe to enable.</summary>
 internal static class LockScreenSafetyProbe
 {
     private const string SlideshowRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Lock Screen";
     private const string SpotlightRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
     private const string TemporaryImagePrefix = "PrayerAutomation-LockScreen-";
 
+    /// <summary>Inspects profile-API support, registry mode flags and the current image, and reports whether a temporary change is safe.</summary>
+    /// <returns>The safety probe result with a user-facing message.</returns>
     public static LockScreenSafetyInfo Inspect()
     {
         bool profileApiSupported;
@@ -74,6 +78,10 @@ internal static class LockScreenSafetyProbe
         return new LockScreenSafetyInfo(profileApiSupported, mode, hasLocalImage, isAppTemporaryImage, canChangeTemporarily, message);
     }
 
+    /// <summary>Reads a DWord flag; missing keys/values mean disabled (0), malformed or unreadable values yield null.</summary>
+    /// <param name="keyPath">Registry key path under HKCU.</param>
+    /// <param name="valueName">Value name to read.</param>
+    /// <returns>0, 1, or null when the value cannot be trusted.</returns>
     private static int? ReadInteger(string keyPath, string valueName)
     {
         try

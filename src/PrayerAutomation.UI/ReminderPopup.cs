@@ -10,11 +10,15 @@ using VerticalAlignment = System.Windows.VerticalAlignment;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Frameless, topmost auto-closing reminder popup shown near the bottom-right of the work area.</summary>
 internal sealed class ReminderPopup : Window
 {
     private static readonly List<ReminderPopup> ActivePopups = [];
     private readonly DispatcherTimer _closeTimer;
 
+    /// <summary>Initializes the popup UI for a prayer reminder.</summary>
+    /// <param name="prayer">Prayer label shown in the title.</param>
+    /// <param name="message">Reminder message body.</param>
     private ReminderPopup(string prayer, string message)
     {
         Title = "Pengingat waktu sholat";
@@ -91,6 +95,9 @@ internal sealed class ReminderPopup : Window
         _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); Close(); };
     }
 
+    /// <summary>Creates and shows a reminder popup, stacking it above existing popups.</summary>
+    /// <param name="prayer">Prayer label shown in the title.</param>
+    /// <param name="message">Reminder message body.</param>
     public static void Show(string prayer, string message)
     {
         var popup = new ReminderPopup(prayer, message);

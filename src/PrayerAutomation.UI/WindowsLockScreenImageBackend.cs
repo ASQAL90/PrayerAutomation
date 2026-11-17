@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Windows implementation of the lock-screen image backend: snapshot, apply, verify, restore, cleanup.</summary>
 internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
 {
     private readonly ILockScreenNativePlatform _native;
@@ -15,6 +16,11 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
     private readonly Action<string, Exception>? _log;
     private readonly Action<string, string>? _trace;
 
+    /// <summary>Initializes the backend.</summary>
+    /// <param name="log">Optional error log sink.</param>
+    /// <param name="directory">Override for the managed files directory.</param>
+    /// <param name="native">Optional native interop override (for testing).</param>
+    /// <param name="trace">Optional trace sink for timeline events.</param>
     internal WindowsLockScreenImageBackend(Action<string, Exception>? log = null, string? directory = null,
         ILockScreenNativePlatform? native = null, Action<string, string>? trace = null)
     {
@@ -24,6 +30,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         _directory = Path.GetFullPath(directory ?? LockScreenStatePaths.DefaultDirectory);
     }
 
+    /// <inheritdoc/>
     public LockScreenRestoreSnapshot CaptureSnapshot(string imagePath, DateTimeOffset restoreAtUtc)
     {
         if (!_native.IsSupported())
@@ -93,6 +100,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <inheritdoc/>
     public async Task ApplyTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         ValidateSnapshotPaths(snapshot);
@@ -117,6 +125,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
             throw new InvalidOperationException("The temporary lock-screen image changed before verification completed.");
     }
 
+    /// <inheritdoc/>
     public LockScreenImageOwnership CheckTemporaryImage(LockScreenRestoreSnapshot snapshot)
     {
         try
@@ -132,6 +141,11 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Classifies how the current image relates to a snapshot without touching global state.</summary>
+    /// <param name="snapshot">The snapshot to classify against.</param>
+    /// <param name="currentImagePath">Path of the currently exposed image, or null when unavailable.</param>
+    /// <param name="currentMode">The currently resolved background mode.</param>
+    /// <returns>The ownership classification.</returns>
     internal static LockScreenImageOwnership ClassifyImageOwnership(LockScreenRestoreSnapshot snapshot,
         string? currentImagePath, LockScreenBackgroundMode currentMode)
     {
@@ -159,6 +173,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <inheritdoc/>
     public async Task MaintainTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         ValidateSnapshotPaths(snapshot);
@@ -176,6 +191,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
             throw new InvalidOperationException("Windows did not confirm the maintained temporary Picture image.");
     }
 
+    /// <inheritdoc/>
     public async Task RestoreAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         ValidateSnapshotPaths(snapshot);
@@ -205,6 +221,7 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         TraceNativeState("restore-after", snapshot);
     }
 
+    /// <inheritdoc/>
     public bool IsRestored(LockScreenRestoreSnapshot snapshot)
     {
         try
@@ -222,20 +239,30 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <inheritdoc/>
     public void Cleanup(LockScreenRestoreSnapshot snapshot)
     {
         DeleteManagedFile(snapshot.TemporaryImagePath, LockScreenStatePaths.TemporaryImagePrefix);
         DeleteManagedFile(snapshot.PreviousImagePath, LockScreenStatePaths.RestoreImagePrefix);
     }
 
+    /// <summary>Returns the current local image path via the native platform.</summary>
+    /// <returns>The local file path.</returns>
     private string GetCurrentLocalImagePath() => _native.GetCurrentLocalImagePath();
 
+    /// <summary>Checks whether the current image matches an expected SHA-256 hash.</summary>
+    /// <param name="expectedSha256">Expected hash, or null/empty.</param>
+    /// <returns>True when the current image hash matches.</returns>
     private bool CurrentImageMatches(string? expectedSha256)
     {
         if (string.IsNullOrWhiteSpace(expectedSha256)) return false;
         return string.Equals(ComputeSha256(GetCurrentLocalImagePath()), expectedSha256, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Validates the image extension (jpg/jpeg/png/bmp) and returns it.</summary>
+    /// <param name="path">Image path to check.</param>
+    /// <returns>The extension as found.</returns>
+    /// <exception cref="InvalidDataException">The extension is not supported.</exception>
     private static string RequireSupportedImageExtension(string path)
     {
         string extension = Path.GetExtension(path);
@@ -247,6 +274,10 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         throw new InvalidDataException("Only JPG, PNG, or BMP lock-screen image files can be snapshotted safely.");
     }
 
+    /// <summary>Copies a file and verifies SHA-256 hashes match; deletes the copy on mismatch.</summary>
+    /// <param name="sourcePath">Source file.</param>
+    /// <param name="destinationPath">Destination file (must not exist).</param>
+    /// <exception cref="IOException">Hash mismatch after copy.</exception>
     private static void CopyAndVerify(string sourcePath, string destinationPath)
     {
         File.Copy(sourcePath, destinationPath, overwrite: false);
@@ -260,12 +291,18 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Computes the SHA-256 hex hash of a file.</summary>
+    /// <param name="path">File to hash.</param>
+    /// <returns>Uppercase hex hash string.</returns>
     private static string ComputeSha256(string path)
     {
         using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 
+    /// <summary>Deletes an application-managed file unless it is the current lock-screen image; logs failures.</summary>
+    /// <param name="path">Candidate path, or null.</param>
+    /// <param name="prefix">Required managed-file prefix.</param>
     private void DeleteManagedFile(string? path, string prefix)
     {
         if (!LockScreenStatePaths.IsManagedFile(path ?? "", prefix, _directory)) return;
@@ -281,6 +318,8 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Deletes managed files not in <paramref name="preservePaths"/>; logs failures.</summary>
+    /// <param name="preservePaths">Paths to keep.</param>
     private void CleanupOrphanedManagedFiles(params string?[] preservePaths)
     {
         try
@@ -300,12 +339,18 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Returns the current local image path, or null when verification fails.</summary>
+    /// <returns>The path, or null.</returns>
     private string? TryGetCurrentLocalImagePath()
     {
         try { return GetCurrentLocalImagePath(); }
         catch (Exception ex) when (IsVerificationFailure(ex)) { return null; }
     }
 
+    /// <summary>Compares two paths by full path, case-insensitively.</summary>
+    /// <param name="first">First path.</param>
+    /// <param name="second">Second path.</param>
+    /// <returns>True when the full paths are equal; false on any error.</returns>
     private static bool PathsEqual(string first, string second)
     {
         try
@@ -318,6 +363,9 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Validates snapshot version, managed paths and hashes; throws on anything else.</summary>
+    /// <param name="snapshot">The snapshot to validate.</param>
+    /// <exception cref="InvalidDataException">The snapshot is not a valid application-owned transaction.</exception>
     private void ValidateSnapshotPaths(LockScreenRestoreSnapshot snapshot)
     {
         if (snapshot.Version != 1 ||
@@ -337,11 +385,17 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         }
     }
 
+    /// <summary>Returns true for exceptions that indicate a verification/IO failure rather than a bug.</summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <returns>True when the exception is a verification failure.</returns>
     private static bool IsVerificationFailure(Exception exception) =>
         exception is IOException or UnauthorizedAccessException or SecurityException or ArgumentException or
             InvalidOperationException or NotSupportedException or System.Runtime.InteropServices.COMException or
             System.Runtime.InteropServices.ExternalException or System.Threading.Tasks.TaskCanceledException;
 
+    /// <summary>Traces mode flags and image role; failures are swallowed.</summary>
+    /// <param name="action">Trace action name.</param>
+    /// <param name="snapshot">The snapshot to describe.</param>
     private void TraceNativeState(string action, LockScreenRestoreSnapshot snapshot)
     {
         if (_trace is null) return;
@@ -360,6 +414,9 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
         catch (Exception) { Trace(action, "category=unavailable visual=unverified"); }
     }
 
+    /// <summary>Emits a privacy-safe backend trace entry; failures are swallowed.</summary>
+    /// <param name="action">Trace action name.</param>
+    /// <param name="detail">Trace detail payload.</param>
     private void Trace(string action, string detail)
     {
         try { _trace?.Invoke("lock-screen.backend." + action, $"utc={DateTimeOffset.UtcNow:O} {detail}"); }

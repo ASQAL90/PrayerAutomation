@@ -8,8 +8,10 @@ using System.Windows.Threading;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>A prayer time trigger for the lock-screen schedule.</summary>
 internal sealed record LockScreenPrayerTrigger(string Key, TimeSpan Time);
 
+/// <summary>Schedules the temporary lock-screen image at prayer times and restores it afterwards, with safety backstops.</summary>
 internal sealed class LockScreenImageScheduler : IDisposable
 {
     private static readonly HashSet<string> EssentialPrayerKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -45,6 +47,16 @@ internal sealed class LockScreenImageScheduler : IDisposable
     private TaskCompletionSource? _processingCompleted;
     private volatile bool _disposed;
 
+    /// <summary>Initializes the scheduler.</summary>
+    /// <param name="isEnabled">Returns whether the lock-screen feature is enabled.</param>
+    /// <param name="scheduleForDate">Returns prayer triggers for a local date.</param>
+    /// <param name="timeZone">Resolves the configured time zone.</param>
+    /// <param name="imagePath">Path of the temporary image to apply.</param>
+    /// <param name="transaction">Transaction manager for apply/restore operations.</param>
+    /// <param name="log">Optional error log sink.</param>
+    /// <param name="durationMinutes">Optional override for the temporary image duration.</param>
+    /// <param name="executionRequest">Optional execution-required power request helper.</param>
+    /// <param name="trace">Optional trace sink for timeline events.</param>
     internal LockScreenImageScheduler(
         Func<bool> isEnabled,
         Func<DateTime, IReadOnlyList<LockScreenPrayerTrigger>> scheduleForDate,
@@ -67,8 +79,11 @@ internal sealed class LockScreenImageScheduler : IDisposable
         _trace = trace;
     }
 
+    /// <summary>Raised when a user-facing status message becomes available.</summary>
     internal event Action<string>? StatusChanged;
 
+    /// <summary>Starts the scheduler, recovering any pending transaction and processing the current tick.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
     internal async Task StartAsync(DateTimeOffset nowUtc)
     {
         ThrowIfDisposed();
@@ -94,6 +109,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
         await ProcessTickAsync(nowUtc);
     }
 
+    /// <summary>Re-evaluates schedule and recovery state after settings change.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <returns>Results of the tick processing.</returns>
     internal async Task<IReadOnlyList<LockScreenTransactionResult>> RefreshAsync(DateTimeOffset nowUtc)
     {
         ThrowIfDisposed();
@@ -119,6 +137,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
         return await ProcessTickAsync(nowUtc);
     }
 
+    /// <summary>Processes one scheduler tick: recovery check, prayer-trigger detection, apply/extend.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <returns>Results of any transactions applied or extended on this tick.</returns>
     internal async Task<IReadOnlyList<LockScreenTransactionResult>> ProcessTickAsync(DateTimeOffset nowUtc)
     {
         ThrowIfDisposed();
@@ -192,6 +213,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Stops scheduling and restores the previous lock-screen state; safe to call at shutdown.</summary>
+    /// <returns>The outcome of the restore transaction.</returns>
     internal async Task<LockScreenTransactionResult> StopAndRestoreAsync()
     {
         ThrowIfDisposed();
@@ -221,6 +244,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Disposes the scheduler and its power request; the timer is stopped.</summary>
     public void Dispose()
     {
         lock (_executionSync)
@@ -234,6 +258,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         StopTimer();
     }
 
+    /// <summary>Starts the 1-second dispatcher timer if not already running.</summary>
     private void StartTimer()
     {
         if (_disposed) return;
@@ -248,6 +273,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         if (!_timer.IsEnabled) _timer.Start();
     }
 
+    /// <summary>Stops and detaches the dispatcher timer.</summary>
     private void StopTimer()
     {
         if (_timer is null) return;
@@ -256,6 +282,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
         _timer = null;
     }
 
+    /// <summary>Timer handler; processes a tick and logs unexpected failures.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
     private async void OnTimerTick(object? sender, EventArgs e)
     {
         try
@@ -268,6 +297,10 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Runs recovery with tracing, status publishing and backoff interval selection.</summary>
+    /// <param name="enabled">Whether the feature is enabled.</param>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <returns>The outcome of the recovery transaction.</returns>
     private async Task<LockScreenTransactionResult> RecoverWithBackoffAsync(bool enabled, DateTimeOffset nowUtc)
     {
         _recoveryPending = true;
@@ -303,6 +336,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Publishes a status message for apply/extend transaction results.</summary>
+    /// <param name="result">The transaction result.</param>
     private void PublishTransactionStatus(LockScreenTransactionResult result)
     {
         if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended)
@@ -322,6 +357,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Publishes a status message for recovery transaction results.</summary>
+    /// <param name="result">The recovery result.</param>
     private void PublishRecoveryStatus(LockScreenTransactionResult result)
     {
         if (result == LockScreenTransactionResult.Restored)
@@ -336,6 +373,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Clears the cached per-day trigger list and processed triggers.</summary>
     private void ResetScheduleCache()
     {
         _trackedLocalDate = null;
@@ -343,8 +381,12 @@ internal sealed class LockScreenImageScheduler : IDisposable
         _processedPrayerTriggers.Clear();
     }
 
+    /// <summary>Raises <see cref="StatusChanged"/> with a message.</summary>
+    /// <param name="message">Message to publish.</param>
     private void SetStatus(string message) => StatusChanged?.Invoke(message);
 
+    /// <summary>Aligns the execution-required power request with a transaction result.</summary>
+    /// <param name="result">The transaction result.</param>
     private void SynchronizeExecutionRequest(LockScreenTransactionResult result)
     {
         if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended or LockScreenTransactionResult.Active)
@@ -363,6 +405,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
         // Pending/throwing recovery retains only the already bounded lease, never renews it.
     }
 
+    /// <summary>Requests the execution-required power state up to a deadline, never shrinking an existing lease.</summary>
+    /// <param name="deadline">UTC deadline for the request.</param>
+    /// <param name="acquireOnly">When true, does not extend an already-active lease.</param>
     private void RequestExecutionUntil(DateTimeOffset deadline, bool acquireOnly = false)
     {
         lock (_executionSync)
@@ -377,6 +422,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Clears the execution-required power request and its tracked deadline.</summary>
     private void ClearExecutionRequest()
     {
         lock (_executionSync)
@@ -387,11 +433,15 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Throws <see cref="ObjectDisposedException"/> when the scheduler is disposed.</summary>
+    /// <exception cref="ObjectDisposedException">The scheduler has been disposed.</exception>
     private void ThrowIfDisposed()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(LockScreenImageScheduler));
     }
 
+    /// <summary>Reads the transaction restore deadline for diagnostics; null when unavailable.</summary>
+    /// <returns>The diagnostic deadline, or null.</returns>
     private DateTimeOffset? ReadDiagnosticDeadline()
     {
         if (_trace is null) return null;
@@ -399,12 +449,19 @@ internal sealed class LockScreenImageScheduler : IDisposable
         catch (Exception) { return null; }
     }
 
+    /// <summary>Emits a privacy-safe timeline trace entry; failures are swallowed.</summary>
+    /// <param name="action">Trace action name.</param>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <param name="detail">Trace detail payload.</param>
     private void Trace(string action, DateTimeOffset nowUtc, string detail)
     {
         try { _trace?.Invoke("lock-screen.timeline." + action, $"utc={nowUtc.ToUniversalTime():O} {detail}"); }
         catch (Exception) { }
     }
 
+    /// <summary>Maps an exception to a coarse, privacy-safe category for tracing.</summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <returns>The category string.</returns>
     private static string ErrorCategory(Exception exception) => exception switch
     {
         System.IO.IOException => "io",

@@ -1,9 +1,13 @@
+// Smoke test verifying network location detection: provider agreement, response parsing, proxy/VPN signals, and IP minimization.
 using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Collections.Concurrent;
 using PrayerAutomation.UI;
 
+/// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+/// <param name="condition">Condition that must be true.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Require(bool condition, string message)
 {
     if (!condition)
@@ -117,16 +121,24 @@ if (args.Contains("--live", StringComparer.Ordinal))
 
 Console.WriteLine("PASS: both network providers, coordinate/time-zone normalization, disagreement handling, and IP minimization.");
 
+/// <summary>Fake <see cref="HttpMessageHandler"/> that replies with canned JSON per provider host and records requested URIs.</summary>
 sealed class JsonReplyHandler : HttpMessageHandler
 {
     private readonly IReadOnlyDictionary<string, string> _responses;
+    /// <summary>Gets the URIs requested so far, in order.</summary>
     public ConcurrentQueue<Uri> RequestUris { get; } = new();
 
+    /// <summary>Creates the handler with per-host JSON responses.</summary>
+    /// <param name="responses">Map of host name to canned JSON body.</param>
     public JsonReplyHandler(IReadOnlyDictionary<string, string> responses)
     {
         _responses = responses;
     }
 
+    /// <summary>Records the request URI and returns the canned JSON for the host, or throws for unexpected hosts.</summary>
+    /// <param name="request">Outgoing HTTP request.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A canned HTTP 200 JSON response.</returns>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Uri uri = request.RequestUri ?? throw new InvalidOperationException("request URI missing");

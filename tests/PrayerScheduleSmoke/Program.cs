@@ -1,3 +1,4 @@
+// Smoke test verifying prayer schedule calculation across calculation methods, manual corrections, legacy method mapping, and reminder filtering.
 using PrayerAutomation.UI;
 
 var date = new DateTime(2026, 1, 1);
@@ -48,6 +49,9 @@ Check(PrayerScheduleService.ReminderEntries(PrayerScheduleService.ForDate(date, 
     "reminder schedule should exclude sunrise and Dhuha");
 Console.WriteLine("PASS: eight calculation methods, Dhuha/Umm al-Qura derived times, manual offsets, legacy MWL mapping, and reminder filtering.");
 
+/// <summary>Builds synthetic settings for the given calculation method.</summary>
+/// <param name="method">Calculation method ID.</param>
+/// <returns>The synthetic settings.</returns>
 static AppSettings CreateSettings(int method) => new()
 {
     Latitude = -6.4336368,
@@ -58,6 +62,9 @@ static AppSettings CreateSettings(int method) => new()
     DhuhaAfterSunriseMinutes = 15,
 };
 
+/// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+/// <param name="condition">Condition that must be true.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Check(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);

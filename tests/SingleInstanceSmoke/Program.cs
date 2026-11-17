@@ -1,3 +1,4 @@
+// Smoke test verifying the single-instance guard: a second launch exits while the first instance remains running.
 using System.Diagnostics;
 
 if (args.Length != 1)
@@ -52,12 +53,19 @@ finally
     Terminate(first);
 }
 
+/// <summary>Starts the application executable with its own directory as working directory.</summary>
+/// <param name="executable">Path to the application executable.</param>
+/// <returns>The started process.</returns>
 static Process Start(string executable) => Process.Start(new ProcessStartInfo(executable)
 {
     WorkingDirectory = Path.GetDirectoryName(executable)!,
     UseShellExecute = true
 }) ?? throw new InvalidOperationException("Process.Start returned null.");
 
+/// <summary>Waits until the process shows a main window or the timeout elapses.</summary>
+/// <param name="process">Process to poll.</param>
+/// <param name="timeout">Maximum wait time.</param>
+/// <returns>True when a main-window handle appeared before the deadline.</returns>
 static bool WaitForWindow(Process process, TimeSpan timeout)
 {
     DateTime deadline = DateTime.UtcNow + timeout;
@@ -71,6 +79,8 @@ static bool WaitForWindow(Process process, TimeSpan timeout)
     return false;
 }
 
+/// <summary>Best-effort kill of the process tree; ignores processes that already exited.</summary>
+/// <param name="process">Process to terminate, or null.</param>
 static void Terminate(Process? process)
 {
     if (process is null) return;

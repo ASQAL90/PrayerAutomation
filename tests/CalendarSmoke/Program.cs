@@ -1,3 +1,4 @@
+// Smoke test verifying Hijri/Gregorian calendar conversion, observance markers, and calendar accessibility metadata via the native prayer core and source inspection.
 using PrayerAutomation.UI;
 
 DateTime knownGregorian = new(2026, 1, 1);
@@ -70,16 +71,31 @@ Check(codeBehind.Contains("tanggal resmi dapat berbeda menurut rukyat", StringCo
 
 Console.WriteLine("PASS: Gregorian/Hijri round-trip, 1500 H month lengths, observance/no-fast markers, correction offset, and accessible names in both source views; no UI input automation used.");
 
+/// <summary>Converts a Hijri date to the corresponding Gregorian date.</summary>
+/// <param name="year">Hijri year.</param>
+/// <param name="month">Hijri month (1-12).</param>
+/// <param name="day">Hijri day of month.</param>
+/// <returns>The Gregorian <see cref="DateTime"/> for the given Hijri date.</returns>
 static DateTime GregorianDateForHijri(int year, int month, int day)
 {
     NativeHijriMonth start = NativePrayerCore.HijriMonth(year, month);
     return new DateTime(start.GregorianYear, start.GregorianMonth, start.GregorianDay).AddDays(day - 1);
 }
 
+/// <summary>Checks whether a date carries an observance whose name contains the given text and matches the expected kind.</summary>
+/// <param name="date">Date to inspect.</param>
+/// <param name="namePart">Substring that must appear in the observance name.</param>
+/// <param name="kind">Expected observance kind.</param>
+/// <returns>True when a matching observance exists for the date; otherwise false.</returns>
 static bool HasObservation(DateTime date, string namePart, CalendarObservanceKind kind) =>
     NativePrayerCore.CalendarObservances(date, 0).Any(item =>
         item.Kind == kind && item.Name.Contains(namePart, StringComparison.Ordinal));
 
+/// <summary>Verifies the method body between two signatures in the given source sets accessible names on its buttons.</summary>
+/// <param name="source">Source text to search.</param>
+/// <param name="methodSignature">Signature marking the start of the method body.</param>
+/// <param name="nextMethodSignature">Signature marking the end of the method body.</param>
+/// <returns>True when both accessibility markers are present in the extracted body; otherwise false.</returns>
 static bool HasAccessibleEventNames(string source, string methodSignature, string nextMethodSignature)
 {
     int start = source.IndexOf(methodSignature, StringComparison.Ordinal);
@@ -93,6 +109,9 @@ static bool HasAccessibleEventNames(string source, string methodSignature, strin
            body.Contains("eventDescription", StringComparison.Ordinal);
 }
 
+/// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+/// <param name="condition">Condition that must be true.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Check(bool condition, string message)
 {
     if (!condition)

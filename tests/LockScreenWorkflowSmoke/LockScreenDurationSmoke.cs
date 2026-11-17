@@ -1,8 +1,12 @@
+// Smoke test verifying the lock-screen transaction honors the user-configured image-hold duration via the real scheduler path.
 using System.Reflection;
 using PrayerAutomation.UI;
 
+/// <summary>Verifies the lock-screen image-hold duration is taken from settings and persisted correctly.</summary>
 internal static class LockScreenDurationSmoke
 {
+    /// <summary>Verifies that a configured seven-minute hold is applied, persisted, honored before expiry, and followed by restore at the deadline, for every background mode.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     internal static async Task VerifyConfiguredHoldAsync(DateTimeOffset start)
     {
         MethodInfo method = typeof(LockScreenImageTransaction).GetMethod("BeginOrExtendAsync",
@@ -41,6 +45,8 @@ internal static class LockScreenDurationSmoke
         await VerifySchedulerUsesSavedDurationAsync(start);
     }
 
+    /// <summary>Verifies the production scheduler consumes the saved duration and that changing settings does not shorten an active lease.</summary>
+    /// <param name="start">Trigger time for the fixture transaction.</param>
     private static async Task VerifySchedulerUsesSavedDurationAsync(DateTimeOffset start)
     {
         var constructor = typeof(LockScreenImageScheduler).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -81,6 +87,9 @@ internal static class LockScreenDurationSmoke
         Console.WriteLine("LOCKSCREEN_SCHEDULER_DURATION PASS: checks=5; saved_minutes=7; early_ticks=3,30,60; overlap_minutes=1; native_calls=0.");
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

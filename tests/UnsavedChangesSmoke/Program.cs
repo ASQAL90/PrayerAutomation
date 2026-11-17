@@ -9,36 +9,82 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Expression = System.Linq.Expressions.Expression;
 
+/// <summary>Smoke suite verifying unsaved-changes protection for close, minimize, cancel, and central exit paths.</summary>
 internal static class Program
 {
+    /// <summary>Binding flags for instance members.</summary>
     const BindingFlags I = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+    /// <summary>Binding flags for static members.</summary>
     const BindingFlags S = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+    /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     static readonly string[] Flags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled", "LockScreenOptIn", "StartupEnabled", "StartHidden", "WidgetEnabled", "TaskbarWidgetEnabled"];
+    /// <summary>Loaded product assembly.</summary>
     static Assembly Product = null!;
+    /// <summary>Isolated product application instance.</summary>
     static Application App = null!;
+    /// <summary>Product App and AppSettings types.</summary>
     static Type AppType = null!, SettingsType = null!;
+    /// <summary>Isolated main window under test.</summary>
     static Window Window = null!;
+    /// <summary>Synthetic settings instance.</summary>
     static object Settings = null!;
+    /// <summary>Aborted implicit startup operation, if any.</summary>
     static DispatcherOperation? Startup;
+    /// <summary>Counters for aborted callbacks, failures, synthetic save/startup writes, prompts, and safety reads.</summary>
     static int Aborted, Failures, SaveWrites, StartupWrites, Prompts, SafetyReads = 0;
+    /// <summary>Counters for save attempts, displayed prompts, logged errors, and closing calls.</summary>
     static int SaveAttempts, TotalPrompts, LoggedErrors, ClosingCalls;
+    /// <summary>Whether the last prompt was the discard-only variant.</summary>
     static bool LastDiscardOnly;
+    /// <summary>Whether the fixture's constructor accepting a settings-error logger was used.</summary>
     static bool ConstructorLoggerInjected;
+    /// <summary>Optional hook invoked during the synthetic save path.</summary>
     static Action? DuringSave;
+    /// <summary>Report output root, assembly path, suite name, and current case name.</summary>
     static string ReportRoot = "", AssemblyPath = "", Suite = "", CurrentCase = "";
+    /// <summary>Setup failure text, if any.</summary>
     static string? SetupError;
+    /// <summary>Scratch save path and the user's pending prompt choice.</summary>
     static string SavePath = "", Choice = "Cancel";
+    /// <summary>Forces the synthetic save to throw when set.</summary>
     static bool FailSave;
+    /// <summary>Optional hook invoked during the synthetic prompt path.</summary>
     static Action? DuringPrompt;
+    /// <summary>Recorded check results for the report.</summary>
     static readonly List<object> Checks = [];
+    /// <summary>Unhandled dispatcher exceptions observed during the run.</summary>
     static readonly List<string> Unhandled = [];
+    /// <summary>Reflects a window field or throws when missing.</summary>
+    /// <param name="name">Field name.</param>
+    /// <returns>The field info.</returns>
     static FieldInfo Field(string name) => Window.GetType().GetField(name,I) ?? throw new InvalidOperationException("Missing field: " + name);
+    /// <summary>Gets a typed control from a window field.</summary>
+    /// <typeparam name="T">Control type expected for the field value.</typeparam>
+    /// <param name="name">Field name.</param>
+    /// <returns>The control instance.</returns>
     static T Control<T>(string name) => (T)Field(name).GetValue(Window)!;
+    /// <summary>Invokes a window instance method matched by name and parameter count.</summary>
+    /// <param name="name">Method name.</param>
+    /// <param name="args">Invocation arguments.</param>
+    /// <returns>The method result, if any.</returns>
     static object? Invoke(string name, params object?[] args) => Window.GetType().GetMethods(I | BindingFlags.DeclaredOnly).Single(m => m.Name == name && m.GetParameters().Length == args.Length).Invoke(Window,args);
+    /// <summary>Invokes an application static or instance method by name.</summary>
+    /// <param name="name">Method name.</param>
+    /// <param name="args">Invocation arguments.</param>
+    /// <returns>The method result, if any.</returns>
     static object? AppInvoke(string name, params object?[] args) => AppType.GetMethod(name,I)!.Invoke(App,args);
+    /// <summary>Requires the condition and throws otherwise.</summary>
+    /// <param name="pass">Condition that must hold.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     static void Require(bool pass, string message) { if (!pass) throw new InvalidOperationException("SAFETY/SETUP: " + message); }
+    /// <summary>Records a check result and rewrites the report.</summary>
+    /// <param name="id">Check identifier.</param>
+    /// <param name="pass">Whether the check passed.</param>
     static void Check(string id, bool pass) { Checks.Add(new { id, pass }); if (!pass) Failures++; WriteReport(); }
+    /// <summary>Serializes the current settings snapshot.</summary>
+    /// <returns>The serialized settings JSON.</returns>
     static string Json() => JsonSerializer.Serialize(Settings,SettingsType);
+    /// <summary>Verifies no consequential startup objects exist and no synthetic flag or timer was restarted.</summary>
     static void Verify()
     {
         Require(Aborted == 1 && Startup?.Status == DispatcherOperationStatus.Aborted,"implicit startup not aborted exactly once");
@@ -49,12 +95,15 @@ internal static class Program
         Require(PresentationSource.FromVisual(Window) == null,"main window became shown/native-backed");
         Require(!Dispatcher.CurrentDispatcher.HasShutdownStarted,"fixture dispatcher shut down unexpectedly");
     }
+    /// <summary>Stops the location search timer, pumps the dispatcher, and re-verifies safety invariants.</summary>
     static void Pump()
     {
         ((DispatcherTimer)Field("_locationSearchTimer").GetValue(Window)!).Stop();
         Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle,new Action(()=>{}));
         Verify();
     }
+    /// <summary>Synthetic save callback; rejects unsafe candidates, then writes the candidate to the scratch file.</summary>
+    /// <param name="candidate">Settings candidate to persist.</param>
     static void Capture(object candidate)
     {
         foreach (string n in Flags) Require(SettingsType.GetProperty(n,I)!.GetValue(candidate) is false,"unsafe save candidate: " + n);
@@ -64,6 +113,9 @@ internal static class Program
         SaveWrites++;
         File.WriteAllText(SavePath,JsonSerializer.Serialize(candidate,SettingsType));
     }
+    /// <summary>Synthetic prompt callback returning the configured choice and recording the prompt.</summary>
+    /// <param name="discardOnly">Whether the discard-only prompt variant is shown.</param>
+    /// <returns>The configured unsaved-changes choice.</returns>
     static object Prompt(bool discardOnly)
     {
         Prompts++;
@@ -73,6 +125,7 @@ internal static class Program
         Type result = Product.GetType("PrayerAutomation.UI.UnsavedChangesChoice",true)!;
         return Enum.Parse(result,Choice);
     }
+    /// <summary>Injects the prompt lambda into the window's prompt seam when the seam exists.</summary>
     static void SetPrompt()
     {
         // Baseline lacks the seam; still exercise its real closing behavior for RED.
@@ -82,10 +135,14 @@ internal static class Program
         var body = Expression.Convert(Expression.Call(typeof(Program).GetMethod(nameof(Prompt),S)!,discard),field.FieldType.GetGenericArguments()[1]);
         field.SetValue(Window,Expression.Lambda(field.FieldType,body,discard).Compile());
     }
+    /// <summary>Creates the isolated application and main window with startup suppressed and synthetic seams injected.</summary>
     static void Create()
     {
         AppType = Product.GetType("PrayerAutomation.UI.App",true)!;
         FieldInfo callback = typeof(DispatcherOperation).GetField("_method",BindingFlags.Instance | BindingFlags.NonPublic) ?? throw new InvalidOperationException("Unsupported WPF callback field");
+        /// <summary>Aborts the implicit WPF startup callback while pending; throws on any unexpected shape.</summary>
+        /// <param name="sender">Event sender (unused).</param>
+        /// <param name="e">Dispatcher hook event carrying the posted operation.</param>
         void Abort(object? sender, DispatcherHookEventArgs e)
         {
             if (callback.GetValue(e.Operation) is Delegate d && d.Method.DeclaringType == typeof(Application) && d.Method.Name == "<.ctor>b__1_0")
@@ -146,12 +203,14 @@ internal static class Program
         Require(PresentationSource.FromVisual(Window) == null,"main window must remain unshown");
         Verify();
     }
+    /// <summary>Invokes the window's OnClosing handler with a fresh cancel event and records the check.</summary>
     static void Closing()
     {
         var e = new System.ComponentModel.CancelEventArgs();
         Invoke("OnClosing",Window,e);
         Check("X_remains_cancelled_for_tray_" + ++ClosingCalls,e.Cancel);
     }
+    /// <summary>Verifies closing with a dirty form in the Cancel state keeps the draft and cancels the close.</summary>
     static void CloseCancelCase()
     {
         string saved = Json();
@@ -163,7 +222,9 @@ internal static class Program
         Check("X_cancel_prompts_once",Prompts == 1);
         Check("X_cancel_does_not_validate_save_or_startup",SafetyReads == before && SaveWrites == 0 && StartupWrites == 0 && Json() == saved);
     }
+    /// <summary>Invokes the window's OnStateChanged handler.</summary>
     static void StateEvent() => typeof(Window).GetMethod("OnStateChanged",I)!.Invoke(Window,[EventArgs.Empty]);
+    /// <summary>Verifies minimize with a dirty invalid draft prompts after restoring the previous state and keeps the draft on Cancel.</summary>
     static void MinimizeCancelCase()
     {
         Invoke("RestoreSavedSettingsPreview");
@@ -182,6 +243,7 @@ internal static class Program
         Check("minimize_cancel_preserves_invalid_entire_draft",Control<TextBox>("ReminderMessageBox").Text == "Invalid draft retained when minimized" && Control<TextBox>("ReminderMinutesBox").Text == "not a number");
         Check("minimize_dirty_check_never_validates_or_saves",SafetyReads == before && SaveWrites == 0 && StartupWrites == 0 && Json() == saved);
     }
+    /// <summary>Verifies the Batal (discard) path prompts once and keeps the draft on Cancel.</summary>
     static void DiscardCancelCase()
     {
         Invoke("RestoreSavedSettingsPreview");
@@ -193,6 +255,7 @@ internal static class Program
         Check("Batal_cancel_keeps_draft",Control<TextBox>("ReminderMessageBox").Text == "Keep draft when cancelling discard");
         Check("Batal_cancel_never_validates_or_persists",SafetyReads == before && SaveWrites == 0 && StartupWrites == 0);
     }
+    /// <summary>Verifies the central tray exit prompts before the shutdown guard and cancels cleanly.</summary>
     static void ExitCancelCase()
     {
         Invoke("RestoreSavedSettingsPreview");
@@ -206,16 +269,28 @@ internal static class Program
         Check("central_exit_cancel_keeps_application_running",AppType.GetField("_isShuttingDown",I)!.GetValue(App) is false && Field("_allowClose").GetValue(Window) is false);
         Check("central_exit_cancel_preserves_draft",Control<TextBox>("ReminderMessageBox").Text == "Draft blocks central tray exit" && SaveWrites == 0 && StartupWrites == 0);
     }
+    /// <summary>Invokes the window's unsaved-changes query.</summary>
+    /// <returns>True when the form has unsaved changes.</returns>
     static bool Dirty() => (bool)Invoke("HasUnsavedSettingsChanges")!;
+    /// <summary>Invokes the window's unsaved-changes confirmation.</summary>
+    /// <param name="discardOnly">Whether to use the discard-only prompt variant.</param>
+    /// <returns>True when the action may continue.</returns>
     static bool Confirm(bool discardOnly = false) => (bool)Invoke("ConfirmUnsavedSettingsChanges",discardOnly)!;
+    /// <summary>Invokes the window's raw draft capture.</summary>
+    /// <returns>The draft values.</returns>
     static object?[] Draft() => (object?[])Invoke("CaptureSettingsFormDraft")!;
+    /// <summary>Runs an action with the loading guard set, then restores it.</summary>
+    /// <param name="action">Action to run.</param>
     static void Quiet(Action action)
     {
         Field("_loadingSettings").SetValue(Window,true);
         try { action(); }
         finally { Field("_loadingSettings").SetValue(Window,false); }
     }
+    /// <summary>Reports whether the application is still running and the window may not close.</summary>
+    /// <returns>True when neither shutdown nor allow-close is set.</returns>
     static bool Running() => AppType.GetField("_isShuttingDown",I)!.GetValue(App) is false && Field("_allowClose").GetValue(Window) is false;
+    /// <summary>Resets hooks, restores saved state, and re-verifies safety invariants.</summary>
     static void Reset()
     {
         DuringPrompt = null; DuringSave = null; FailSave = false; Choice = "Cancel"; Prompts = 0;
@@ -223,10 +298,14 @@ internal static class Program
         Window.WindowState = WindowState.Normal; StateEvent();
         Verify();
     }
+    /// <summary>Runs one named case with a fresh reset and pump, recording the result.</summary>
+    /// <param name="name">Case name.</param>
+    /// <param name="action">Case body.</param>
     static void RunCase(string name, Action action)
     {
         CurrentCase = name; Reset(); action(); Pump(); WriteReport();
     }
+    /// <summary>Verifies dirty detection across raw text, selections, checkboxes, and calendar interactions.</summary>
     static void DirtyCase()
     {
         string saved = Json(); int writes = SaveWrites, startups = StartupWrites, reads = SafetyReads;
@@ -276,6 +355,8 @@ internal static class Program
         }
         Check("dirty_detection_is_read_only_no_validation_or_callbacks",Json() == saved && SaveWrites == writes && StartupWrites == startups && SafetyReads == reads);
     }
+    /// <summary>Fills the form with a synthetic full-draft valid or invalid payload and asserts it is dirty.</summary>
+    /// <param name="invalid">When true the reminder-minutes field is set to non-numeric text.</param>
     static void MakeDraft(bool invalid = false)
     {
         Quiet(()=>
@@ -297,6 +378,7 @@ internal static class Program
         });
         Require(Dirty(),"draft setup must be dirty");
     }
+    /// <summary>Verifies the Cancel/Discard/Save confirmation decisions, including re-entrancy.</summary>
     static void DecisionsCase()
     {
         object?[] baseline = Draft(); string saved = Json(); int writes = SaveWrites, starts = StartupWrites;
@@ -319,6 +401,7 @@ internal static class Program
         Check("Batal_discard_only_rejects_save_choice",LastDiscardOnly && Draft().SequenceEqual(draft) && Dirty());
         Check("cancel_discard_never_persist_or_update_startup",Json() == saved && SaveWrites == writes && StartupWrites == starts && Running());
     }
+    /// <summary>Verifies validation and persistence failure handling keeps the draft and blocks exit paths.</summary>
     static void FailuresCase()
     {
         Require(Window.GetType().GetField("_logSettingsError",I) != null,"save-failure test requires inert logging seam");
@@ -357,6 +440,7 @@ internal static class Program
         Window.WindowState = WindowState.Minimized; StateEvent();
         Check("minimize_failed_validation_restores_normal_and_full_draft",Window.WindowState == WindowState.Normal && Draft().SequenceEqual(draft) && Dirty());
     }
+    /// <summary>Verifies the Save pipeline: success, re-entrancy, baseline reset, and exit integration.</summary>
     static void SaveCase()
     {
         int writes = SaveWrites, starts = StartupWrites, attempts = SaveAttempts;
@@ -385,12 +469,16 @@ internal static class Program
         Window.WindowState = WindowState.Minimized; StateEvent();
         Check("minimize_save_runs_successful_pipeline_once",!Dirty() && Window.WindowState == WindowState.Maximized && SaveWrites == writes + 4 && SaveAttempts == attempts + 4 && StartupWrites == starts + 4 && Running());
     }
+    /// <summary>Enumerates a dependency object and its descendants depth-first via the logical tree.</summary>
+    /// <param name="root">Root to enumerate.</param>
+    /// <returns>The root followed by all descendants.</returns>
     static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         yield return root;
         foreach (object child in LogicalTreeHelper.GetChildren(root))
             if (child is DependencyObject d) foreach (var nested in Descendants(d)) yield return nested;
     }
+    /// <summary>Verifies the unsaved-changes dialog defaults, visibility, and button handlers.</summary>
     static void DialogCase()
     {
         Type type = Product.GetType("PrayerAutomation.UI.UnsavedChangesDialog",true)!;
@@ -415,6 +503,7 @@ internal static class Program
             Check("dialog_handler_choice_" + pair.Item2,type.GetProperty("Choice",I)!.GetValue(dialog)!.ToString() == pair.Item2);
         }
     }
+    /// <summary>Writes the RESULT.json report when a report root is configured.</summary>
     static void WriteReport()
     {
         if (ReportRoot.Length == 0) return;
@@ -424,6 +513,9 @@ internal static class Program
             product_EXE_launched = false, main_window_shown = false, real_profile_read_or_written = false, network_GPS_personalization_actions = false, unhandled = Unhandled };
         File.WriteAllText(Path.Combine(ReportRoot,"RESULT.json"),JsonSerializer.Serialize(report,new JsonSerializerOptions{WriteIndented=true}));
     }
+    /// <summary>Entry point; runs the requested suite and returns 0 on success, 1 on failure, 2 on setup error.</summary>
+    /// <param name="args">Suite name and approved scratch directory.</param>
+    /// <returns>Process exit code.</returns>
     [STAThread] static int Main(string[] args)
     {
         try

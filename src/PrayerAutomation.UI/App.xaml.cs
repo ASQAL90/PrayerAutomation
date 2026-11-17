@@ -6,8 +6,10 @@ using Application = System.Windows.Application;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>WPF application entry point; owns tray, schedulers, widget, and single-instance lifetime.</summary>
 public partial class App : Application
 {
+    /// <summary>Applies process-wide WPF switches before any window is created.</summary>
     static App()
     {
         // The legacy selection adorner covers glyphs at SelectionOpacity=1.
@@ -23,7 +25,9 @@ public partial class App : Application
     private ScheduleWidgetWindow? _taskbarWidget;
     private TaskbarCountdownPanel? _taskbarPanel;
     private (bool Enabled, string Mode)? _taskbarAppearancePreview;
+    /// <summary>Gets the taskbar widget enabled state, honoring an active preview over saved settings.</summary>
     private bool EffectiveTaskbarWidgetEnabled => _taskbarAppearancePreview?.Enabled ?? Settings.TaskbarWidgetEnabled;
+    /// <summary>Gets the taskbar widget mode, honoring an active preview over saved settings.</summary>
     private string EffectiveTaskbarWidgetMode => _taskbarAppearancePreview?.Mode ?? Settings.TaskbarWidgetMode;
     private MainWindow? _mainWindow;
     private Mutex? _singleInstanceMutex;
@@ -33,8 +37,11 @@ public partial class App : Application
     private bool _widgetExistedBeforePreview;
     private bool _isShuttingDown;
 
+    /// <summary>Gets the current application settings.</summary>
     internal AppSettings Settings { get; private set; } = new();
 
+    /// <summary>Initializes single-instance enforcement, settings, theme, tray, main window, and schedulers at startup.</summary>
+    /// <param name="e">Startup event arguments containing command-line args.</param>
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -94,6 +101,7 @@ public partial class App : Application
         CompleteWidgetStartup();
     }
 
+    /// <summary>Completes widget startup after the main window is shown, respecting any active appearance preview.</summary>
     private void CompleteWidgetStartup()
     {
         if (_isShuttingDown) return;
@@ -112,6 +120,7 @@ public partial class App : Application
         if (Settings.WidgetEnabled && _widget is null) ShowWidget();
     }
 
+    /// <summary>Shows, restores, and activates the main window.</summary>
     internal void ShowMainWindow()
     {
         if (_mainWindow is null) return;
@@ -124,18 +133,21 @@ public partial class App : Application
         _mainWindow.Activate();
     }
 
+    /// <summary>Shows the main window and selects the calendar tab.</summary>
     internal void OpenCalendar()
     {
         ShowMainWindow();
         _mainWindow?.SelectCalendarTab();
     }
 
+    /// <summary>Shows the main window and selects the settings tab.</summary>
     internal void OpenSettings()
     {
         ShowMainWindow();
         _mainWindow?.SelectSettingsTab();
     }
 
+    /// <summary>Toggles the schedule widget visibility.</summary>
     internal void ToggleWidget()
     {
         if (_widget is not null && _widget.IsVisible)
@@ -147,6 +159,8 @@ public partial class App : Application
         ShowWidget();
     }
 
+    /// <summary>Returns the schedule widget, creating it if it does not exist.</summary>
+    /// <returns>The schedule widget instance.</returns>
     private ScheduleWidgetWindow EnsureWidget()
     {
         if (_widget is null)
@@ -157,6 +171,7 @@ public partial class App : Application
         return _widget;
     }
 
+    /// <summary>Shows and activates the schedule widget, creating it if needed.</summary>
     private void ShowWidget()
     {
         ScheduleWidgetWindow widget = EnsureWidget();
@@ -164,6 +179,11 @@ public partial class App : Application
         widget.Activate();
     }
 
+    /// <summary>Applies a transient widget appearance preview without saving settings.</summary>
+    /// <param name="enabled">Whether the preview shows the widget.</param>
+    /// <param name="mode">Widget mode to preview.</param>
+    /// <param name="motion">Widget motion to preview.</param>
+    /// <param name="position">Widget position to preview.</param>
     internal void ApplyWidgetAppearancePreview(bool enabled, string mode, string motion, string position)
     {
         if (!_widgetAppearancePreviewActive)
@@ -190,6 +210,7 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Restores the widget state captured before the appearance preview began.</summary>
     internal void RestoreWidgetAppearancePreview()
     {
         if (!_widgetAppearancePreviewActive) return;
@@ -206,6 +227,8 @@ public partial class App : Application
             _widget?.Hide();
     }
 
+    /// <summary>Applies a theme and refreshes theme-dependent views.</summary>
+    /// <param name="themeId">Theme identifier to apply.</param>
     internal void ApplyThemePreview(string themeId)
     {
         ThemeManager.Apply(this, themeId);
@@ -215,6 +238,7 @@ public partial class App : Application
         _taskbarPanel?.RefreshSchedule();
     }
 
+    /// <summary>Reapplies saved settings across theme, schedulers, widget, and dependent views after a save.</summary>
     internal void RefreshDependentViews()
     {
         _taskbarAppearancePreview = null;
@@ -235,6 +259,9 @@ public partial class App : Application
         _mainWindow?.RefreshOverview();
     }
 
+    /// <summary>Applies a transient taskbar widget appearance preview without saving settings.</summary>
+    /// <param name="enabled">Whether the preview shows the taskbar widget.</param>
+    /// <param name="mode">Taskbar widget mode ("popup" or "native").</param>
     internal void ApplyTaskbarAppearancePreview(bool enabled, string mode)
     {
         if (_isShuttingDown || mode is not ("popup" or "native")) return;
@@ -242,6 +269,7 @@ public partial class App : Application
         SynchronizeTaskbarWidget();
     }
 
+    /// <summary>Restores the taskbar widget state captured before the appearance preview began.</summary>
     internal void RestoreTaskbarAppearancePreview()
     {
         if (_taskbarAppearancePreview is null) return;
@@ -249,6 +277,7 @@ public partial class App : Application
         SynchronizeTaskbarWidget();
     }
 
+    /// <summary>Creates, refreshes, or disposes the taskbar panel to match effective settings and support state.</summary>
     private void SynchronizeTaskbarWidget()
     {
         string mode = EffectiveTaskbarWidgetMode;
@@ -280,6 +309,7 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Shows the taskbar dashboard detail window, creating it if needed.</summary>
     private void ShowTaskbarDetail()
     {
         if (_isShuttingDown || !EffectiveTaskbarWidgetEnabled) return;
@@ -289,6 +319,7 @@ public partial class App : Application
         _taskbarWidget.Activate();
     }
 
+    /// <summary>Shuts down the application, restoring the lock screen first and aborting if restoration is unverified.</summary>
     internal async void ShutdownApplication()
     {
         if (_isShuttingDown) return;
@@ -328,6 +359,8 @@ public partial class App : Application
         Shutdown();
     }
 
+    /// <summary>Releases taskbar panel, tray, schedulers, lock-screen scheduler, and the single-instance mutex on exit.</summary>
+    /// <param name="e">Exit event arguments.</param>
     protected override void OnExit(ExitEventArgs e)
     {
         _taskbarPanel?.Dispose();
@@ -342,6 +375,8 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    /// <summary>Refreshes the lock-screen scheduler, surfacing failures as a status message.</summary>
+    /// <returns>A task representing the asynchronous refresh.</returns>
     private async Task RefreshLockScreenSchedulerAsync()
     {
         try
@@ -356,6 +391,8 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Loads the application icon from the base directory, or null if it is missing.</summary>
+    /// <returns>The decoded icon frame, or null when the icon file does not exist.</returns>
     internal static BitmapFrame? LoadApplicationIcon()
     {
         string path = Path.Combine(AppContext.BaseDirectory, "AyoJamaah.ico");

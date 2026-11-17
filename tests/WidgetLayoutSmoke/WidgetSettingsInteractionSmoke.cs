@@ -1,3 +1,4 @@
+// Smoke test verifying widget settings interactions against the real WPF UI: live appearance preview, cancel/close rollback, helper consistency, and isolated save behavior.
 extern alias ProductUi;
 
 using System.Reflection;
@@ -10,10 +11,13 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 
+/// <summary>Verifies widget settings interactions with synthetic settings and isolated persistence boundaries.</summary>
 internal static class WidgetSettingsInteractionSmoke
 {
     private const BindingFlags I = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
+    /// <summary>Runs the interaction checks: appearance preview, cancel/close rollback, visibility rollback, helper consistency, and save baseline.</summary>
+    /// <param name="application">Application hosting the settings window.</param>
     public static void Run(Application application)
     {
         using (var fixture = new Fixture(application))
@@ -28,6 +32,8 @@ internal static class WidgetSettingsInteractionSmoke
             VerifySaveRetainsTabAndEstablishesBaseline(fixture);
     }
 
+    /// <summary>Verifies changing mode/position updates the actual widget live without mutating saved settings.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifyAppearanceChangesOnActualWidget(Fixture fixture)
     {
         string savedSettings = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
@@ -49,6 +55,8 @@ internal static class WidgetSettingsInteractionSmoke
         Console.WriteLine("WIDGET_LIVE_APPEARANCE PASS: actual window, mode, placement, saved-state isolation.");
     }
 
+    /// <summary>Verifies Cancel restores the saved mode, position, theme, and widget visibility.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifyCancelRestoresSavedAppearance(Fixture fixture)
     {
         fixture.Select("ThemeBox", "dark");
@@ -63,6 +71,8 @@ internal static class WidgetSettingsInteractionSmoke
         Console.WriteLine("WIDGET_CANCEL PASS: appearance, theme, form, visibility restored.");
     }
 
+    /// <summary>Verifies closing the main window to the tray discards unsaved appearance and reopening shows saved values.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifyCloseToTrayRestoresSavedAppearance(Fixture fixture)
     {
         fixture.Select("WidgetModeBox", "detail");
@@ -80,6 +90,8 @@ internal static class WidgetSettingsInteractionSmoke
         Console.WriteLine("WIDGET_TRAY_RESTORE PASS: Close/hide/reopen discard unsaved appearance.");
     }
 
+    /// <summary>Verifies visibility rules: hidden widgets preview during editing, and Cancel restores prior visibility.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifyTemporaryVisibilityRestoresPriorVisibility(Fixture fixture)
     {
         fixture.Widget.Hide();
@@ -98,6 +110,8 @@ internal static class WidgetSettingsInteractionSmoke
         Console.WriteLine("WIDGET_VISIBILITY PASS: enabled/disabled and manually hidden state rollback.");
     }
 
+    /// <summary>Verifies date and prayer correction helper buttons match in geometry, style, font, and color across themes and enabled states.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifyHelperButtonConsistency(Fixture fixture)
     {
         string[] themes = fixture.Field<ComboBox>("ThemeBox").Items.OfType<ComboBoxItem>()
@@ -142,9 +156,14 @@ internal static class WidgetSettingsInteractionSmoke
         }
         fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
         Console.WriteLine($"HELPER_CONSISTENCY PASS: themes={themes.Length} geometry/style/font/color checks={checks} normal+disabled.");
+        /// <summary>Returns the solid color of a solid-color brush.</summary>
+        /// <param name="brush">Brush to read.</param>
+        /// <returns>The brush color.</returns>
         static Color BrushColor(Brush brush) => ((SolidColorBrush)brush).Color;
     }
 
+    /// <summary>Verifies the real Save handler persists through the isolated boundary, keeps the Settings tab, and establishes a new baseline.</summary>
+    /// <param name="fixture">Fixture under test.</param>
     private static void VerifySaveRetainsTabAndEstablishesBaseline(Fixture fixture)
     {
         fixture.Select("WidgetModeBox", "detail");
@@ -183,16 +202,21 @@ internal static class WidgetSettingsInteractionSmoke
         Console.WriteLine("WIDGET_SAVE_AND_TAB PASS: real Save handler, isolated file readback, new baseline, explicit tray navigation.");
     }
 
+    /// <summary>Pumps the dispatcher with context-idle priority.</summary>
     private static void Pump()
     {
         Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    /// <summary>Fixture building a synthetic settings instance and real WPF windows with isolated persistence/startup boundaries.</summary>
     internal sealed class Fixture : IDisposable
     {
         private readonly Application _application;
@@ -202,6 +226,12 @@ internal static class WidgetSettingsInteractionSmoke
         private readonly Window? _originalWidget;
         private readonly Window? _previousMainWindow;
 
+        /// <summary>Creates the fixture: synthetic settings, real main window and optional widget, with isolated save when requested.</summary>
+        /// <param name="application">Application hosting the windows.</param>
+        /// <param name="isolateSave">Route persistence/startup through isolated boundaries writing to a scratch file.</param>
+        /// <param name="initiallyHasWidget">Create a widget window alongside the main window.</param>
+        /// <param name="savedWidgetEnabled">Initial value of the WidgetEnabled setting.</param>
+        /// <param name="preventActivation">Disable the main window to prevent activation stealing.</param>
         public Fixture(Application application, bool isolateSave = false, bool initiallyHasWidget = true,
             bool savedWidgetEnabled = true, bool preventActivation = false)
         {
@@ -275,18 +305,35 @@ internal static class WidgetSettingsInteractionSmoke
             Pump();
         }
 
+        /// <summary>Gets the resolved AppSettings type.</summary>
         public Type SettingsType { get; }
+        /// <summary>Gets the synthetic settings instance.</summary>
         public object Settings { get; }
+        /// <summary>Gets the scratch save path when isolated save is enabled; otherwise null.</summary>
         public string? SavePath { get; }
+        /// <summary>Gets how many times the isolated startup boundary was called.</summary>
         public int StartupWrites { get; private set; }
+        /// <summary>Gets the last value passed to the isolated startup boundary.</summary>
         public bool StartupValue { get; private set; }
+        /// <summary>Gets the real main window under test.</summary>
         public Window MainWindow { get; }
+        /// <summary>Gets the widget window currently registered on the application, or null.</summary>
         public Window? WidgetOrNull => _appType.GetField("_widget", I)!.GetValue(_application) as Window;
+        /// <summary>Gets the widget window; throws when absent.</summary>
         public Window Widget => WidgetOrNull ?? throw new InvalidOperationException("The fixture's actual widget is absent.");
+        /// <summary>Gets the widget's current mode value.</summary>
         public string WidgetMode => Widget.GetType().GetProperty("Mode", I)!.GetValue(Widget)!.ToString()!;
+        /// <summary>Gets the widget's current motion value.</summary>
         public string WidgetMotion => Widget.GetType().GetProperty("Motion", I)!.GetValue(Widget)!.ToString()!;
+        /// <summary>Reads a private field of the application type.</summary>
+        /// <param name="name">Field name.</param>
+        /// <returns>The field value.</returns>
         public object? AppField(string name) => _appType.GetField(name, I)!.GetValue(_application);
+        /// <summary>Writes a private field of the application type.</summary>
+        /// <param name="name">Field name.</param>
+        /// <param name="value">Value to set.</param>
         public void SetAppField(string name, object? value) => _appType.GetField(name, I)!.SetValue(_application, value);
+        /// <summary>Gets the id of the currently applied theme.</summary>
         public string CurrentThemeId
         {
             get
@@ -297,21 +344,48 @@ internal static class WidgetSettingsInteractionSmoke
                 return palette.GetType().GetProperty("Id")!.GetValue(palette)!.ToString()!;
             }
         }
+        /// <summary>Returns the Tag of the selected ComboBox item, or null.</summary>
+        /// <param name="name">Field name of the ComboBox.</param>
+        /// <returns>The selected tag, or null.</returns>
         public string? SelectedTag(string name) => (Field<ComboBox>(name).SelectedItem as ComboBoxItem)?.Tag as string;
+        /// <summary>Invokes a method on the main window type via reflection.</summary>
+        /// <param name="name">Method name.</param>
+        /// <param name="arguments">Invocation arguments.</param>
+        /// <returns>The raw invocation result.</returns>
         public object? InvokeMain(string name, params object?[] arguments) =>
             MainWindow.GetType().GetMethod(name, I)!.Invoke(MainWindow, arguments.Length == 0 ? null : arguments);
+        /// <summary>Invokes a method on the application type via reflection.</summary>
+        /// <param name="name">Method name.</param>
+        /// <param name="arguments">Invocation arguments.</param>
+        /// <returns>The raw invocation result.</returns>
         public object? InvokeApp(string name, params object?[] arguments) =>
             _appType.GetMethod(name, I)!.Invoke(_application, arguments.Length == 0 ? null : arguments);
+        /// <summary>Gets the value of a private field on the main window cast to T.</summary>
+        /// <typeparam name="T">Expected field value type.</typeparam>
+        /// <param name="name">Field name.</param>
+        /// <returns>The field value.</returns>
         public T Field<T>(string name) => (T)MainWindow.GetType().GetField(name, I)!.GetValue(MainWindow)!;
+        /// <summary>Sets a property on the synthetic settings instance.</summary>
+        /// <param name="name">Property name.</param>
+        /// <param name="value">Value to set.</param>
         public void SetSetting(string name, object value) => SettingsType.GetProperty(name, I)!.SetValue(Settings, value);
+        /// <summary>Selects a ComboBox item by Tag and pumps the dispatcher.</summary>
+        /// <param name="name">Field name of the ComboBox.</param>
+        /// <param name="tag">Tag of the item to select.</param>
         public void Select(string name, string tag)
         {
             ComboBox box = Field<ComboBox>(name);
             box.SelectedItem = box.Items.OfType<ComboBoxItem>().Single(item => item.Tag as string == tag);
             Pump();
         }
+        /// <summary>Applies a theme preview via the application's private apply method.</summary>
+        /// <param name="theme">Theme id to apply.</param>
         private void InvokeTheme(string theme) => _appType.GetMethod("ApplyThemePreview", I)!.Invoke(_application, [theme]);
+        /// <summary>Serializes the candidate settings and writes them to the scratch save path.</summary>
+        /// <param name="candidate">Settings candidate produced by the isolated saver.</param>
         private void CaptureSave(object candidate) => File.WriteAllText(SavePath!, JsonSerializer.Serialize(candidate, SettingsType));
+        /// <summary>Makes a window inert for test purposes (hidden, non-interactive).</summary>
+        /// <param name="window">Window to prepare.</param>
         private static void Prepare(Window window)
         {
             window.Opacity = 0;
@@ -321,6 +395,7 @@ internal static class WidgetSettingsInteractionSmoke
             window.IsHitTestVisible = false;
         }
 
+        /// <summary>Restores the application to its prior settings, fields, theme, and main window, and closes created windows.</summary>
         public void Dispose()
         {
             MainWindow.GetType().GetMethod("AllowClose", I)!.Invoke(MainWindow, null);

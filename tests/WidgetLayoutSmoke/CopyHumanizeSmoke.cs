@@ -17,15 +17,23 @@ using System.Windows.Threading;
 
 // Copy-only probes use actual portable IL and actual compiled MainWindow BAML.
 // Native condition forcing, Windows location acquisition, and product startup are forbidden.
+/// <summary>Smoke tests verifying humanized settings-form copy against actual compiled IL and real WPF realization.</summary>
 internal static class CopyHumanizeSmoke
 {
+    /// <summary>Binding flags for instance members.</summary>
     private const BindingFlags I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    /// <summary>Binding flags for static members.</summary>
     private const BindingFlags S = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+    /// <summary>Theme preset identifiers exercised by the smoke suite.</summary>
     private static readonly string[] Themes = ["light", "dark", "classic", "xp", "macos", "adwaita", "nord", "dracula"];
+    /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     private static readonly string[] SafetyFlags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled",
         "LockScreenOptIn", "StartupEnabled", "StartHidden", "WidgetEnabled"];
+    /// <summary>Loaded product UI assembly.</summary>
     private static readonly Assembly Product = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
 
+    /// <summary>Verifies the collapsed-by-default online-advanced section, its consent/endpoint events, and save reachability.</summary>
+    /// <param name="application">Application used to host the isolated window.</param>
     public static void RunOnlineAdvanced(Application application)
     {
         string directory = OutputDirectory("online-advanced");
@@ -73,6 +81,7 @@ internal static class CopyHumanizeSmoke
                 double collapsedHeight = expander.ActualHeight;
                 Assert(collapsedHeight > 0 && collapsedHeight <= 60 && header!.IsVisible,
                     "ONLINE_ADVANCED_COMPACT: closed section must consume header height only.");
+                /// <summary>Snapshots settings and form values to detect side effects.</summary>
                 string Stable() => JsonSerializer.Serialize(new
                 {
                     settings = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType),
@@ -149,6 +158,8 @@ internal static class CopyHumanizeSmoke
         Console.WriteLine("ONLINE_ADVANCED PASS: default closed; complete block open/close; 16 actual-WPF theme/width cases; header glyphs/contrast; GPS/offline preserved; actual consent/endpoint events, no acquisition/request/save.");
     }
 
+    /// <summary>Verifies the compiled safety status literals match the approved humanized text in all themes and widths.</summary>
+    /// <param name="application">Application used to host the isolated window.</param>
     public static void RunSafety(Application application)
     {
         var failures = new HashSet<string>(StringComparer.Ordinal);
@@ -212,6 +223,8 @@ internal static class CopyHumanizeSmoke
         Console.WriteLine("COPY_SAFETY PASS: actual compiled 4 statuses, 64 WPF realizations, 8 themes/2 widths; unchanged nontext state, wrap/typography/glyph contrast; native four-condition acceptance not exercised.");
     }
 
+    /// <summary>Verifies compiled GPS completion branches render humanized copy and preserve unsaved state in all themes and widths.</summary>
+    /// <param name="application">Application used to host the isolated window.</param>
     public static void RunGps(Application application)
     {
         var failures = new HashSet<string>(StringComparer.Ordinal);
@@ -346,13 +359,17 @@ internal static class CopyHumanizeSmoke
         Console.WriteLine("COPY_GPS PASS: actual compiled safe async completion; 240 WPF realizations; 6 source/accuracy variants, offline/no-place/error/default/catches, unsaved/timezone/consent preserved; no native acquisition or initial click path.");
     }
 
+    /// <summary>Synthetic GPS completion case (status, source, accuracy, and expected copy).</summary>
     private sealed record GpsCase(string Key, string Status = "Unavailable", string Source = "Unknown", double? Accuracy = null,
         string SourceLabel = "", string AccuracyLabel = "", double Latitude = -6.2, double Longitude = 106.8,
         Exception? Fault = null, string ExpectedError = "");
+    /// <summary>Inspected compiler-generated GPS state machine layout used to resume the actual compiled continuation.</summary>
     private sealed record GpsResumeRoute(Type StateType, FieldInfo State, FieldInfo Builder, FieldInfo Owner,
         FieldInfo Closure, FieldInfo Button, FieldInfo OriginalContent, FieldInfo FirstAwaiter, FieldInfo SecondAwaiter,
         int FirstResumeOffset, int SecondResumeOffset, int AcquisitionOffset);
 
+    /// <summary>Inspects the compiled GPS state machine and returns the verified resume route without invoking it.</summary>
+    /// <returns>The verified resume route.</returns>
     private static GpsResumeRoute GuardGpsResumeRoute()
     {
         Type window = Product.GetType("PrayerAutomation.UI.MainWindow", true)!;
@@ -360,6 +377,9 @@ internal static class CopyHumanizeSmoke
         Type machine = handler.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType
             ?? throw new InvalidOperationException("Fail closed: actual GPS state machine metadata is required.");
         Assert(machine.IsValueType && typeof(IAsyncStateMachine).IsAssignableFrom(machine), "Fail closed: GPS continuation must be the inspected compiler-generated value type.");
+        /// <summary>Reflects a compiler-generated field or throws when absent.</summary>
+        /// <param name="name">Field name.</param>
+        /// <returns>The field info.</returns>
         FieldInfo F(string name) => machine.GetField(name, I) ?? throw new InvalidOperationException("Fail closed: actual GPS continuation field is absent: " + name);
         FieldInfo state = F("<>1__state"), owner = F("<>4__this"), first = F("<>u__1"), second = F("<>u__2"), closure = F("<>8__1");
         FieldInfo? requestVersion = machine.GetField("<requestVersion>5__4", I);
@@ -429,6 +449,9 @@ internal static class CopyHumanizeSmoke
             " firstResume=" + firstOffset + " secondResume=" + secondOffset + "; no backward or native/network calls; only offline callback.");
         return new(machine, state, F("<>t__builder"), owner, closure, F("<button>5__2"), F("<originalContent>5__3"), first, second,
             firstOffset, secondOffset, acquisition.Offset);
+        /// <summary>Verifies that the resume offset begins by reading the injected awaiter with no intervening native or user calls.</summary>
+        /// <param name="offset">IL offset where the resume should begin.</param>
+        /// <param name="awaiter">Expected awaiter field.</param>
         void VerifyAwaiter(int offset, FieldInfo awaiter)
         {
             int index = Array.FindIndex(il, x => x.Offset == offset);
@@ -440,10 +463,22 @@ internal static class CopyHumanizeSmoke
                 il[index + resume.Length].Operand is MethodInfo get && get.Name == "GetResult" && get.DeclaringType == awaiter.FieldType,
                 "Fail closed: no native or user call may occur before the injected GetResult.");
         }
+        /// <summary>Checks field identity by module and metadata token.</summary>
+        /// <param name="candidate">Operand to test.</param>
+        /// <param name="field">Expected field.</param>
+        /// <returns>True when both refer to the same field.</returns>
         static bool SameField(object? candidate, FieldInfo field) => candidate is FieldInfo actual &&
             actual.Module == field.Module && actual.MetadataToken == field.MetadataToken;
     }
 
+    /// <summary>Resumes the actual compiled GPS continuation with an injected completed awaiter at the given state.</summary>
+    /// <param name="application">Application used to verify dispatcher context.</param>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <param name="route">Verified resume route from <see cref="GuardGpsResumeRoute"/>.</param>
+    /// <param name="resumeState">Suspended state to resume (0 or 1).</param>
+    /// <param name="result">Synthetic DeviceLocationResult to inject.</param>
+    /// <param name="fault">Optional fault to inject instead of a result.</param>
+    /// <param name="actualEarlierBody">Actual earlier SUT body text to retain for the second-awaiter path, if any.</param>
     private static void ResumeGps(Application application, CopyFixture fixture, GpsResumeRoute route,
         int resumeState, object result, Exception? fault, string? actualEarlierBody)
     {
@@ -509,8 +544,14 @@ internal static class CopyHumanizeSmoke
             "Actual resumed completion must terminate via its real finally, restoring button content/enabled state without entering the initial permission path.");
     }
 
+    /// <summary>Builds the expected humanized GPS success body for a case.</summary>
+    /// <param name="item">GPS case carrying source and accuracy labels.</param>
+    /// <returns>The expected body text.</returns>
     private static string ExpectedGpsBody(GpsCase item) => "Koordinat, nama, dan zona waktu terisi, belum disimpan. Sumber: " + item.SourceLabel + "; " + item.AccuracyLabel +
         ". Koordinat tidak dikirim ke layanan lokasi jaringan atau pencarian nama online. Zona waktu dicocokkan secara offline dari koordinat GPS. Periksa sebelum simpan.";
+    /// <summary>Extracts the actual product GPS body, stripping any appended offline-name suffix.</summary>
+    /// <param name="actual">Full actual status text.</param>
+    /// <returns>The SUT body portion.</returns>
     private static string ActualGpsBody(string actual)
     {
         int place = actual.IndexOf(" Nama permukiman terdekat dari GeoNames lokal: ", StringComparison.Ordinal);
@@ -518,6 +559,10 @@ internal static class CopyHumanizeSmoke
         int end = place >= 0 ? place : fallback >= 0 ? fallback : actual.Length;
         return actual[..end]; // Actual SUT output only; never expected-new templates used as rendered text.
     }
+    /// <summary>Verifies the offline GeoNames append for a successful GPS completion matches the local dataset.</summary>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <param name="item">GPS case providing coordinates.</param>
+    /// <param name="actual">Actual status text to verify.</param>
     private static void VerifyOfflineAppend(CopyFixture fixture, GpsCase item, string actual)
     {
         string body = ActualGpsBody(actual);
@@ -543,8 +588,14 @@ internal static class CopyHumanizeSmoke
                 "Actual GeoNames local name, attribution and distance append must remain exact and match the unchanged offline result.");
         }
     }
+    /// <summary>Reads the location form fields (name, latitude, longitude).</summary>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <returns>The field values.</returns>
     private static string[] LocationFields(CopyFixture fixture) => new[] { "LocationNameBox", "LatitudeBox", "LongitudeBox" }
         .Select(name => fixture.Field<TextBox>(name).Text).ToArray();
+    /// <summary>Serializes non-location non-text state used to detect side effects.</summary>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <returns>Stable JSON snapshot.</returns>
     private static string GpsStableState(CopyFixture fixture)
     {
         var root = System.Text.Json.Nodes.JsonNode.Parse(NonTextState(fixture))!;
@@ -555,8 +606,15 @@ internal static class CopyHumanizeSmoke
         return root.ToJsonString(); // Only populated location/timezone fields and expected offline status may vary.
     }
 
+    /// <summary>Safety status copy case with its compiled literal index and expected text.</summary>
     private sealed record SafetyCase(string Key, int LiteralIndex, string Expected);
 
+    /// <summary>Realizes a paragraph in the actual window, checks typography and contrast, and captures a PNG.</summary>
+    /// <param name="application">Application used to pump the dispatcher.</param>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <param name="text">Text block to realize.</param>
+    /// <param name="capture">Destination PNG path.</param>
+    /// <returns>Realization measurements.</returns>
     private static object RealizeParagraph(Application application, CopyFixture fixture, TextBlock text, string capture)
     {
         Pump(application, fixture);
@@ -600,6 +658,12 @@ internal static class CopyHumanizeSmoke
             dpiScale = VisualTreeHelper.GetDpi(text).DpiScaleX, capture, captureSha256 = HashFile(capture) };
     }
 
+    /// <summary>Counts glyph-colored pixels in the rendered text crop and writes the capture PNG.</summary>
+    /// <param name="text">Text block to capture.</param>
+    /// <param name="background">Background brush used for the crop.</param>
+    /// <param name="foreground">Expected glyph color.</param>
+    /// <param name="path">Destination PNG path.</param>
+    /// <returns>Number of glyph-colored pixels.</returns>
     private static int CaptureGlyphs(TextBlock text, Brush background, Color foreground, string path)
     {
         int width = (int)Math.Ceiling(text.ActualWidth), height = (int)Math.Ceiling(text.ActualHeight);
@@ -628,10 +692,20 @@ internal static class CopyHumanizeSmoke
         return glyphs;
     }
 
+    /// <summary>Computes the WCAG contrast ratio between two colors.</summary>
+    /// <param name="a">First color.</param>
+    /// <param name="b">Second color.</param>
+    /// <returns>Contrast ratio (>= 1).</returns>
     private static double Contrast(Color a, Color b)
     {
+        /// <summary>Computes relative luminance of a color.</summary>
+        /// <param name="c">Color to evaluate.</param>
+        /// <returns>Relative luminance.</returns>
         static double L(Color c)
         {
+            /// <summary>Linearizes one 8-bit channel value.</summary>
+            /// <param name="v">Channel value 0-255.</param>
+            /// <returns>Linearized channel.</returns>
             static double C(byte v) { double x = v / 255d; return x <= .04045 ? x / 12.92 : Math.Pow((x + .055) / 1.055, 2.4); }
             return .2126 * C(c.R) + .7152 * C(c.G) + .0722 * C(c.B);
         }
@@ -639,6 +713,9 @@ internal static class CopyHumanizeSmoke
         return (Math.Max(x, y) + .05) / (Math.Min(x, y) + .05);
     }
 
+    /// <summary>Serializes saved settings, control states, field values, statuses, and tab selection to JSON.</summary>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <returns>Stable JSON snapshot.</returns>
     private static string NonTextState(CopyFixture fixture) => JsonSerializer.Serialize(new
     {
         savedSettings = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType),
@@ -660,6 +737,9 @@ internal static class CopyHumanizeSmoke
         fixture.SaveWrites, fixture.StartupWrites
     });
 
+    /// <summary>Verifies the real Save button is enabled, visible, and fully on-screen.</summary>
+    /// <param name="application">Application used to pump the dispatcher.</param>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
     private static void VerifySaveReachable(Application application, CopyFixture fixture)
     {
         Button button = fixture.Field<Button>("SaveSettingsButton");
@@ -672,12 +752,20 @@ internal static class CopyHumanizeSmoke
 
     // Same isolated lifecycle as UiMinorSmoke's Fixture, copied only to add pre-
     // constructor deserialized risk assertions and keep every synthetic path in this workspace.
+    /// <summary>Isolated window fixture with deserialized safe settings, mocked save/startup seams, and scratch output.</summary>
     private sealed class CopyFixture : IDisposable
     {
+        /// <summary>Isolated application instance restored on dispose.</summary>
         private readonly Application _application;
+        /// <summary>Settings instance that preceded the fixture.</summary>
         private readonly object _previousSettings;
+        /// <summary>Main window reference that preceded the fixture.</summary>
         private readonly Window? _previousMainWindow;
+        /// <summary>Product App type.</summary>
         private readonly Type _appType = typeof(ProductUi::PrayerAutomation.UI.App);
+        /// <summary>Creates the fixture, constructs the isolated window, and pumps the dispatcher.</summary>
+        /// <param name="application">Application used to host the isolated window.</param>
+        /// <param name="directory">Scratch directory for the save path.</param>
         internal CopyFixture(Application application, string directory)
         {
             _application = application;
@@ -725,26 +813,44 @@ internal static class CopyHumanizeSmoke
                 "Fail closed: actual duration default/online consent and action must remain safe.");
             Console.WriteLine("COPY_FIXTURE_FLAGS PASS: deserialized 7 consequential/start-hidden/widget flags=false before Window; scratch saver/mock startup; clock stopped.");
         }
+        /// <summary>Product AppSettings type.</summary>
         internal Type SettingsType { get; }
+        /// <summary>Synthetic deserialized settings instance.</summary>
         internal object Settings { get; }
+        /// <summary>Isolated main window under test.</summary>
         internal Window MainWindow { get; }
+        /// <summary>Scratch path used by the synthetic saver.</summary>
         internal string SavePath { get; }
+        /// <summary>Number of synthetic save writes performed.</summary>
         internal int SaveWrites { get; private set; }
+        /// <summary>Number of synthetic startup writes performed.</summary>
         internal int StartupWrites { get; private set; }
+        /// <summary>Reads a field from the application via reflection, or null when absent.</summary>
+        /// <param name="name">Field name.</param>
+        /// <returns>The field value.</returns>
         internal object? AppField(string name) => _appType.GetField(name, I)!.GetValue(_application);
+        /// <summary>Reflects a window field and casts it to the requested type.</summary>
+        /// <typeparam name="T">Field value type.</typeparam>
+        /// <param name="name">Field name.</param>
+        /// <returns>The field value.</returns>
         internal T Field<T>(string name) => (T)MainWindow.GetType().GetField(name, I)!.GetValue(MainWindow)!;
+        /// <summary>Selects a theme combo box item by tag and pumps the dispatcher.</summary>
+        /// <param name="tag">Theme tag to select.</param>
         internal void SelectTheme(string tag)
         {
             ComboBox selector = Field<ComboBox>("ThemeBox");
             selector.SelectedItem = selector.Items.OfType<ComboBoxItem>().Single(x => x.Tag as string == tag);
             Pump(_application, this);
         }
+        /// <summary>Fails closed when any consequential settings flag is not false.</summary>
         internal void VerifyFlags()
         {
             foreach (string name in SafetyFlags)
                 Assert(SettingsType.GetProperty(name, I)!.GetValue(Settings) is false,
                     "Fail closed: deserialized synthetic risk flag must stay false: " + name);
         }
+        /// <summary>Synthetic save callback; rejects unsafe candidates and writes to the scratch file.</summary>
+        /// <param name="candidate">Settings candidate to persist.</param>
         private void CaptureSave(object candidate)
         {
             foreach (string name in SafetyFlags)
@@ -752,6 +858,7 @@ internal static class CopyHumanizeSmoke
             SaveWrites++;
             File.WriteAllText(SavePath, JsonSerializer.Serialize(candidate, SettingsType));
         }
+        /// <summary>Verifies flags, closes the isolated window, and restores application state.</summary>
         public void Dispose()
         {
             VerifyFlags();
@@ -767,6 +874,9 @@ internal static class CopyHumanizeSmoke
         }
     }
 
+    /// <summary>Pumps the dispatcher and re-verifies isolation invariants.</summary>
+    /// <param name="application">Application to verify.</param>
+    /// <param name="fixture">Fixture whose flags to re-verify.</param>
     private static void Pump(Application application, CopyFixture fixture)
     {
         Assert(SynchronizationContext.Current is DispatcherSynchronizationContext,
@@ -776,6 +886,10 @@ internal static class CopyHumanizeSmoke
         fixture.VerifyFlags();
         Assert(fixture.AppField("_widget") is null, "Fail closed: copy-only tests must never start widget/lifecycle actions.");
     }
+    /// <summary>Finds the nearest ancestor of the requested type or throws.</summary>
+    /// <typeparam name="T">Ancestor type.</typeparam>
+    /// <param name="element">Element to ascend from.</param>
+    /// <returns>The nearest matching ancestor.</returns>
     private static T Ancestor<T>(DependencyObject element) where T : DependencyObject
     {
         DependencyObject? current = element;
@@ -783,7 +897,14 @@ internal static class CopyHumanizeSmoke
             if (current is T result) return result;
         throw new InvalidOperationException("Fail closed: the actual status is missing its owning visual ancestor.");
     }
+    /// <summary>Bounds of an element relative to an ancestor visual.</summary>
+    /// <param name="element">Element to measure.</param>
+    /// <param name="ancestor">Ancestor visual used as the coordinate origin.</param>
+    /// <returns>Element bounds in ancestor coordinates.</returns>
     private static Rect Bounds(FrameworkElement element, Visual ancestor) => element.TransformToAncestor(ancestor).TransformBounds(new Rect(element.RenderSize));
+    /// <summary>Creates an output directory beneath the approved scratch root, or throws.</summary>
+    /// <param name="phase">Phase label used in the directory name.</param>
+    /// <returns>The created directory path.</returns>
     private static string OutputDirectory(string phase)
     {
         string root = Environment.GetEnvironmentVariable("SMOKE_SCRATCH")
@@ -794,8 +915,20 @@ internal static class CopyHumanizeSmoke
         Directory.CreateDirectory(output);
         return output;
     }
+    /// <summary>Computes the lowercase hex SHA-256 digest of a file.</summary>
+    /// <param name="path">File to hash.</param>
+    /// <returns>Lowercase hex digest.</returns>
     private static string HashFile(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+    /// <summary>Computes the lowercase hex SHA-256 digest of a string.</summary>
+    /// <param name="value">String to hash.</param>
+    /// <returns>Lowercase hex digest.</returns>
     private static string HashText(string value) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    /// <summary>Writes the actual-wpf-copy.json evidence report and prints a summary line.</summary>
+    /// <param name="directory">Output directory.</param>
+    /// <param name="phase">Phase label.</param>
+    /// <param name="rows">Realization rows.</param>
+    /// <param name="failures">Collected failure messages.</param>
+    /// <param name="coverage">Coverage summary object.</param>
     private static void WriteEvidence(string directory, string phase, List<object> rows, HashSet<string> failures, object coverage)
     {
         string report = Path.Combine(directory, "actual-wpf-copy.json");
@@ -809,8 +942,15 @@ internal static class CopyHumanizeSmoke
         Console.WriteLine("COPY_EVIDENCE " + JsonSerializer.Serialize(new { phase, report, reportSha256 = HashFile(report),
             assemblySha256 = HashFile(Product.Location), realizations = rows.Count, failedCopyAssertions = failures.Count }));
     }
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+    /// <summary>Decoded IL instruction (offset, opcode, operand).</summary>
     private sealed record Instruction(int Offset, OpCode OpCode, object? Operand);
+    /// <summary>Decodes method body IL into instructions; fails closed on unsupported operand types.</summary>
+    /// <param name="method">Method to decode.</param>
+    /// <returns>The decoded instruction sequence.</returns>
     private static IEnumerable<Instruction> Decode(MethodInfo method)
     {
         byte[] bytes = method.GetMethodBody()!.GetILAsByteArray()!;
@@ -851,6 +991,8 @@ internal static class CopyHumanizeSmoke
             }
             yield return new Instruction(offset, op, operand);
         }
+        /// <summary>Reads a little-endian 32-bit integer at the cursor and advances it.</summary>
+        /// <returns>The decoded integer.</returns>
         int ReadInt() { int value = BitConverter.ToInt32(bytes, cursor); cursor += 4; return value; }
     }
 }

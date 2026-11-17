@@ -1,8 +1,11 @@
 using System.Reflection;
 using PrayerAutomation.UI;
 
+/// <summary>Verifies offline hadith marquee content: attribution, deterministic rotation, and message overrides.</summary>
 internal static class WidgetMarqueeContentSmoke
 {
+    /// <summary>Verifies the offline hadith catalog content built into the production marquee.</summary>
+    /// <param name="schedule">Prayer entries used to build the marquee line.</param>
     internal static void VerifyOfflineHadithContent(IReadOnlyList<PrayerEntry> schedule)
     {
         var settings = new AppSettings { LocationName = "Synthetic offline fixture", TimeZoneId = "SE Asia Standard Time" };
@@ -15,6 +18,9 @@ internal static class WidgetMarqueeContentSmoke
 
         MethodInfo select = typeof(WidgetMarqueeContent).GetMethod("ReligiousMessageAt", BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("The offline hadith catalog must expose deterministic selection by completed marquee cycle.");
+        /// <summary>Selects the hadith message for a marquee cycle position via the production internal method.</summary>
+        /// <param name="cycle">Marquee cycle index.</param>
+        /// <returns>The selected message.</returns>
         string Message(long cycle) => (string)select.Invoke(null, [cycle])!;
         (string Reference, string Url)[] sources =
         [
@@ -49,6 +55,9 @@ internal static class WidgetMarqueeContentSmoke
         Console.WriteLine("PASS: five offline hadith meaning summaries preserve attribution, deterministic rotation, single-line text and explicit message overrides.");
     }
 
+    /// <summary>Requires the condition and throws otherwise.</summary>
+    /// <param name="condition">Condition that must hold.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

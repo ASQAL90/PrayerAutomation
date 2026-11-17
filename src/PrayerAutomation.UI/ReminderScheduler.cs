@@ -3,6 +3,7 @@ using System.Windows.Threading;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Polls the prayer schedule and shows reminder popups ahead of each prayer time.</summary>
 internal sealed class ReminderScheduler : IDisposable
 {
     private readonly AppSettings _settings;
@@ -11,6 +12,8 @@ internal sealed class ReminderScheduler : IDisposable
     private DateOnly _currentDate;
     private IReadOnlyList<PrayerEntry> _entries = [];
 
+    /// <summary>Initializes the scheduler and its 15-second timer.</summary>
+    /// <param name="settings">Application settings.</param>
     public ReminderScheduler(AppSettings settings)
     {
         _settings = settings;
@@ -18,12 +21,14 @@ internal sealed class ReminderScheduler : IDisposable
         _timer.Tick += OnTick;
     }
 
+    /// <summary>Starts the timer and processes the current tick immediately.</summary>
     public void Start()
     {
         _timer.Start();
         OnTick(this, EventArgs.Empty);
     }
 
+    /// <summary>Recomputes the schedule from settings; clears entries when reminders are disabled.</summary>
     public void Refresh()
     {
         if (!_settings.RemindersEnabled || _settings.ReminderMinutes <= 0)
@@ -50,6 +55,9 @@ internal sealed class ReminderScheduler : IDisposable
         }
     }
 
+    /// <summary>Timer handler; shows reminders due within the configured lead time.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
     private void OnTick(object? sender, EventArgs e)
     {
         if (!_settings.RemindersEnabled || _settings.ReminderMinutes <= 0) return;
@@ -81,6 +89,12 @@ internal sealed class ReminderScheduler : IDisposable
         }
     }
 
+    /// <summary>Expands a reminder template, replacing {prayer}, {prayer_key}, {time}, {minutes_before} and {location}.</summary>
+    /// <param name="template">Message template; falls back to the default when blank.</param>
+    /// <param name="entry">The prayer entry.</param>
+    /// <param name="minutesBefore">Configured lead time in minutes.</param>
+    /// <param name="location">Location display name.</param>
+    /// <returns>The expanded message.</returns>
     private static string FormatMessage(string template, PrayerEntry entry, int minutesBefore, string location)
     {
         string text = string.IsNullOrWhiteSpace(template) ? AppSettings.DefaultReminderMessage : template;
@@ -91,6 +105,7 @@ internal sealed class ReminderScheduler : IDisposable
             .Replace("{location}", location, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Stops and detaches the timer.</summary>
     public void Dispose()
     {
         _timer.Stop();
@@ -98,12 +113,16 @@ internal sealed class ReminderScheduler : IDisposable
     }
 }
 
+/// <summary>Appends error and privacy-safe information entries to the application log file.</summary>
 internal static class AppLogger
 {
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "PrayerAutomation", "prayer_automation.log");
 
+    /// <summary>Appends an ERROR entry to the log; I/O failures are swallowed.</summary>
+    /// <param name="context">Context tag identifying the subsystem.</param>
+    /// <param name="exception">Exception to log.</param>
     public static void Write(string context, Exception exception)
     {
         try
@@ -116,6 +135,9 @@ internal static class AppLogger
     }
 
     // Only explicitly wired, privacy-safe timeline fields belong in this information channel.
+    /// <summary>Appends a privacy-safe INFO entry to the log; I/O failures are swallowed.</summary>
+    /// <param name="context">Context tag identifying the subsystem.</param>
+    /// <param name="message">Pre-approved timeline message.</param>
     public static void WriteInfo(string context, string message)
     {
         try

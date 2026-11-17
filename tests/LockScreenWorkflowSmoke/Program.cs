@@ -1,3 +1,4 @@
+// Smoke test verifying lock-screen image transaction workflows: apply, extend, restore, fail-closed paths, external changes, and the persistent journal.
 using PrayerAutomation.UI;
 using System.IO;
 using System.Security.Cryptography;
@@ -172,6 +173,9 @@ foreach (LockScreenBackgroundMode mode in modes)
         string previousPath = Path.Combine(root, LockScreenStatePaths.RestoreImagePrefix + "test.jpg");
         File.WriteAllText(temporaryPath, "temporary-image-bytes");
         File.WriteAllText(previousPath, "previous-image-bytes");
+        /// <summary>Computes the SHA-256 hex digest of a file.</summary>
+        /// <param name="path">File to hash.</param>
+        /// <returns>Uppercase hex SHA-256 digest.</returns>
         static string Hash(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
         var snapshot = new LockScreenRestoreSnapshot(
@@ -251,36 +255,61 @@ await LockScreenSchedulerRecoverySmoke.VerifyStopInFlightAsync(start);
 
 Console.WriteLine("PASS: Spotlight, slideshow and picture modes restore; 60-minute expiry, extension, fail-closed, user-override, prayer scheduling and persistent journal cases verified.");
 
+/// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+/// <param name="condition">Condition that must be true.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
 }
 
+/// <summary>In-memory restore store for isolated workflow tests.</summary>
 internal sealed class MemoryLockScreenRestoreStore : ILockScreenRestoreStore
 {
     private LockScreenRestoreSnapshot? _snapshot;
+    /// <summary>Returns the current snapshot, or null when empty.</summary>
+    /// <returns>The stored snapshot, if any.</returns>
     public LockScreenRestoreSnapshot? Load() => _snapshot;
+    /// <summary>Stores the snapshot.</summary>
+    /// <param name="snapshot">Snapshot to store.</param>
     public void Save(LockScreenRestoreSnapshot snapshot) => _snapshot = snapshot;
+    /// <summary>Clears the stored snapshot.</summary>
     public void Delete() => _snapshot = null;
 }
 
+/// <summary>Fake lock-screen backend simulating mode transitions, external user changes, and injectable failures.</summary>
+/// <param name="initialMode">Background mode the fake starts in.</param>
 internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode) : ILockScreenImageBackend
 {
     private LockScreenRestoreSnapshot? _snapshot;
     private readonly string _initialImage = initialMode == LockScreenBackgroundMode.Picture ? "previous-picture-hash" : "dynamic-background";
 
+    /// <summary>Gets the current background mode.</summary>
     public LockScreenBackgroundMode CurrentMode { get; private set; } = initialMode;
+    /// <summary>Gets the current image identifier (hash-like token).</summary>
     public string CurrentImage { get; private set; } = initialMode == LockScreenBackgroundMode.Picture ? "previous-picture-hash" : "dynamic-background";
+    /// <summary>Gets or initializes whether a previous picture is available for Picture mode.</summary>
     public bool PreviousPictureAvailable { get; init; } = true;
+    /// <summary>Gets or initializes whether applying must fail after the image is set.</summary>
     public bool FailAfterApplyingTemporaryImage { get; init; }
+    /// <summary>Gets or initializes whether the first Picture restore may fail once.</summary>
     public bool FailOnceAfterRestoringPicture { get; init; }
     private bool _restoreFailedOnce;
+    /// <summary>Gets the number of apply calls.</summary>
     public int ApplyCalls { get; private set; }
+    /// <summary>Gets the number of restore calls.</summary>
     public int RestoreCalls { get; private set; }
+    /// <summary>Gets or sets how many transient restore failures remain to inject.</summary>
     public int RestoreFailuresRemaining { get; set; }
+    /// <summary>Gets or sets a task to await before applying, simulating a blocking apply.</summary>
     public Task? WaitBeforeApplying { get; set; }
+    /// <summary>Gets or sets a signal completed when an apply starts.</summary>
     public TaskCompletionSource? ApplyStarted { get; set; }
 
+    /// <summary>Builds the synthetic snapshot for the current state, failing closed for Unknown mode or missing previous picture.</summary>
+    /// <param name="imagePath">Image path to capture.</param>
+    /// <param name="restoreAtUtc">Restore deadline for the snapshot.</param>
+    /// <returns>The captured snapshot.</returns>
     public LockScreenRestoreSnapshot CaptureSnapshot(string imagePath, DateTimeOffset restoreAtUtc)
     {
         if (CurrentMode == LockScreenBackgroundMode.Unknown)
@@ -301,6 +330,9 @@ internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode
         return _snapshot;
     }
 
+    /// <summary>Simulates applying the temporary image, optionally blocking and optionally failing after the image is set.</summary>
+    /// <param name="snapshot">Snapshot being applied.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task ApplyTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         ApplyCalls++;
@@ -311,6 +343,9 @@ internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode
         if (FailAfterApplyingTemporaryImage) throw new IOException("Synthetic partial API failure.");
     }
 
+    /// <summary>Classifies the current image against the snapshot as temporary, restoration, unknown, or different.</summary>
+    /// <param name="snapshot">Snapshot to classify against.</param>
+    /// <returns>The classified image ownership.</returns>
     public LockScreenImageOwnership CheckTemporaryImage(LockScreenRestoreSnapshot snapshot) =>
         CurrentImage == snapshot.TemporaryImageSha256
             ? LockScreenImageOwnership.TemporaryImage
@@ -320,6 +355,9 @@ internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode
                 ? LockScreenImageOwnership.Unknown
                 : LockScreenImageOwnership.DifferentImage;
 
+    /// <summary>Simulates maintaining the temporary image; throws when the current image was externally changed.</summary>
+    /// <param name="snapshot">Snapshot being maintained.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public Task MaintainTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -329,6 +367,9 @@ internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode
         return Task.CompletedTask;
     }
 
+    /// <summary>Simulates restoring the original image, honoring injected transient and one-shot Picture failures.</summary>
+    /// <param name="snapshot">Snapshot to restore.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public Task RestoreAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         RestoreCalls++;
@@ -353,12 +394,19 @@ internal sealed class FakeLockScreenBackend(LockScreenBackgroundMode initialMode
         return Task.CompletedTask;
     }
 
+    /// <summary>Returns true when the current mode and image match the snapshot's original state.</summary>
+    /// <param name="snapshot">Snapshot to check against.</param>
+    /// <returns>True when restored.</returns>
     public bool IsRestored(LockScreenRestoreSnapshot snapshot) =>
         CurrentMode == snapshot.PreviousMode &&
         (snapshot.PreviousMode != LockScreenBackgroundMode.Picture || CurrentImage == snapshot.PreviousImageSha256);
 
+    /// <summary>No-op cleanup for the fake backend.</summary>
+    /// <param name="snapshot">Snapshot to clean up (unused by the fake).</param>
     public void Cleanup(LockScreenRestoreSnapshot snapshot) { }
 
+    /// <summary>Simulates the user selecting a different lock-screen image.</summary>
+    /// <param name="image">Image identifier the user selected.</param>
     public void UserChangesLockScreen(string image)
     {
         CurrentImage = image;

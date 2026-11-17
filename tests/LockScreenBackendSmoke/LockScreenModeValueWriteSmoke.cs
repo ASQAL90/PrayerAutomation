@@ -1,9 +1,12 @@
+// Smoke test verifying the lock-screen mode value writer: valid transitions, guard refusal boundaries, and mode-only activation recovery, all through isolated native fakes.
 using System.IO;
 using System.Security.Cryptography;
 using PrayerAutomation.UI;
 
+/// <summary>Verifies lock-screen mode value writes, ownership guards, and activation boundaries against isolated native fakes.</summary>
 internal static class LockScreenModeValueWriteSmoke
 {
+    /// <summary>Verifies that all valid Slideshow/Spotlight mode transitions resolve, apply with two guards and two writes, and reject invalid flags or refused guards fail-closed.</summary>
     internal static void VerifyValidTransitionsAndGuards()
     {
         (int Slideshow, int Spotlight)[] modes = [(0, 0), (1, 0), (0, 1)];
@@ -14,6 +17,7 @@ internal static class LockScreenModeValueWriteSmoke
             int slideshow = current.Slideshow;
             int spotlight = current.Spotlight;
             int guards = 0, writes = 0, slideshowWrites = 0, spotlightWrites = 0;
+            /// <summary>Records a value write and requires the intermediate flag state never resolves to Unknown.</summary>
             void ValueWritten()
             {
                 writes++;
@@ -89,6 +93,8 @@ internal static class LockScreenModeValueWriteSmoke
         Console.WriteLine($"LOCKSCREEN_VALUE_WRITER PASS: transitions={cases}; guards_per_transition=2; values_per_transition=2; intermediate_conflicts=0; invalid_requests={invalidCases}; refused_guard_cases=2; compiled_production_helper=1; real_native_writes=0.");
     }
 
+    /// <summary>Verifies that an owned Slideshow lease expiring under Spotlight drift restores with the two-value writer, persisting restore intent and retaining the original deadline.</summary>
+    /// <param name="root">Scratch directory for the isolated fixture.</param>
     internal static async Task VerifyOwnedSlideshowExpiryFromSpotlightAsync(string root)
     {
         string directory = Path.Combine(root, "partial-mode-owned-slideshow-expiry");
@@ -137,6 +143,8 @@ internal static class LockScreenModeValueWriteSmoke
         Console.WriteLine("LOCKSCREEN_PARTIAL_MODE_EXPIRY PASS: restored=1; persisted_restore_intent=1; deadline_extended=0; own_journal_cleared=1; compiled_production_helper=1.");
     }
 
+    /// <summary>Verifies that when the user picture changes after the first mode value write, the second value is refused, the user image is preserved, and restart recovery keeps the new choice.</summary>
+    /// <param name="root">Scratch directory for the isolated fixture.</param>
     internal static async Task VerifyRestoreSecondValueBoundaryPreservesUserImageAsync(string root)
     {
         int cases = 0;
@@ -209,6 +217,8 @@ internal static class LockScreenModeValueWriteSmoke
         Console.WriteLine($"LOCKSCREEN_RESTORE_SECOND_VALUE_BOUNDARIES PASS: cases={cases}; previous_modes=Spotlight,Slideshow,Picture; guards_per_attempt=2; values_before_refusal=1; pending_deadline_preserved=1; rollback_writes=0; next_recovery_writes=0; obsolete_journal_cleared=1; real_native_writes=0.");
     }
 
+    /// <summary>Verifies that mode-only activation stops at the second-value boundary (after-first-value, inside-second-guard, unknown/malformed/unreadable flags) without rollback, then recovers once the injection is removed.</summary>
+    /// <param name="root">Scratch directory for the isolated fixture.</param>
     internal static async Task VerifyModeOnlyActivationBoundariesAsync(string root)
     {
         (int Slideshow, int Spotlight)[] targets = [(1, 0), (0, 1)];
@@ -232,6 +242,7 @@ internal static class LockScreenModeValueWriteSmoke
             Require(await transaction.BeginOrExtendAsync(prayerImage, start, CancellationToken.None, TimeSpan.FromMinutes(7))
                     == LockScreenTransactionResult.Applied, "Each activation boundary fixture must first apply its seven-minute lease.");
             LockScreenRestoreSnapshot captured = store.Load()!;
+            /// <summary>Reports whether the owned temporary image is still present with its recorded hash.</summary>
             bool SourceUnchanged() => native.CurrentImagePath == captured.TemporaryImagePath &&
                 File.Exists(captured.TemporaryImagePath) && Hash(captured.TemporaryImagePath) == captured.TemporaryImageSha256;
             Require(native.ModeFlags == (0, 0) && captured.RestoreAtUtc == deadline && SourceUnchanged() &&
@@ -246,6 +257,7 @@ internal static class LockScreenModeValueWriteSmoke
             (int SlideshowEnabled, int SpotlightEnabled) externalMode = requested.Slideshow == 1 ? (0, 1) : (1, 0);
             native.BeforeModeWrite = () => intentBeforeWrite = store.Load() == (captured with { RestoreRequested = true }) &&
                 native.ModeFlags == (0, 0) && SourceUnchanged();
+            /// <summary>Injects a mode-only change at the stated boundary after the first value write.</summary>
             void ChangeOnlyMode()
             {
                 hookCalls++;
@@ -361,8 +373,14 @@ internal static class LockScreenModeValueWriteSmoke
         Console.WriteLine($"LOCKSCREEN_MODE_ONLY_ACTIVATION_BOUNDARIES PASS: controls={controls}; refused_cases={refusedCases}; targets=Slideshow,Spotlight; mode_only_boundaries=after-first-value,inside-second-guard; unreadable_and_unknown_fail_closed=1; values_before_refusal=1; rollback_writes=0; recovery_restored_and_verified=1; deadline_extended=0; compiled_production_helper=1; real_native_writes=0.");
     }
 
+    /// <summary>Computes the SHA-256 hex digest of a file.</summary>
+    /// <param name="path">File to hash.</param>
+    /// <returns>Uppercase hex SHA-256 digest.</returns>
     private static string Hash(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Lock-screen background modes known to the app.</summary>
 internal enum LockScreenBackgroundMode
 {
     Unknown,
@@ -12,8 +13,13 @@ internal enum LockScreenBackgroundMode
     Spotlight
 }
 
+/// <summary>Resolves lock-screen background mode from Windows registry flags.</summary>
 internal static class LockScreenModeLogic
 {
+    /// <summary>Resolves the mode from raw SlideshowEnabled/RotatingLockScreenEnabled flags; conflicting or missing flags yield Unknown.</summary>
+    /// <param name="slideshowEnabled">Raw slideshow flag (0/1), or null when unread.</param>
+    /// <param name="spotlightEnabled">Raw spotlight flag (0/1), or null when unread.</param>
+    /// <returns>The resolved mode.</returns>
     internal static LockScreenBackgroundMode Resolve(int? slideshowEnabled, int? spotlightEnabled)
     {
         if (slideshowEnabled is not (0 or 1) || spotlightEnabled is not (0 or 1))
@@ -28,6 +34,7 @@ internal static class LockScreenModeLogic
     }
 }
 
+/// <summary>Ownership classification of the current lock-screen image.</summary>
 internal enum LockScreenImageOwnership
 {
     TemporaryImage,
@@ -37,6 +44,7 @@ internal enum LockScreenImageOwnership
     Unknown
 }
 
+/// <summary>Outcome of a lock-screen image transaction.</summary>
 internal enum LockScreenTransactionResult
 {
     Applied,
@@ -48,6 +56,7 @@ internal enum LockScreenTransactionResult
     PendingVerification
 }
 
+/// <summary>Journaled snapshot of the lock-screen state before a temporary image is applied.</summary>
 internal sealed record LockScreenRestoreSnapshot(
     int Version,
     LockScreenBackgroundMode PreviousMode,
@@ -61,40 +70,84 @@ internal sealed record LockScreenRestoreSnapshot(
     bool IsApplied,
     bool RestoreRequested = false);
 
+/// <summary>Backend abstraction for capturing, applying, and restoring the lock-screen image.</summary>
 internal interface ILockScreenImageBackend
 {
+    /// <summary>Captures a snapshot of the current lock-screen state.</summary>
+    /// <param name="imagePath">Path of the temporary image to apply.</param>
+    /// <param name="restoreAtUtc">UTC time at which the image should be restored.</param>
+    /// <returns>The captured snapshot.</returns>
     LockScreenRestoreSnapshot CaptureSnapshot(string imagePath, DateTimeOffset restoreAtUtc);
+    /// <summary>Applies the temporary image from a snapshot.</summary>
+    /// <param name="snapshot">The snapshot to apply.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous apply.</returns>
     Task ApplyTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken);
+    /// <summary>Repairs a confirmed mode drift on the active application-owned image.</summary>
+    /// <param name="snapshot">The snapshot to maintain.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous repair.</returns>
     Task MaintainTemporaryImageAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken);
+    /// <summary>Classifies ownership of the current lock-screen image against a snapshot.</summary>
+    /// <param name="snapshot">The snapshot to check against.</param>
+    /// <returns>The ownership classification; Unknown when verification fails.</returns>
     LockScreenImageOwnership CheckTemporaryImage(LockScreenRestoreSnapshot snapshot);
+    /// <summary>Restores the previous lock-screen state from a snapshot.</summary>
+    /// <param name="snapshot">The snapshot to restore.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous restore.</returns>
     Task RestoreAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken);
+    /// <summary>Checks whether the current state matches the pre-apply snapshot.</summary>
+    /// <param name="snapshot">The snapshot to verify against.</param>
+    /// <returns>True when the previous mode and image are verified restored.</returns>
     bool IsRestored(LockScreenRestoreSnapshot snapshot);
+    /// <summary>Deletes managed files associated with a snapshot.</summary>
+    /// <param name="snapshot">The snapshot whose files are removed.</param>
     void Cleanup(LockScreenRestoreSnapshot snapshot);
 }
 
+/// <summary>Persistence abstraction for the restore journal.</summary>
 internal interface ILockScreenRestoreStore
 {
+    /// <summary>Loads the pending snapshot, or null when none exists.</summary>
+    /// <returns>The pending snapshot.</returns>
     LockScreenRestoreSnapshot? Load();
+    /// <summary>Persists a snapshot to the journal.</summary>
+    /// <param name="snapshot">The snapshot to save.</param>
     void Save(LockScreenRestoreSnapshot snapshot);
+    /// <summary>Deletes the journaled snapshot.</summary>
     void Delete();
 }
 
+/// <summary>Coordinates capture, apply, extend, recovery and restore of the temporary lock-screen image under a gate.</summary>
 internal sealed class LockScreenImageTransaction
 {
+    /// <summary>Default temporary-image duration (60 minutes).</summary>
     internal static readonly TimeSpan TemporaryDuration = TimeSpan.FromMinutes(60);
 
     private readonly ILockScreenImageBackend _backend;
     private readonly ILockScreenRestoreStore _store;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    /// <summary>Initializes the transaction coordinator.</summary>
+    /// <param name="backend">The lock-screen image backend.</param>
+    /// <param name="store">The restore journal store.</param>
     internal LockScreenImageTransaction(ILockScreenImageBackend backend, ILockScreenRestoreStore store)
     {
         _backend = backend;
         _store = store;
     }
 
+    /// <summary>The restore deadline of the pending transaction, if any.</summary>
     internal DateTimeOffset? RestoreAtUtc => _store.Load()?.RestoreAtUtc;
 
+    /// <summary>Applies the temporary image, or extends an existing application-owned transaction.</summary>
+    /// <param name="imagePath">Path of the image to apply.</param>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <param name="temporaryDuration">Optional duration override (1-120 minutes).</param>
+    /// <returns>The transaction outcome.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="temporaryDuration"/> is outside 1-120 minutes.</exception>
     internal async Task<LockScreenTransactionResult> BeginOrExtendAsync(
         string imagePath,
         DateTimeOffset nowUtc,
@@ -178,6 +231,9 @@ internal sealed class LockScreenImageTransaction
         }
     }
 
+    /// <summary>Restores the previous lock-screen state, verifying the result.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The transaction outcome.</returns>
     internal async Task<LockScreenTransactionResult> RestoreAsync(CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -191,6 +247,11 @@ internal sealed class LockScreenImageTransaction
         }
     }
 
+    /// <summary>Recovers from a crash or shutdown: restores an expired/disabled transaction, reports otherwise.</summary>
+    /// <param name="isEnabled">Whether the feature is currently enabled.</param>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The recovery outcome.</returns>
     internal async Task<LockScreenTransactionResult> RecoverAsync(
         bool isEnabled,
         DateTimeOffset nowUtc,
@@ -232,6 +293,9 @@ internal sealed class LockScreenImageTransaction
         }
     }
 
+    /// <summary>Restore implementation assuming the gate is held; never runs concurrently.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The transaction outcome.</returns>
     private async Task<LockScreenTransactionResult> RestoreUnderGateAsync(CancellationToken cancellationToken)
     {
         LockScreenRestoreSnapshot? pending = _store.Load();
@@ -270,6 +334,10 @@ internal sealed class LockScreenImageTransaction
         return LockScreenTransactionResult.Restored;
     }
 
+    /// <summary>Rolls back a failed apply, deleting the journal when restoration is confirmed.</summary>
+    /// <param name="snapshot">The snapshot to roll back.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>A task representing the rollback.</returns>
     private async Task RollBackFailedApplyAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
     {
         LockScreenImageOwnership ownership = _backend.CheckTemporaryImage(snapshot);
@@ -293,6 +361,8 @@ internal sealed class LockScreenImageTransaction
         ClearPending(snapshot);
     }
 
+    /// <summary>Deletes the journal and cleans up managed files; caller must hold the gate.</summary>
+    /// <param name="snapshot">The snapshot to clear.</param>
     private void ClearPending(LockScreenRestoreSnapshot snapshot)
     {
         _store.Delete();

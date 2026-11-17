@@ -32,11 +32,17 @@ Assert(localGpsLocationName.Contains("GPS/GNSS", StringComparison.Ordinal) &&
        !localGpsLocationName.Contains("Bekasi", StringComparison.OrdinalIgnoreCase),
     "GPS location names must be generated locally from the reported source and coordinates, without inventing a city.");
 
+/// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+/// <param name="condition">Condition that must be true.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Assert(bool condition, string message)
 {
     if (!condition) throw new InvalidOperationException(message);
 }
 
+/// <summary>Deserializes and re-normalizes settings JSON, returning the normalized document.</summary>
+/// <param name="json">Raw settings JSON.</param>
+/// <returns>The normalized settings document.</returns>
 static JsonDocument NormalizeSettings(string json)
 {
     AppSettings settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
@@ -44,16 +50,34 @@ static JsonDocument NormalizeSettings(string json)
     return JsonDocument.Parse(JsonSerializer.Serialize(settings));
 }
 
+/// <summary>Checks whether a JSON property exists as a string with the expected value.</summary>
+/// <param name="root">Root element to inspect.</param>
+/// <param name="propertyName">Property name.</param>
+/// <param name="expected">Expected string value (ordinal comparison).</param>
+/// <returns>True when the property is a matching string.</returns>
 static bool IsJsonString(JsonElement root, string propertyName, string expected) =>
     root.TryGetProperty(propertyName, out JsonElement value) &&
     value.ValueKind == JsonValueKind.String &&
     string.Equals(value.GetString(), expected, StringComparison.Ordinal);
 
+/// <summary>Finds the implicit (keyless) style targeting the given XAML type.</summary>
+/// <param name="document">XAML document to search.</param>
+/// <param name="presentation">WPF presentation namespace.</param>
+/// <param name="xaml">XAML namespace.</param>
+/// <param name="typeName">Target type name (e.g. ComboBoxItem).</param>
+/// <returns>The implicit style element, or null when absent.</returns>
 static XElement? FindImplicitStyle(XDocument document, XNamespace presentation, XNamespace xaml, string typeName) =>
     document.Descendants(presentation + "Style").SingleOrDefault(style =>
         (string?)style.Attribute("TargetType") == $"{{x:Type {typeName}}}" &&
         style.Attribute(xaml + "Key") is null);
 
+/// <summary>Checks whether a style trigger sets a property to a value.</summary>
+/// <param name="style">Style element to inspect (may be null).</param>
+/// <param name="presentation">WPF presentation namespace.</param>
+/// <param name="triggerProperty">Trigger property name (e.g. IsHighlighted).</param>
+/// <param name="setterProperty">Setter property name.</param>
+/// <param name="setterValue">Setter value.</param>
+/// <returns>True when a matching trigger/setter pair exists.</returns>
 static bool HasTriggerSetter(XElement? style, XNamespace presentation, string triggerProperty, string setterProperty, string setterValue) =>
     style?.Descendants(presentation + "Trigger").Any(trigger =>
         (string?)trigger.Attribute("Property") == triggerProperty &&
@@ -61,6 +85,11 @@ static bool HasTriggerSetter(XElement? style, XNamespace presentation, string tr
             (string?)setter.Attribute("Property") == setterProperty &&
             (string?)setter.Attribute("Value") == setterValue)) == true;
 
+/// <summary>Reflects a required property or throws when it is missing.</summary>
+/// <param name="type">Type to inspect.</param>
+/// <param name="name">Property name.</param>
+/// <param name="flags">Binding flags for the lookup.</param>
+/// <returns>The property info.</returns>
 static PropertyInfo RequireProperty(Type type, string name, BindingFlags flags)
 {
     PropertyInfo? property = type.GetProperty(name, flags);
@@ -68,6 +97,11 @@ static PropertyInfo RequireProperty(Type type, string name, BindingFlags flags)
     return property!;
 }
 
+/// <summary>Reflects a required method or throws when it is missing.</summary>
+/// <param name="type">Type to inspect.</param>
+/// <param name="name">Method name.</param>
+/// <param name="flags">Binding flags for the lookup.</param>
+/// <returns>The method info.</returns>
 static MethodInfo RequireMethod(Type type, string name, BindingFlags flags)
 {
     MethodInfo? method = type.GetMethod(name, flags);
@@ -75,10 +109,20 @@ static MethodInfo RequireMethod(Type type, string name, BindingFlags flags)
     return method!;
 }
 
+/// <summary>Computes the WCAG contrast ratio between two hex colors.</summary>
+/// <param name="foreground">Foreground hex color.</param>
+/// <param name="background">Background hex color.</param>
+/// <returns>Contrast ratio (>= 1).</returns>
 static double ContrastRatio(string foreground, string background)
 {
+    /// <summary>Computes relative luminance of a hex color.</summary>
+    /// <param name="hex">Hex color string.</param>
+    /// <returns>Relative luminance.</returns>
     static double Luminance(string hex)
     {
+        /// <summary>Linearizes one hex channel at the given pair offset.</summary>
+        /// <param name="index">Start index of the channel pair in the hex string.</param>
+        /// <returns>Linearized channel value.</returns>
         double Channel(int index)
         {
             double value = Convert.ToInt32(hex.Substring(index, 2), 16) / 255.0;
@@ -159,6 +203,9 @@ Assert(string.Equals(normalizeThemeMethod.Invoke(null, ["unsupported"]) as strin
 foreach (object palette in themePalettes)
 {
     string themeId = (string)RequireProperty(palette.GetType(), "Id", publicInstance).GetValue(palette)!;
+    /// <summary>Gets one palette color property by name from the current palette.</summary>
+    /// <param name="name">Palette property name.</param>
+    /// <returns>The color value.</returns>
     string PaletteColor(string name) => (string)RequireProperty(palette.GetType(), name, publicInstance).GetValue(palette)!;
     Assert(ContrastRatio(PaletteColor("PrimaryText"), PaletteColor("Canvas")) >= 4.5 &&
            ContrastRatio(PaletteColor("PrimaryText"), PaletteColor("Surface")) >= 4.5 &&

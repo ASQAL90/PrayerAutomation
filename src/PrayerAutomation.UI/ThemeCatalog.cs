@@ -1,5 +1,7 @@
+// Built-in theme palettes and calendar theming derived from markers and palettes.
 namespace PrayerAutomation.UI;
 
+/// <summary>Full set of colors and metrics for one application theme.</summary>
 internal sealed record ThemePalette(
     string Id,
     string Name,
@@ -23,6 +25,12 @@ internal sealed record ThemePalette(
     IReadOnlyList<string> PrayerColors,
     double CornerRadius);
 
+/// <summary>Resolved colors for rendering a calendar day cell.</summary>
+/// <param name="Background">Background color as a hex string.</param>
+/// <param name="Foreground">Foreground color as a hex string.</param>
+/// <param name="Border">Border color as a hex string.</param>
+/// <param name="BorderThickness">Border thickness in pixels.</param>
+/// <param name="Marker">Marker color as a hex string.</param>
 internal readonly record struct CalendarThemeColors(
     string Background,
     string Foreground,
@@ -30,6 +38,7 @@ internal readonly record struct CalendarThemeColors(
     double BorderThickness,
     string Marker);
 
+/// <summary>Catalog of the built-in theme palettes and helpers to resolve and apply them.</summary>
 internal static class ThemeCatalog
 {
     private static readonly IReadOnlyList<ThemePalette> Themes = Array.AsReadOnly(new[]
@@ -70,20 +79,35 @@ internal static class ThemeCatalog
 
     private static readonly string[] PrayerKeys = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
+    /// <summary>All built-in theme palettes.</summary>
     public static IReadOnlyList<ThemePalette> All => Themes;
 
+    /// <summary>Normalizes a theme id to a known built-in id, defaulting to "light" for unknown values.</summary>
+    /// <param name="id">Theme id to normalize.</param>
+    /// <returns>The normalized theme id.</returns>
     public static string NormalizeId(string? id) => Themes.FirstOrDefault(theme =>
         string.Equals(theme.Id, id?.Trim(), StringComparison.OrdinalIgnoreCase))?.Id ?? "light";
 
+    /// <summary>Returns the palette for the given theme id, normalizing unknown values to "light".</summary>
+    /// <param name="id">Theme id to look up.</param>
+    /// <returns>The matching palette.</returns>
     public static ThemePalette Get(string? id) => Themes.First(theme =>
         string.Equals(theme.Id, NormalizeId(id), StringComparison.Ordinal));
 
+    /// <summary>Returns the prayer color for a prayer key within the palette, defaulting to the first color for unknown keys.</summary>
+    /// <param name="palette">Palette to read the color from.</param>
+    /// <param name="key">Prayer key (e.g. Fajr, Dhuhr).</param>
+    /// <returns>The color for the key.</returns>
     public static string PrayerColor(ThemePalette palette, string key)
     {
         int index = Array.FindIndex(PrayerKeys, prayerKey => string.Equals(prayerKey, key, StringComparison.OrdinalIgnoreCase));
         return palette.PrayerColors[index >= 0 && index < palette.PrayerColors.Count ? index : 0];
     }
 
+    /// <summary>Resolves the calendar cell colors for a marker against the given palette.</summary>
+    /// <param name="palette">Palette to derive colors from.</param>
+    /// <param name="marker">Marker visual state of the calendar cell.</param>
+    /// <returns>The resolved calendar cell colors.</returns>
     public static CalendarThemeColors CalendarColorsFor(ThemePalette palette, CalendarMarker marker)
     {
         bool hasObservance = marker.IsHoliday || marker.HasFastingProhibition || marker.HasSunnahFast || marker.HasReligiousEvent;

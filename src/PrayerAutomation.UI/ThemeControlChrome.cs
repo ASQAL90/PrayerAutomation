@@ -14,14 +14,25 @@ namespace PrayerAutomation.UI;
 
 // Keep the Windows/WPF template geometry, but prevent its hard-coded state
 // colors from painting over the owner's theme-aware foreground/background.
+/// <summary>Applies theme-aware surfaces to control template parts by binding them to owner control properties.</summary>
 internal static class ThemeControlChrome
 {
+    /// <summary>Attached property; set true to opt a control into themed chrome.</summary>
     internal static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached(
         "Enabled", typeof(bool), typeof(ThemeControlChrome), new PropertyMetadata(false, OnEnabledChanged));
 
+    /// <summary>Gets the attached Enabled value of a target element.</summary>
+    /// <param name="target">The dependency object to read.</param>
+    /// <returns>True when the control opted in.</returns>
     public static bool GetEnabled(DependencyObject target) => (bool)target.GetValue(EnabledProperty);
+    /// <summary>Sets the attached Enabled value of a target element.</summary>
+    /// <param name="target">The dependency object to update.</param>
+    /// <param name="value">True to opt in.</param>
     public static void SetEnabled(DependencyObject target, bool value) => target.SetValue(EnabledProperty, value);
 
+    /// <summary>Handles Enabled changes: attaches/detaches Loaded and DropDownOpened handlers and applies immediately when loaded.</summary>
+    /// <param name="target">The control whose attached value changed.</param>
+    /// <param name="e">Change event arguments.</param>
     private static void OnEnabledChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
     {
         if (target is not Control control) return;
@@ -33,16 +44,24 @@ internal static class ThemeControlChrome
         if (control.IsLoaded) Apply(control);
     }
 
+    /// <summary>Loaded handler; applies themed chrome once the template is available.</summary>
+    /// <param name="sender">The loaded control.</param>
+    /// <param name="e">Routed event arguments.</param>
     private static void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (sender is Control control) Apply(control);
     }
 
+    /// <summary>DropDownOpened handler; re-applies chrome when a ComboBox popup opens.</summary>
+    /// <param name="sender">The ComboBox.</param>
+    /// <param name="e">Event arguments.</param>
     private static void OnDropDownOpened(object? sender, EventArgs e)
     {
         if (sender is ComboBox comboBox) Apply(comboBox);
     }
 
+    /// <summary>Applies the themed chrome to a control's template parts (Borders, ToggleButtons, popups, TextBlocks).</summary>
+    /// <param name="control">The control to theme.</param>
     private static void Apply(Control control)
     {
         control.ApplyTemplate();
@@ -122,6 +141,9 @@ internal static class ThemeControlChrome
             Bind(text, TextBlock.ForegroundProperty, control, nameof(Control.Foreground));
     }
 
+    /// <summary>Walks up the visual tree to the nearest containing Control.</summary>
+    /// <param name="node">The node to start from.</param>
+    /// <returns>The owning control, or null.</returns>
     private static Control? FindContentOwner(DependencyObject node)
     {
         while (node is Visual or System.Windows.Media.Media3D.Visual3D)
@@ -132,15 +154,26 @@ internal static class ThemeControlChrome
         return null;
     }
 
+    /// <summary>Binds a Border's Background and BorderBrush to the owner control's properties.</summary>
+    /// <param name="border">The border to bind.</param>
+    /// <param name="owner">The owner control providing the source values.</param>
     private static void BindSurface(Border border, Control owner)
     {
         Bind(border, Border.BackgroundProperty, owner, nameof(Control.Background));
         Bind(border, Border.BorderBrushProperty, owner, nameof(Control.BorderBrush));
     }
 
+    /// <summary>Sets a one-way binding on a target property from an owner control property.</summary>
+    /// <param name="target">The target element.</param>
+    /// <param name="property">The property to bind.</param>
+    /// <param name="owner">The owner control providing the source.</param>
+    /// <param name="sourceProperty">The source property name on the owner.</param>
     private static void Bind(DependencyObject target, DependencyProperty property, Control owner, string sourceProperty)
         => BindingOperations.SetBinding(target, property, new Binding(sourceProperty) { Source = owner, Mode = BindingMode.OneWay });
 
+    /// <summary>Enumerates all visual-tree descendants of a node.</summary>
+    /// <param name="node">The root node.</param>
+    /// <returns>Depth-first descendant sequence.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject node)
     {
         if (node is not Visual && node is not System.Windows.Media.Media3D.Visual3D) yield break;

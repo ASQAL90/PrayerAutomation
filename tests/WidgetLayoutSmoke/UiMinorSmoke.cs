@@ -14,12 +14,18 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Fixture = WidgetSettingsInteractionSmoke.Fixture;
 
+/// <summary>Smoke test verifying minor UI surfaces: widget placement, text selection rendering, and numeric editor sizing.</summary>
 internal static class UiMinorSmoke
 {
+    /// <summary>Binding flags for instance members.</summary>
     private const BindingFlags I = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+    /// <summary>Binding flags for static members.</summary>
     private const BindingFlags S = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+    /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     private static readonly string[] SafetyFlags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled", "LockScreenOptIn", "StartupEnabled"];
 
+    /// <summary>Runs all UI minor smoke phases in sequence.</summary>
+    /// <param name="application">Application used to host the isolated fixtures.</param>
     public static void Run(Application application)
     {
         RunTop(application);
@@ -27,6 +33,8 @@ internal static class UiMinorSmoke
         RunSize(application);
     }
 
+    /// <summary>Verifies widget placement at the top edge of the work area across modes, motions, and positions.</summary>
+    /// <param name="application">Application used to host the isolated fixture.</param>
     public static void RunTop(Application application)
     {
         VerifySyntheticSettings();
@@ -86,6 +94,10 @@ internal static class UiMinorSmoke
         Console.WriteLine($"UI_MINOR_TOP PASS: actual+pure checks={checks}; all top modes at WorkArea.Top, horizontal/bottom margins/clamps/preview/Cancel retained.");
     }
 
+    /// <summary>Verifies the pure PlaceWidget logic across modes, positions, margins, and invalid inputs.</summary>
+    /// <param name="assembly">Product UI assembly containing WidgetSettingsLogic.</param>
+    /// <param name="failures">Collected failure messages.</param>
+    /// <returns>Number of pure placement checks performed.</returns>
     private static int VerifyPurePlacement(Assembly assembly, List<string> failures)
     {
         Type helper = assembly.GetType("PrayerAutomation.UI.WidgetSettingsLogic", true)!;
@@ -97,6 +109,9 @@ internal static class UiMinorSmoke
         {
             const double areaLeft = -800, areaTop = 48, areaWidth = 300, areaHeight = 220;
             object placement = place.Invoke(null, [mode, position, areaLeft, areaTop, areaWidth, areaHeight, 420d, 360d, margin])!;
+            /// <summary>Gets a double property from the placement result.</summary>
+            /// <param name="name">Property name.</param>
+            /// <returns>The property value.</returns>
             double Value(string name) => (double)placement.GetType().GetProperty(name)!.GetValue(placement)!;
             double safeMargin = Math.Max(0, margin);
             double width = areaWidth - 2 * safeMargin, height = areaHeight - 2 * safeMargin;
@@ -123,6 +138,8 @@ internal static class UiMinorSmoke
         return checks;
     }
 
+    /// <summary>Verifies selected-text rendering, focus, clipboard, and disabled-state behavior across themes.</summary>
+    /// <param name="application">Application used to host the isolated fixture.</param>
     public static void RunSelection(Application application)
     {
         VerifySyntheticSettings();
@@ -266,8 +283,12 @@ internal static class UiMinorSmoke
         Console.WriteLine($"UI_MINOR_SELECTION PASS: cases={cases}; actual selected glyph/background pixels >=4.5 contrast across eight themes, typed/numeric, focused/inactive; disabled native no-highlight behavior retained.");
     }
 
+    /// <summary>Rasterized selected-text capture: bitmap plus raw pixel buffer.</summary>
     private sealed record PixelSample(RenderTargetBitmap Bitmap, byte[] Pixels);
 
+    /// <summary>Captures the full adorner decorator around a TextBox, cropped to the TextBox bounds.</summary>
+    /// <param name="box">TextBox to capture.</param>
+    /// <returns>The cropped bitmap and pixel buffer.</returns>
     private static PixelSample CaptureBox(TextBox box)
     {
         DependencyObject? node = box;
@@ -294,6 +315,9 @@ internal static class UiMinorSmoke
         return new PixelSample(bitmap, pixels);
     }
 
+    /// <summary>Writes a bitmap to a PNG file.</summary>
+    /// <param name="bitmap">Bitmap to save.</param>
+    /// <param name="path">Destination file path.</param>
     private static void SavePng(RenderTargetBitmap bitmap, string path)
     {
         var encoder = new PngBitmapEncoder();
@@ -302,13 +326,28 @@ internal static class UiMinorSmoke
         encoder.Save(file);
     }
 
+    /// <summary>Checks whether a pixel is opaque and within tolerance of an expected color.</summary>
+    /// <param name="actual">Sampled color.</param>
+    /// <param name="expected">Expected color.</param>
+    /// <param name="tolerance">Per-channel tolerance.</param>
+    /// <returns>True when the pixel matches.</returns>
     private static bool Close(Color actual, Color expected, int tolerance) => actual.A >= 250 &&
         Math.Abs(actual.R - expected.R) <= tolerance && Math.Abs(actual.G - expected.G) <= tolerance && Math.Abs(actual.B - expected.B) <= tolerance;
 
+    /// <summary>Computes the WCAG contrast ratio between two colors.</summary>
+    /// <param name="first">First color.</param>
+    /// <param name="second">Second color.</param>
+    /// <returns>Contrast ratio (>= 1).</returns>
     private static double Contrast(Color first, Color second)
     {
+        /// <summary>Computes relative luminance of a color.</summary>
+        /// <param name="color">Color to evaluate.</param>
+        /// <returns>Relative luminance.</returns>
         static double Luminance(Color color)
         {
+            /// <summary>Linearizes one 8-bit channel value.</summary>
+            /// <param name="channel">Channel value 0-255.</param>
+            /// <returns>Linearized channel.</returns>
             static double Linear(byte channel) { double value = channel / 255d; return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4); }
             return 0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);
         }
@@ -316,6 +355,8 @@ internal static class UiMinorSmoke
         return (Math.Max(a, b) + 0.05) / (Math.Min(a, b) + 0.05);
     }
 
+    /// <summary>Verifies numeric date/prayer correction editors retain sizing, bounds, and save/cancel behavior.</summary>
+    /// <param name="application">Application used to host the isolated fixture.</param>
     public static void RunSize(Application application)
     {
         VerifySyntheticSettings();
@@ -423,6 +464,11 @@ internal static class UiMinorSmoke
         Console.WriteLine($"UI_MINOR_SIZE PASS: date cases={cases}; all seven prayer boxes unchanged; eight themes at normal/minimum size, compact reachable groups, date +/-7/prayer +/-30, real helpers/input/paste/preview/Cancel/Save preserved.");
     }
 
+    /// <summary>Verifies the bounded numeric editor: helper buttons, preview input, paste, and bound states.</summary>
+    /// <param name="application">Application used to pump the dispatcher.</param>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <param name="prefix">Control name prefix (e.g. HijriDateCorrection).</param>
+    /// <param name="bound">Absolute inclusive bound for the editor.</param>
     private static void VerifyBoundedEditor(Application application, Fixture fixture, string prefix, int bound)
     {
         TextBox box = fixture.Field<TextBox>(prefix + "Box");
@@ -453,6 +499,10 @@ internal static class UiMinorSmoke
         Console.WriteLine($"UI_MINOR_SIZE_BOUNDS PASS: {prefix} range={-bound}..{bound}, actual helpers/PreviewTextInput/paste.");
     }
 
+    /// <summary>Raises a PreviewTextInput event and reports whether it was handled.</summary>
+    /// <param name="box">TextBox receiving the input.</param>
+    /// <param name="text">Input text.</param>
+    /// <returns>True when the input was blocked.</returns>
     private static bool InputBlocked(TextBox box, string text)
     {
         var input = new TextCompositionEventArgs(Keyboard.PrimaryDevice, new TextComposition(InputManager.Current, box, text))
@@ -461,8 +511,16 @@ internal static class UiMinorSmoke
         return input.Handled;
     }
 
+    /// <summary>Bounds of an element relative to an ancestor visual.</summary>
+    /// <param name="element">Element to measure.</param>
+    /// <param name="ancestor">Ancestor visual used as the coordinate origin.</param>
+    /// <returns>Element bounds in ancestor coordinates.</returns>
     private static Rect Bounds(FrameworkElement element, Visual ancestor) => element.TransformToAncestor(ancestor).TransformBounds(new Rect(element.RenderSize));
 
+    /// <summary>Finds the nearest ancestor of the requested type or throws.</summary>
+    /// <typeparam name="T">Ancestor type.</typeparam>
+    /// <param name="element">Element to ascend from.</param>
+    /// <returns>The nearest matching ancestor.</returns>
     private static T Ancestor<T>(DependencyObject element) where T : DependencyObject
     {
         DependencyObject? node = element;
@@ -471,8 +529,14 @@ internal static class UiMinorSmoke
         throw new InvalidOperationException("The real control is missing its expected viewport ancestor.");
     }
 
+    /// <summary>Collects all TextBlock texts under the settings preview grid, joined by pipes.</summary>
+    /// <param name="fixture">Isolated fixture holding the window under test.</param>
+    /// <returns>The joined text content.</returns>
     private static string PreviewText(Fixture fixture)
     {
+        /// <summary>Enumerates the text of a node and its visual descendants.</summary>
+        /// <param name="node">Node to enumerate.</param>
+        /// <returns>Text of the node, if any, followed by descendants' texts.</returns>
         static IEnumerable<string> Text(DependencyObject node)
         {
             if (node is TextBlock block) yield return block.Text;
@@ -482,6 +546,7 @@ internal static class UiMinorSmoke
         return string.Join("|", Text(fixture.Field<Grid>("SettingsSchedulePreviewGrid")));
     }
 
+    /// <summary>Fails closed unless deserialized synthetic consequential flags remain false and widget is enabled.</summary>
     private static void VerifySyntheticSettings()
     {
         Type type = typeof(ProductUi::PrayerAutomation.UI.App).Assembly.GetType("PrayerAutomation.UI.AppSettings", true)!;
@@ -498,6 +563,8 @@ internal static class UiMinorSmoke
         Console.WriteLine("UI_MINOR_FIXTURE_FLAGS PASS: serialized/deserialized reminders/auto-lock/lock-screen/consent/startup=false widget=true before Window.");
     }
 
+    /// <summary>Pumps the dispatcher and re-verifies WPF isolation invariants.</summary>
+    /// <param name="application">Application to verify.</param>
     private static void Pump(Application application)
     {
         Assert(SynchronizationContext.Current is DispatcherSynchronizationContext,
@@ -506,6 +573,9 @@ internal static class UiMinorSmoke
         WpfApplicationIsolation.Verify(application);
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);

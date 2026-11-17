@@ -1,9 +1,11 @@
+// Periodically checks whether an essential prayer time has arrived and locks the workstation.
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Background timer that triggers a workstation lock around essential prayer times.</summary>
 internal sealed class AutoLockScheduler : IDisposable
 {
     private static readonly TimeSpan TriggerWindow = TimeSpan.FromSeconds(5);
@@ -18,11 +20,17 @@ internal sealed class AutoLockScheduler : IDisposable
     private bool _timeZoneFailureReported;
     private bool _disposed;
 
+    /// <summary>Initializes the scheduler using the real workstation lock and schedule services.</summary>
+    /// <param name="settings">Application settings that control auto-lock behavior.</param>
     internal AutoLockScheduler(AppSettings settings)
         : this(settings, WorkstationLockService.TryLock, date => PrayerScheduleService.ForDate(date, settings))
     {
     }
 
+    /// <summary>Initializes the scheduler with injectable dependencies, primarily for testing.</summary>
+    /// <param name="settings">Application settings that control auto-lock behavior.</param>
+    /// <param name="tryLock">Callback that attempts to lock the workstation; returns whether it succeeded.</param>
+    /// <param name="scheduleForDate">Callback that returns the prayer entries for a given date.</param>
     internal AutoLockScheduler(
         AppSettings settings,
         Func<bool> tryLock,
@@ -39,6 +47,7 @@ internal sealed class AutoLockScheduler : IDisposable
         _timer.Tick += OnTick;
     }
 
+    /// <summary>Starts the background timer when auto-lock is enabled and performs an immediate check.</summary>
     public void Start()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -47,6 +56,7 @@ internal sealed class AutoLockScheduler : IDisposable
         OnTick(this, EventArgs.Empty);
     }
 
+    /// <summary>Clears cached schedule state and starts or stops the timer to match current settings.</summary>
     public void Refresh()
     {
         if (_disposed) return;
@@ -57,6 +67,9 @@ internal sealed class AutoLockScheduler : IDisposable
         else _timer.Stop();
     }
 
+    /// <summary>Evaluates the schedule for the given local time and locks the workstation if a prayer is due.</summary>
+    /// <param name="locationLocalNow">Current local date and time at the configured location.</param>
+    /// <returns><c>true</c> if the workstation was locked; otherwise <c>false</c>.</returns>
     internal bool ProcessTick(DateTime locationLocalNow)
     {
         if (!_settings.AutoLockEnabled) return false;
@@ -100,6 +113,7 @@ internal sealed class AutoLockScheduler : IDisposable
         return false;
     }
 
+    /// <summary>Handles the timer tick by resolving the configured time zone and running a check.</summary>
     private void OnTick(object? sender, EventArgs e)
     {
         if (!_settings.AutoLockEnabled)
@@ -123,11 +137,13 @@ internal sealed class AutoLockScheduler : IDisposable
         }
     }
 
+    /// <summary>Returns true when the exception represents a schedule or native-interop failure worth logging.</summary>
     private static bool IsScheduleFailure(Exception exception) =>
         exception is InvalidOperationException or TimeZoneNotFoundException or InvalidTimeZoneException or
             ArgumentException or DllNotFoundException or EntryPointNotFoundException or
             BadImageFormatException or TypeInitializationException;
 
+    /// <summary>Stops the timer and detaches the tick handler.</summary>
     public void Dispose()
     {
         if (_disposed) return;
@@ -137,12 +153,16 @@ internal sealed class AutoLockScheduler : IDisposable
     }
 }
 
+/// <summary>Native workstation-lock helper built on the Win32 <c>LockWorkStation</c> API.</summary>
 internal static class WorkstationLockService
 {
+    /// <summary>Locks the workstation via the Win32 API.</summary>
     [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool LockWorkStation();
 
+    /// <summary>Attempts to lock the workstation and logs a warning when the call fails.</summary>
+    /// <returns><c>true</c> if the workstation was locked; otherwise <c>false</c>.</returns>
     public static bool TryLock()
     {
         if (LockWorkStation()) return true;

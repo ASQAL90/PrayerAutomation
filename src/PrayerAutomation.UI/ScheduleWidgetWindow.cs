@@ -10,6 +10,7 @@ using Point = System.Windows.Point;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Borderless schedule widget window showing prayer times, countdown, and optional marquee; also hosts the taskbar dashboard.</summary>
 internal sealed class ScheduleWidgetWindow : Window
 {
     private const double MarqueePixelsPerTick = 1.25;
@@ -48,11 +49,16 @@ internal sealed class ScheduleWidgetWindow : Window
     private bool _marqueeAnimationReady;
     private string? _scheduleError;
 
+    /// <summary>Initializes the desktop schedule widget.</summary>
+    /// <param name="settings">Application settings.</param>
     public ScheduleWidgetWindow(AppSettings settings)
         : this(settings, taskbarDashboard: false)
     {
     }
 
+    /// <summary>Initializes the widget as either the desktop widget or the taskbar dashboard detail window.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="taskbarDashboard">True to act as the taskbar dashboard (hidden instead of closed).</param>
     internal ScheduleWidgetWindow(AppSettings settings, bool taskbarDashboard)
     {
         _settings = settings;
@@ -101,20 +107,32 @@ internal sealed class ScheduleWidgetWindow : Window
         _clockTimer.Start();
     }
 
+    /// <summary>Effective display mode, honoring an active preview and the taskbar dashboard flag.</summary>
     private string Mode => _taskbarDashboard ? "detail" : WidgetSettingsLogic.NormalizeMode(_appearancePreview?.Mode ?? _settings.WidgetMode);
 
+    /// <summary>Allows closing (even for the taskbar dashboard) and closes the window.</summary>
     internal void ClosePermanently()
     {
         _allowClose = true;
         Close();
     }
+    /// <summary>Effective motion, honoring an active preview over saved settings.</summary>
     private string Motion => _appearancePreview?.Motion ?? _settings.WidgetMotion;
+    /// <summary>Effective position, honoring an active preview over saved settings.</summary>
     private string Position => _appearancePreview?.Position ?? _settings.WidgetPosition;
+    /// <summary>True when the effective mode is "essential".</summary>
     private bool IsEssentialMode => Mode == "essential";
+    /// <summary>True when essential mode uses the marquee motion.</summary>
     private bool IsMarqueeMode => IsEssentialMode && string.Equals(Motion, "marquee", StringComparison.OrdinalIgnoreCase);
+    /// <summary>True when the effective mode is "minimalist".</summary>
     private bool IsMinimalistMode => Mode == "minimalist";
+    /// <summary>True when the effective mode is "detail".</summary>
     private bool IsDetailMode => Mode == "detail";
 
+    /// <summary>Applies a transient appearance preview without saving settings.</summary>
+    /// <param name="mode">Mode to preview.</param>
+    /// <param name="motion">Motion to preview.</param>
+    /// <param name="position">Position to preview.</param>
     internal void ApplyAppearancePreview(string mode, string motion, string position)
     {
         _appearancePreview = (WidgetSettingsLogic.NormalizeMode(mode),
@@ -123,6 +141,7 @@ internal sealed class ScheduleWidgetWindow : Window
         RefreshSchedule();
     }
 
+    /// <summary>Clears any active appearance preview and refreshes the schedule.</summary>
     internal void ClearAppearancePreview()
     {
         if (_appearancePreview is null) return;
@@ -130,6 +149,7 @@ internal sealed class ScheduleWidgetWindow : Window
         RefreshSchedule();
     }
 
+    /// <summary>Rebuilds the layout and re-renders the schedule from settings.</summary>
     public void RefreshSchedule()
     {
         DateTime now = GetLocationNow();
@@ -170,6 +190,7 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Builds the visual tree for the current mode, including marquee, clock, and schedule areas.</summary>
     private void BuildLayout()
     {
         ThemePalette palette = ThemeManager.Current;
@@ -389,6 +410,9 @@ internal sealed class ScheduleWidgetWindow : Window
         ApplyPlacement(requestedWidth, requestedHeight);
     }
 
+    /// <summary>Positions the window on the work area according to mode, dashboard flag, and configured position.</summary>
+    /// <param name="requestedWidth">Requested width before placement adjustment.</param>
+    /// <param name="requestedHeight">Requested height before placement adjustment.</param>
     private void ApplyPlacement(double requestedWidth, double requestedHeight)
     {
         Rect workArea = SystemParameters.WorkArea;
@@ -427,6 +451,9 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Renders the essential (five obligatory prayers) mode, or configures the marquee.</summary>
+    /// <param name="entries">Prayer times for today.</param>
+    /// <exception cref="InvalidOperationException">The five obligatory prayers are not available.</exception>
     private void RenderEssentialSchedule(IReadOnlyList<PrayerEntry> entries)
     {
         IReadOnlyList<PrayerEntry> essential = PrayerUiLogic.EssentialPrayerTimes(entries);
@@ -491,12 +518,15 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Renders the minimalist placeholder texts; the countdown is updated separately.</summary>
     private void RenderMinimalistSchedule()
     {
         _nextPrayer.Text = "Sholat berikutnya";
         _countdown.Text = "Menghitung…";
     }
 
+    /// <summary>Renders the detail list of prayer times with icons.</summary>
+    /// <param name="entries">Prayer times to render.</param>
     private void RenderDetailSchedule(IReadOnlyList<PrayerEntry> entries)
     {
         _schedule.Children.Clear();
@@ -546,6 +576,8 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Builds and applies the marquee text for the current time.</summary>
+    /// <param name="now">Location-local current time.</param>
     private void UpdateMarqueeContent(DateTime now)
     {
         if (_scheduleError is not null) return;
@@ -559,6 +591,7 @@ internal sealed class ScheduleWidgetWindow : Window
         ConfigureMarquee();
     }
 
+    /// <summary>Advances the marquee offset; wraps and rebuilds content after a full cycle.</summary>
     private void AdvanceMarquee()
     {
         if (!ConfigureMarquee()) return;
@@ -574,6 +607,9 @@ internal sealed class ScheduleWidgetWindow : Window
         _marqueeTranslation.X = -_marqueeOffset;
     }
 
+    /// <summary>Measures and configures the marquee text repeat/clip based on the viewport.</summary>
+    /// <param name="force">Reconfigure even when content and viewport are unchanged.</param>
+    /// <returns>True when the marquee is ready to animate.</returns>
     private bool ConfigureMarquee(bool force = false)
     {
         if (!IsMarqueeMode ||
@@ -606,6 +642,9 @@ internal sealed class ScheduleWidgetWindow : Window
         return true;
     }
 
+    /// <summary>Measures the rendered width of a marquee line.</summary>
+    /// <param name="text">The text to measure.</param>
+    /// <returns>The width in device-independent pixels.</returns>
     private double MeasureMarqueeWidth(string text)
     {
         var typeface = new Typeface(_marqueeLine.FontFamily, _marqueeLine.FontStyle, _marqueeLine.FontWeight, _marqueeLine.FontStretch);
@@ -620,6 +659,7 @@ internal sealed class ScheduleWidgetWindow : Window
         return Math.Ceiling(formatted.WidthIncludingTrailingWhitespace);
     }
 
+    /// <summary>Per-second tick: refreshes clock, date, countdown, and marquee as applicable.</summary>
     private void RefreshClockAndCountdown()
     {
         DateTime now = GetLocationNow();
@@ -636,6 +676,8 @@ internal sealed class ScheduleWidgetWindow : Window
             UpdateCountdown(now);
     }
 
+    /// <summary>Updates the clock and date texts in detail mode.</summary>
+    /// <param name="now">Location-local current time.</param>
     private void RefreshClockAndDate(DateTime now)
     {
         if (IsDetailMode)
@@ -645,6 +687,8 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Updates next-prayer and countdown texts (and icon) for detail/minimalist modes.</summary>
+    /// <param name="now">Location-local current time.</param>
     private void UpdateCountdown(DateTime now)
     {
         if (_scheduleError is not null)
@@ -698,6 +742,7 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Shows the countdown error message.</summary>
     private void SetCountdownError()
     {
         if (IsMinimalistMode)
@@ -706,6 +751,7 @@ internal sealed class ScheduleWidgetWindow : Window
         _countdown.Foreground = ThemeManager.ToBrush(ThemeManager.Current.ErrorText);
     }
 
+    /// <summary>Shows the schedule error message in the current mode.</summary>
     private void ShowScheduleError()
     {
         var error = new TextBlock
@@ -734,6 +780,9 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Returns the prayer schedule for a date, cached per day.</summary>
+    /// <param name="date">The date to get the schedule for.</param>
+    /// <returns>The prayer entries for the date.</returns>
     private IReadOnlyList<PrayerEntry> GetScheduleForDate(DateTime date)
     {
         DateTime key = date.Date;
@@ -745,6 +794,8 @@ internal sealed class ScheduleWidgetWindow : Window
         return entries;
     }
 
+    /// <summary>Returns the current time in the configured time zone; falls back to local time on failure.</summary>
+    /// <returns>The location-local current time.</returns>
     private DateTime GetLocationNow()
     {
         try
@@ -758,6 +809,9 @@ internal sealed class ScheduleWidgetWindow : Window
         }
     }
 
+    /// <summary>Records the first schedule failure of this render and logs it.</summary>
+    /// <param name="category">Log category tag.</param>
+    /// <param name="exception">The failure.</param>
     private void RecordScheduleFailure(string category, Exception exception)
     {
         if (_scheduleError is not null) return;
@@ -765,14 +819,23 @@ internal sealed class ScheduleWidgetWindow : Window
         AppLogger.Write(category, exception);
     }
 
+    /// <summary>Returns true for exceptions that indicate a schedule failure.</summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <returns>True when the exception is a schedule failure.</returns>
     private static bool IsScheduleFailure(Exception exception) =>
         exception is InvalidOperationException or TimeZoneNotFoundException or InvalidTimeZoneException or
             ArgumentException or DllNotFoundException or EntryPointNotFoundException or
             BadImageFormatException or TypeInitializationException;
 }
 
+/// <summary>Creates frozen drawing images for prayer icons used by the widget.</summary>
 internal static class PrayerWidgetIcons
 {
+    /// <summary>Creates a frozen drawing image for a prayer key.</summary>
+    /// <param name="key">Prayer key used to resolve icon paths and colors.</param>
+    /// <param name="foreground">Brush used to draw the glyph.</param>
+    /// <param name="taskbar">Draw a background ellipse for the taskbar renderer.</param>
+    /// <returns>The frozen drawing image.</returns>
     internal static DrawingImage Create(string key, System.Windows.Media.Brush foreground, bool taskbar = false)
     {
         PrayerPresentation presentation = PrayerUiLogic.PresentationFor(key);

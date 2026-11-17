@@ -1,3 +1,4 @@
+// Smoke test verifying actual WPF widget/settings layout behavior: correction editors, auto-lock scheduling, Essential/Minimalist/Medium Detail layouts, and dispatcher exception capture.
 extern alias ProductUi;
 
 using System.Reflection;
@@ -9,8 +10,12 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using PrayerAutomation.UI;
 
+/// <summary>Entry point for the WPF widget/layout smoke suite; creates an isolated application and runs the selected or full suite.</summary>
 internal static class Program
 {
+    /// <summary>Configures the isolated WPF application and runs the suite; returns 0 on success, 1 on failure.</summary>
+    /// <param name="args">Optional suite selector (e.g. --marquee-render-only).</param>
+    /// <returns>Process exit code.</returns>
     [STAThread]
     private static int Main(string[] args)
     {
@@ -97,6 +102,9 @@ internal static class Program
                 : "PASS: selected isolated actual-WPF suite completed without dispatcher errors.");
             return 0;
 
+            /// <summary>Records dispatcher exceptions and marks them handled so the suite can report them at the end.</summary>
+            /// <param name="sender">Event source.</param>
+            /// <param name="e">Dispatcher exception event args.</param>
             void CaptureDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
             {
                 callbackException = e.Exception;
@@ -110,15 +118,25 @@ internal static class Program
         }
     }
 
+    /// <summary>Verifies the correction input behavior: replacement rules, parsing, helper buttons, and date-correction bounds.</summary>
     private static void VerifyCorrectionInputBehavior()
     {
         Type? behaviorType = typeof(ScheduleWidgetWindow).Assembly.GetType("PrayerAutomation.UI.CorrectionInputBehavior");
         Assert(behaviorType is not null, "Prayer correction editors must have a reusable WPF input behavior.");
         const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+        /// <summary>Requires a named static behavior method or throws.</summary>
+        /// <param name="name">Method name to look up.</param>
+        /// <returns>The resolved method.</returns>
         MethodInfo Require(string name) => behaviorType!.GetMethod(name, flags)
             ?? throw new InvalidOperationException($"CorrectionInputBehavior.{name} is missing.");
 
         var isReplacementAllowed = Require("IsReplacementAllowed");
+        /// <summary>Invokes the replacement-allowed predicate via reflection.</summary>
+        /// <param name="current">Current editor text.</param>
+        /// <param name="start">Selection start.</param>
+        /// <param name="length">Selection length.</param>
+        /// <param name="replacement">Replacement text.</param>
+        /// <returns>True when the replacement is allowed.</returns>
         bool Allows(string current, int start, int length, string replacement) =>
             (bool)isReplacementAllowed.Invoke(null, [current, start, length, replacement])!;
         Assert(Allows("29", 0, 2, "-30") && Allows("30", 0, 2, "+30") && Allows("-", 1, 0, ""),
@@ -157,6 +175,12 @@ internal static class Program
         Assert(editor.Text == "30", "The WPF increase button must clamp at the +30-minute limit.");
 
         MethodInfo isDateReplacementAllowed = Require("IsDateReplacementAllowed");
+        /// <summary>Invokes the date replacement-allowed predicate via reflection.</summary>
+        /// <param name="current">Current editor text.</param>
+        /// <param name="start">Selection start.</param>
+        /// <param name="length">Selection length.</param>
+        /// <param name="replacement">Replacement text.</param>
+        /// <returns>True when the replacement is allowed.</returns>
         bool AllowsDate(string current, int start, int length, string replacement) =>
             (bool)isDateReplacementAllowed.Invoke(null, [current, start, length, replacement])!;
         Assert(AllowsDate("+6", 1, 1, "7") && AllowsDate("-7", 0, 2, "") &&
@@ -189,6 +213,7 @@ internal static class Program
         Assert(dateEditor.Text == "0", "Date helper buttons must decrement/increment by one day without changing the range.");
     }
 
+    /// <summary>Verifies the AutoLockScheduler tick seam: opt-in locking, per-prayer dedup, failure caching, and settings refresh.</summary>
     private static void VerifyAutoLockScheduling()
     {
         const BindingFlags instanceFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
@@ -226,6 +251,9 @@ internal static class Program
         ])!;
         try
         {
+            /// <summary>Invokes the scheduler's ProcessTick seam via reflection.</summary>
+            /// <param name="now">Time to evaluate.</param>
+            /// <returns>True when a lock was dispatched.</returns>
             bool Process(DateTime now) => (bool)processTick!.Invoke(scheduler, [now])!;
             Assert(Process(new DateTime(2026, 5, 1, 4, 0, 1)) && lockCalls == 1,
                 "Opted-in auto-lock must work even when text reminders are disabled.");
@@ -296,6 +324,7 @@ internal static class Program
         }
     }
 
+    /// <summary>Verifies the Essential static layout spreads the five prayer labels across the widget with high-contrast text.</summary>
     private static void VerifyEssentialStaticLayout()
     {
         using var widget = new WidgetFixture("essential", "static");
@@ -319,6 +348,7 @@ internal static class Program
             $"Essential static last prayer is not distributed across the widget: center={lastCenter:F1}, body={body.ActualWidth:F1}.");
     }
 
+    /// <summary>Verifies the Essential marquee layout: clipping viewport, full-width line, live timers, message rotation, and clock refresh.</summary>
     private static void VerifyEssentialMarqueeLayout()
     {
         using var widget = new WidgetFixture("essential", "marquee");
@@ -425,6 +455,8 @@ internal static class Program
         Console.WriteLine("MARQUEE_RUNTIME PASS: full-width motion, live timers, updated clock/countdown, offset preservation, holiday content and short-text repeat.");
     }
 
+    /// <summary>Verifies the Minimalist slim one-line layout against Essential: height, alignment, fonts, hide/reopen, and actual-widget theme preview.</summary>
+    /// <param name="application">Application hosting the widgets.</param>
     private static void VerifyMinimalistLayout(Application application)
     {
         using var essential = new WidgetFixture("essential", "static");
@@ -509,6 +541,7 @@ internal static class Program
         Console.WriteLine($"WIDGET_MINIMALIST_SLIM PASS: checks={checks} height=40 padding=5 text-unclipped hide/reopen actual-preview/Cancel preserved.");
     }
 
+    /// <summary>Verifies the Medium Detail layout fits comfortably: height cap, slice margins, right padding, and schedule rows.</summary>
     private static void VerifyMediumDetailLayout()
     {
         using var widget = new WidgetFixture("detail", "static");
@@ -537,18 +570,29 @@ internal static class Program
             $"Medium Detail must retain all schedule rows after tightening layout; found {scheduleRows}.");
     }
 
+    /// <summary>Returns element bounds relative to an ancestor.</summary>
+    /// <param name="element">Element to measure.</param>
+    /// <param name="ancestor">Ancestor to measure against.</param>
+    /// <returns>Bounds in ancestor coordinates.</returns>
     private static Rect RelativeBounds(FrameworkElement element, FrameworkElement ancestor)
     {
         Point origin = element.TransformToAncestor(ancestor).Transform(new Point(0, 0));
         return new Rect(origin, new Size(element.ActualWidth, element.ActualHeight));
     }
 
+    /// <summary>Returns the horizontal center of an element relative to an ancestor.</summary>
+    /// <param name="element">Element to measure.</param>
+    /// <param name="ancestor">Ancestor to measure against.</param>
+    /// <returns>Center X in ancestor coordinates.</returns>
     private static double CenterX(FrameworkElement element, FrameworkElement ancestor)
     {
         Rect bounds = RelativeBounds(element, ancestor);
         return bounds.Left + bounds.Width / 2;
     }
 
+    /// <summary>Enumerates the visual tree below a root in depth-first order.</summary>
+    /// <param name="root">Root dependency object.</param>
+    /// <returns>Descendant dependency objects.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
@@ -560,15 +604,22 @@ internal static class Program
         }
     }
 
+    /// <summary>Throws <see cref="InvalidOperationException"/> when the condition does not hold.</summary>
+    /// <param name="condition">Condition that must be true.</param>
+    /// <param name="message">Failure message used when the condition is false.</param>
     private static void Assert(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    /// <summary>Fixture constructing a synthetic, fail-closed widget window for layout tests.</summary>
     private sealed class WidgetFixture : IDisposable
     {
         private readonly ScheduleWidgetWindow _window;
 
+        /// <summary>Creates a hidden, non-interactive widget window with all consequential features disabled.</summary>
+        /// <param name="mode">Widget mode (e.g. essential, minimalist, detail).</param>
+        /// <param name="motion">Widget motion (e.g. static, marquee).</param>
         public WidgetFixture(string mode, string motion)
         {
             var settings = new AppSettings
@@ -594,8 +645,11 @@ internal static class Program
             };
         }
 
+        /// <summary>Gets the wrapped widget window.</summary>
         public ScheduleWidgetWindow Window => _window;
 
+        /// <summary>Shows and realizes the widget, returning its content body and host grid.</summary>
+        /// <returns>The body framework element and its host grid.</returns>
         public (FrameworkElement Body, Grid Host) Layout()
         {
             _window.Show();
@@ -613,16 +667,22 @@ internal static class Program
             return (body, host);
         }
 
+        /// <summary>Closes the widget window.</summary>
         public void Dispose() => _window.Close();
     }
 }
 
 namespace PrayerAutomation.UI
 {
+    /// <summary>Captures the last exception written by the app, for test assertions.</summary>
     internal static class AppLogger
     {
+        /// <summary>Gets the most recent exception written, if any.</summary>
         public static Exception? LastException { get; private set; }
 
+        /// <summary>Records the exception.</summary>
+        /// <param name="context">Context label for the error.</param>
+        /// <param name="exception">Exception to record.</param>
         public static void Write(string context, Exception exception) => LastException = exception;
     }
 }

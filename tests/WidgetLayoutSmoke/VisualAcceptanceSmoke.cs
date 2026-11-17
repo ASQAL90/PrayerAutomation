@@ -9,11 +9,16 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
+/// <summary>Smoke test verifying visual acceptance: date helpers, startup options, geocoding, theme contrast, and legends.</summary>
 internal static class VisualAcceptanceSmoke
 {
+    /// <summary>Binding flags for instance members.</summary>
     private const BindingFlags I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    /// <summary>Binding flags for static members.</summary>
     private const BindingFlags S = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
+    /// <summary>Runs the visual acceptance suite against an isolated main window.</summary>
+    /// <param name="application">Application used to host the isolated window.</param>
     public static void Run(Application application)
     {
         Assembly assembly = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
@@ -75,6 +80,10 @@ internal static class VisualAcceptanceSmoke
         }
     }
 
+    /// <summary>Verifies date-correction decrease/increase buttons are visible and wired.</summary>
+    /// <param name="type">MainWindow type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyDateButtons(Type type, Window window, List<string> errors)
     {
         string[] names = [
@@ -106,6 +115,10 @@ internal static class VisualAcceptanceSmoke
         ClickAndCheck("HijriDateCorrectionDecreaseButton", "HijriDateCorrectionBox", "-1");
         ClickAndCheck("HijriDateCorrectionIncreaseButton", "HijriDateCorrectionBox", "0");
 
+        /// <summary>Clicks a helper button and checks the resulting text box value.</summary>
+        /// <param name="buttonName">Button field name.</param>
+        /// <param name="boxName">TextBox field name.</param>
+        /// <param name="expected">Expected text after the click.</param>
         void ClickAndCheck(string buttonName, string boxName, string expected)
         {
             Button? button = Field<Button>(type, window, buttonName);
@@ -119,6 +132,11 @@ internal static class VisualAcceptanceSmoke
         }
     }
 
+    /// <summary>Verifies StartHidden is available, default-off, and gated on startup registration.</summary>
+    /// <param name="type">MainWindow type.</param>
+    /// <param name="settingsType">AppSettings type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyHiddenStartup(Type type, Type settingsType, Window window, List<string> errors)
     {
         PropertyInfo? preference = settingsType.GetProperty("StartHidden", I);
@@ -147,6 +165,10 @@ internal static class VisualAcceptanceSmoke
             errors.Add("StartHidden harus aktif saat registrasi startup dinyalakan.");
     }
 
+    /// <summary>Verifies geocoding controls: defaults, consent gating, endpoint validation, and offline lookup.</summary>
+    /// <param name="type">MainWindow type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyGeocodingControls(Type type, Window window, List<string> errors)
     {
         TextBox? endpoint = Field<TextBox>(type, window, "OnlineGeocodingEndpointBox");
@@ -224,6 +246,9 @@ internal static class VisualAcceptanceSmoke
         Pump();
         bool timedOut = false;
         var frame = new DispatcherFrame();
+        /// <summary>Enables the offline button frame exit when the button becomes enabled.</summary>
+        /// <param name="sender">Event sender (unused).</param>
+        /// <param name="e">Dependency property changed event args (unused).</param>
         void OnOfflineButtonEnabledChanged(object? sender, DependencyPropertyChangedEventArgs e)
         {
             if (offline.IsEnabled)
@@ -252,6 +277,11 @@ internal static class VisualAcceptanceSmoke
             errors.Add("Tombol lookup offline WPF harus menemukan Jakarta dari dataset lokal tanpa jaringan.");
     }
 
+    /// <summary>Verifies the live widget preview updates without persisting the previewed mode.</summary>
+    /// <param name="type">MainWindow type.</param>
+    /// <param name="settingsType">AppSettings type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyLivePreview(Type type, Type settingsType, Window window, List<string> errors)
     {
         ComboBox? mode = Field<ComboBox>(type, window, "WidgetModeBox");
@@ -283,6 +313,13 @@ internal static class VisualAcceptanceSmoke
         Pump();
     }
 
+    /// <summary>Verifies theme contrast for controls, combo items, tabs, and checkbox glyph in every theme.</summary>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="app">Application used to apply theme presets.</param>
+    /// <param name="windowType">MainWindow type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="tabs">Main tab control.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyThemeContrast(Assembly assembly, Application app, Type windowType, Window window,
         TabControl tabs, List<string> errors)
     {
@@ -368,6 +405,13 @@ internal static class VisualAcceptanceSmoke
         Pump();
     }
 
+    /// <summary>Verifies every rendered visible text block meets WCAG AA contrast in every theme and tab.</summary>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="application">Application used to apply theme presets.</param>
+    /// <param name="windowType">MainWindow type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="tabs">Main tab control.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyAllRenderedText(Assembly assembly, Application application, Type windowType,
         Window window, TabControl tabs, List<string> errors)
     {
@@ -427,6 +471,11 @@ internal static class VisualAcceptanceSmoke
         Console.WriteLine($"RENDERED_TEXT_CONTRAST themes={themes.Length} checks={checkedText} minimum={minimum:0.000}:1 failures={seen.Count}");
     }
 
+    /// <summary>Verifies the expanded-header text area matches its selected raster background and contrast.</summary>
+    /// <param name="text">Header text block to verify.</param>
+    /// <param name="fallback">Fallback background brush.</param>
+    /// <param name="errors">Collected error messages.</param>
+    /// <param name="label">Report label.</param>
     private static void VerifyNativeHeaderSurface(TextBlock text, Brush fallback, List<string> errors, string label)
     {
         DependencyObject? parent = text;
@@ -465,6 +514,10 @@ internal static class VisualAcceptanceSmoke
         Console.WriteLine($"NATIVE_HEADER_SURFACE {label} selected={selected} actual={actual} matched={matched} background-pixels={dominant.Value}");
     }
 
+    /// <summary>Resolves the opaque background brush behind a rendered node, falling back when none is found.</summary>
+    /// <param name="node">Node to start from.</param>
+    /// <param name="fallback">Fallback brush used when no opaque background is found.</param>
+    /// <returns>The resolved background brush.</returns>
     private static Brush? TextSurface(DependencyObject node, Brush fallback)
     {
         DependencyObject target = node;
@@ -489,6 +542,11 @@ internal static class VisualAcceptanceSmoke
         return fallback;
     }
 
+    /// <summary>Verifies both calendar legends render at least four markers.</summary>
+    /// <param name="type">MainWindow type.</param>
+    /// <param name="window">Window instance to inspect.</param>
+    /// <param name="tabs">Main tab control.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyLegends(Type type, Window window, TabControl tabs, List<string> errors)
     {
         tabs.SelectedIndex = 1;
@@ -509,6 +567,9 @@ internal static class VisualAcceptanceSmoke
         }
     }
 
+    /// <summary>Verifies the pure startup hidden/normal command logic without writing the registry.</summary>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void VerifyStartupLogic(Assembly assembly, List<string> errors)
     {
         Type? type = assembly.GetType("PrayerAutomation.UI.StartupRegistration");
@@ -532,6 +593,11 @@ internal static class VisualAcceptanceSmoke
             errors.Add("Mulai tersembunyi harus mengikuti preferensi pada peluncuran manual maupun startup Windows.");
     }
 
+    /// <summary>Checks solid-brush contrast between a foreground and background, recording failures below 4.5:1.</summary>
+    /// <param name="foreground">Foreground brush.</param>
+    /// <param name="background">Background brush.</param>
+    /// <param name="name">Check name for reporting.</param>
+    /// <param name="errors">Collected error messages.</param>
     private static void Contrast(Brush? foreground, Brush? background, string name, List<string> errors)
     {
         if (foreground is not SolidColorBrush fg || background is not SolidColorBrush bg)
@@ -545,10 +611,20 @@ internal static class VisualAcceptanceSmoke
             errors.Add($"Kontras {name} hanya {ratio:0.00}:1.");
     }
 
+    /// <summary>Computes the WCAG contrast ratio between two colors.</summary>
+    /// <param name="a">First color.</param>
+    /// <param name="b">Second color.</param>
+    /// <returns>Contrast ratio (>= 1).</returns>
     private static double Ratio(Color a, Color b)
     {
+        /// <summary>Computes relative luminance of a color.</summary>
+        /// <param name="c">Color to evaluate.</param>
+        /// <returns>Relative luminance.</returns>
         static double L(Color c)
         {
+            /// <summary>Linearizes one 8-bit channel value.</summary>
+            /// <param name="n">Channel value 0-255.</param>
+            /// <returns>Linearized channel.</returns>
             static double C(byte n)
             {
                 double x = n / 255.0;
@@ -560,22 +636,46 @@ internal static class VisualAcceptanceSmoke
         return (Math.Max(x, y) + .05) / (Math.Min(x, y) + .05);
     }
 
+    /// <summary>Applies a theme preset via ThemeManager.Apply and pumps the dispatcher.</summary>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="app">Application to apply the theme to.</param>
+    /// <param name="id">Theme identifier.</param>
     private static void ApplyTheme(Assembly assembly, Application app, string id)
     {
         Method(assembly, "PrayerAutomation.UI.ThemeManager", "Apply").Invoke(null, [app, id]);
         Pump();
     }
 
+    /// <summary>Reflects a static method on a product type or throws.</summary>
+    /// <param name="assembly">Product UI assembly.</param>
+    /// <param name="typeName">Fully qualified type name.</param>
+    /// <param name="name">Method name.</param>
+    /// <returns>The method info.</returns>
     private static MethodInfo Method(Assembly assembly, string typeName, string name)
         => assembly.GetType(typeName, true)!.GetMethod(name, S)
             ?? throw new InvalidOperationException($"{typeName}.{name} tidak ditemukan.");
 
+    /// <summary>Reads a field via reflection and casts it, or returns null.</summary>
+    /// <typeparam name="T">Expected field value type.</typeparam>
+    /// <param name="type">Type declaring the field.</param>
+    /// <param name="instance">Instance to read from.</param>
+    /// <param name="name">Field name.</param>
+    /// <returns>The cast value, or null.</returns>
     private static T? Field<T>(Type type, object instance, string name) where T : class
         => type.GetField(name, I)?.GetValue(instance) as T;
 
+    /// <summary>Sets a property via reflection when it exists.</summary>
+    /// <param name="type">Type declaring the property.</param>
+    /// <param name="instance">Instance to set on.</param>
+    /// <param name="name">Property name.</param>
+    /// <param name="value">Value to set.</param>
     private static void Set(Type type, object instance, string name, bool value)
         => type.GetProperty(name, I)?.SetValue(instance, value);
 
+    /// <summary>Finds the nearest ancestor of the requested type, or null when absent.</summary>
+    /// <typeparam name="T">Ancestor type.</typeparam>
+    /// <param name="node">Node to ascend from.</param>
+    /// <returns>The nearest matching ancestor, or null.</returns>
     private static T? Ancestor<T>(DependencyObject node) where T : DependencyObject
     {
         while (node is not null)
@@ -589,6 +689,9 @@ internal static class VisualAcceptanceSmoke
         return null;
     }
 
+    /// <summary>Enumerates a visual node's descendants depth-first, excluding the node itself.</summary>
+    /// <param name="root">Root to enumerate from.</param>
+    /// <returns>All descendants of the node.</returns>
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
@@ -600,8 +703,11 @@ internal static class VisualAcceptanceSmoke
         }
     }
 
+    /// <summary>Pumps the dispatcher at ApplicationIdle priority.</summary>
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ApplicationIdle, new Action(() => { }));
 
+    /// <summary>Prints PASS and returns, or throws when errors were collected.</summary>
+    /// <param name="errors">Collected error messages.</param>
     private static void Finish(List<string> errors)
     {
         if (errors.Count == 0)

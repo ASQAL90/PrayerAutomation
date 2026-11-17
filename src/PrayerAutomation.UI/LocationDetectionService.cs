@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Detects approximate network location by querying two IP geolocation providers and cross-checking them.</summary>
 internal sealed class LocationDetectionService
 {
     private static readonly Uri IpApiEndpoint = new("https://ipapi.co/json/");
@@ -12,6 +13,8 @@ internal sealed class LocationDetectionService
     private const double MaximumAgreementDistanceKm = 100.0;
     private readonly HttpClient _httpClient;
 
+    /// <summary>Initializes the service, optionally with a caller-provided HTTP client.</summary>
+    /// <param name="httpClient">Client to use; a default 8-second-timeout client is created when null.</param>
     public LocationDetectionService(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new HttpClient
@@ -25,6 +28,10 @@ internal sealed class LocationDetectionService
         }
     }
 
+    /// <summary>Queries both providers concurrently and compares their answers.</summary>
+    /// <param name="cancellationToken">Token to cancel the lookups.</param>
+    /// <returns>Both provider results, their distance apart, and whether they agree.</returns>
+    /// <exception cref="LocationLookupException">A provider is unreachable, times out, or returns invalid data.</exception>
     public async Task<NetworkLocationResult> DetectNetworkLocationAsync(
         CancellationToken cancellationToken = default)
     {
@@ -47,6 +54,11 @@ internal sealed class LocationDetectionService
         return new NetworkLocationResult(ipApi, ipWho, distanceKm, providersAgree);
     }
 
+    /// <summary>Fetches raw JSON from an endpoint, mapping failures to <see cref="LocationLookupException"/>.</summary>
+    /// <param name="endpoint">The provider URL.</param>
+    /// <param name="cancellationToken">Token to cancel the request.</param>
+    /// <returns>The response body.</returns>
+    /// <exception cref="LocationLookupException">The request timed out or failed.</exception>
     private async Task<string> GetJsonAsync(Uri endpoint, CancellationToken cancellationToken)
     {
         try
@@ -68,6 +80,10 @@ internal sealed class LocationDetectionService
         }
     }
 
+    /// <summary>Parses an ipapi.co response.</summary>
+    /// <param name="json">Response body.</param>
+    /// <returns>The parsed provider location.</returns>
+    /// <exception cref="LocationLookupException">The response is malformed or missing coordinates.</exception>
     private static ProviderLocation ParseIpApi(string json)
     {
         using JsonDocument document = ParseDocument(json, "ipapi.co");
@@ -84,6 +100,10 @@ internal sealed class LocationDetectionService
             IsLikelyProxyOrVpn: ReadBoolean(root, "is_proxy") || ReadBoolean(root, "is_vpn"));
     }
 
+    /// <summary>Parses an ipwho.is response.</summary>
+    /// <param name="json">Response body.</param>
+    /// <returns>The parsed provider location.</returns>
+    /// <exception cref="LocationLookupException">The provider refused the request or returned malformed data.</exception>
     private static ProviderLocation ParseIpWho(string json)
     {
         using JsonDocument document = ParseDocument(json, "ipwho.is");
@@ -118,6 +138,11 @@ internal sealed class LocationDetectionService
                  ReadBoolean(security, "tor") || ReadBoolean(security, "hosting")));
     }
 
+    /// <summary>Parses JSON, wrapping syntax errors in <see cref="LocationLookupException"/>.</summary>
+    /// <param name="json">Response body.</param>
+    /// <param name="provider">Provider name used in error messages.</param>
+    /// <returns>The parsed document.</returns>
+    /// <exception cref="LocationLookupException">The JSON is invalid.</exception>
     private static JsonDocument ParseDocument(string json, string provider)
     {
         try
@@ -130,6 +155,10 @@ internal sealed class LocationDetectionService
         }
     }
 
+    /// <summary>Reads a string-like property from an object element, or null if absent.</summary>
+    /// <param name="element">The parent element.</param>
+    /// <param name="propertyName">Property to read.</param>
+    /// <returns>The property value as text, or null.</returns>
     private static string? ReadString(JsonElement element, string propertyName)
     {
         return element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out JsonElement value)
@@ -137,6 +166,9 @@ internal sealed class LocationDetectionService
             : null;
     }
 
+    /// <summary>Reads a scalar element as text; objects and arrays yield null.</summary>
+    /// <param name="value">The element to read.</param>
+    /// <returns>The value as text, or null.</returns>
     private static string? ReadString(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.String)
@@ -150,6 +182,12 @@ internal sealed class LocationDetectionService
         return null;
     }
 
+    /// <summary>Reads and range-checks a latitude or longitude property.</summary>
+    /// <param name="element">The parent element.</param>
+    /// <param name="propertyName">"latitude" or "longitude".</param>
+    /// <param name="provider">Provider name used in error messages.</param>
+    /// <returns>The coordinate in decimal degrees.</returns>
+    /// <exception cref="LocationLookupException">The coordinate is missing, unparsable, or out of range.</exception>
     private static double ReadCoordinate(JsonElement element, string propertyName, string provider)
     {
         if (!element.TryGetProperty(propertyName, out JsonElement value))
@@ -171,6 +209,10 @@ internal sealed class LocationDetectionService
         return coordinate;
     }
 
+    /// <summary>Returns true only when the property exists and is JSON true.</summary>
+    /// <param name="element">The parent element.</param>
+    /// <param name="propertyName">Property to check.</param>
+    /// <returns>True when the property is JSON true.</returns>
     private static bool ReadBoolean(JsonElement element, string propertyName)
     {
         return element.ValueKind == JsonValueKind.Object &&
@@ -178,6 +220,12 @@ internal sealed class LocationDetectionService
                value.ValueKind == JsonValueKind.True;
     }
 
+    /// <summary>Computes the great-circle distance between two points using the haversine formula.</summary>
+    /// <param name="latitude1">Latitude of the first point in degrees.</param>
+    /// <param name="longitude1">Longitude of the first point in degrees.</param>
+    /// <param name="latitude2">Latitude of the second point in degrees.</param>
+    /// <param name="longitude2">Longitude of the second point in degrees.</param>
+    /// <returns>Distance in kilometers.</returns>
     private static double DistanceKm(double latitude1, double longitude1, double latitude2, double longitude2)
     {
         const double earthRadiusKm = 6371.0088;
@@ -190,6 +238,11 @@ internal sealed class LocationDetectionService
         return earthRadiusKm * 2 * Math.Asin(Math.Sqrt(Math.Clamp(haversine, 0, 1)));
     }
 
+    /// <summary>Computes the geographic midpoint between two provider locations.</summary>
+    /// <param name="first">First provider location.</param>
+    /// <param name="second">Second provider location.</param>
+    /// <returns>The midpoint as (latitude, longitude) in degrees.</returns>
+    /// <exception cref="ArgumentException">The coordinates do not define a unique midpoint (antipodal).</exception>
     internal static (double Latitude, double Longitude) Midpoint(ProviderLocation first, ProviderLocation second)
     {
         double latitude1 = DegreesToRadians(first.Latitude);
@@ -208,10 +261,17 @@ internal sealed class LocationDetectionService
             RadiansToDegrees(Math.Atan2(y, x)));
     }
 
+    /// <summary>Converts degrees to radians.</summary>
+    /// <param name="degrees">Value in degrees.</param>
+    /// <returns>Value in radians.</returns>
     private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180.0);
+    /// <summary>Converts radians to degrees.</summary>
+    /// <param name="radians">Value in radians.</param>
+    /// <returns>Value in degrees.</returns>
     private static double RadiansToDegrees(double radians) => radians * (180.0 / Math.PI);
 }
 
+/// <summary>Location data reported by one network geolocation provider.</summary>
 internal sealed record ProviderLocation(
     string ProviderName,
     string? City,
@@ -223,18 +283,25 @@ internal sealed record ProviderLocation(
     string? TimeZoneId,
     bool IsLikelyProxyOrVpn);
 
+/// <summary>Combined result of both network location providers, including agreement analysis.</summary>
 internal sealed record NetworkLocationResult(
     ProviderLocation IpApi,
     ProviderLocation IpWho,
     double DistanceKm,
     bool ProvidersAgree);
 
+/// <summary>Raised when a network location lookup fails or returns unusable data.</summary>
 internal sealed class LocationLookupException : Exception
 {
+    /// <summary>Initializes the exception with a message.</summary>
+    /// <param name="message">Error description.</param>
     public LocationLookupException(string message) : base(message)
     {
     }
 
+    /// <summary>Initializes the exception with a message and inner exception.</summary>
+    /// <param name="message">Error description.</param>
+    /// <param name="innerException">The underlying error.</param>
     public LocationLookupException(string message, Exception innerException) : base(message, innerException)
     {
     }

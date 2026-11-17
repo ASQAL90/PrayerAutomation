@@ -1,12 +1,16 @@
+// Shared prayer icon geometry for WPF and WinUI renderers.
 namespace PrayerAutomation.Shared;
 
 // User-selected set C from prayer-icon-options.html: 24-unit solid silhouettes.
 // SVG paths are preserved; circles and rounded rectangles use equivalent arcs.
 // Link this file into both renderers so geometry cannot drift between WPF and WinUI.
+/// <summary>Shared 24-unit prayer icon path data used by both the WPF and WinUI renderers.</summary>
 internal static class PrayerIconPaths
 {
+    /// <summary>Side length of the square icon viewport in units.</summary>
     internal const double Size = 24;
 
+    /// <summary>Path data keyed by prayer identifier (case-insensitive).</summary>
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> Paths =
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
         {
@@ -49,6 +53,9 @@ internal static class PrayerIconPaths
             })
         };
 
+    /// <summary>Returns the icon path data for the given prayer key, with legacy aliases normalized.</summary>
+    /// <param name="key">Prayer identifier (e.g. Fajr, Dhuhr, Isha); null or unknown values fall back to Dhuha.</param>
+    /// <returns>The path data strings for the key.</returns>
     internal static IReadOnlyList<string> ForKey(string? key)
     {
         if (string.Equals(key, "Imsak", StringComparison.OrdinalIgnoreCase) ||

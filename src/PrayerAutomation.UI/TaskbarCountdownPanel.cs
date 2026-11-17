@@ -14,6 +14,7 @@ using Size = System.Windows.Size;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Owned popup panel overlaid on the Windows taskbar showing the next prayer and countdown.</summary>
 internal sealed class TaskbarCountdownPanel : IDisposable
 {
     private const int PopupStyle = unchecked((int)0x90000000);
@@ -24,7 +25,9 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private readonly Func<IntPtr, TaskbarPanelSnapshot> _capture;
     private readonly Func<DateTime>? _clock;
     private readonly Func<DateTime, IReadOnlyList<PrayerEntry>>? _schedule;
+    /// <summary>The renderer mode of the panel (always "popup").</summary>
     internal string RendererMode { get; }
+    /// <summary>Handle of the owned popup window, or zero when not installed.</summary>
     private IntPtr PanelHandle => _source?.Handle ?? IntPtr.Zero;
     private string _iconKey = "";
     private readonly DispatcherTimer _timer;
@@ -50,10 +53,23 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private string? _lastStatus;
     private bool _disposed;
 
+    /// <summary>Initializes the panel and starts its timer; delegates to the full constructor.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="openDetail">Callback to open the Detail dashboard.</param>
+    /// <param name="publishStatus">Optional status message sink.</param>
+    /// <param name="capture">Optional taskbar capture override (for testing).</param>
     internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string>? publishStatus,
         Func<IntPtr, TaskbarPanelSnapshot>? capture = null)
         : this(settings, openDetail, publishStatus, capture, null, null, true) { }
 
+    /// <summary>Initializes the panel; optionally starts the timer immediately.</summary>
+    /// <param name="settings">Application settings.</param>
+    /// <param name="openDetail">Callback to open the Detail dashboard.</param>
+    /// <param name="publishStatus">Optional status message sink.</param>
+    /// <param name="capture">Optional taskbar capture override (for testing).</param>
+    /// <param name="clock">Optional clock override (for testing).</param>
+    /// <param name="schedule">Optional schedule provider override (for testing).</param>
+    /// <param name="start">Start the timer and process an immediate tick when true.</param>
     internal TaskbarCountdownPanel(AppSettings settings, Action openDetail, Action<string>? publishStatus,
         Func<IntPtr, TaskbarPanelSnapshot>? capture, Func<DateTime>? clock,
         Func<DateTime, IReadOnlyList<PrayerEntry>>? schedule, bool start)
@@ -117,6 +133,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         if (start) { _timer.Start(); Tick(); }
     }
 
+    /// <summary>Clears cached schedules and refreshes the countdown display.</summary>
     internal void RefreshSchedule()
     {
         if (_disposed) return;
@@ -124,9 +141,13 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         RefreshCountdown(GetLocationNow());
     }
 
+    /// <summary>Returns the location-local current time; honors the clock override when set.</summary>
+    /// <returns>The location-local current time.</returns>
     private DateTime GetLocationNow() => _clock?.Invoke() ?? TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,
         PrayerScheduleService.ResolveTimeZone(_settings.TimeZoneId)).DateTime;
 
+    /// <summary>Refreshes prayer label, countdown, icon and tooltip for the given time.</summary>
+    /// <param name="now">Location-local current time.</param>
     private void RefreshCountdown(DateTime now)
     {
         if (now.Date != _scheduleDay) { _schedules.Clear(); _scheduleDay = now.Date; }
@@ -162,6 +183,9 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         }
     }
 
+    /// <summary>Returns the prayer schedule for a date, cached per day.</summary>
+    /// <param name="date">The date to get the schedule for.</param>
+    /// <returns>The prayer entries for the date.</returns>
     private IReadOnlyList<PrayerEntry> GetSchedule(DateTime date)
     {
         if (!_schedules.TryGetValue(date.Date, out IReadOnlyList<PrayerEntry>? entries))
@@ -172,6 +196,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         return entries;
     }
 
+    /// <summary>Timer handler; refreshes the countdown and processes capture completion.</summary>
     private void Tick()
     {
         if (_disposed) return;
@@ -184,6 +209,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         CompleteCapture();
     }
 
+    /// <summary>Starts an asynchronous taskbar layout capture if none is in flight.</summary>
     private void RequestCapture()
     {
         if (_disposed || _captureTask is not null) return;
@@ -211,6 +237,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
+    /// <summary>Applies the completed capture result, handling staleness and timeouts.</summary>
     private void CompleteCapture()
     {
         if (_hostGeometryKnown) HideForPendingLayout();
@@ -246,6 +273,8 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         }
     }
 
+    /// <summary>Validates a capture snapshot and installs/moves the owned popup accordingly.</summary>
+    /// <param name="snapshot">The capture result to apply.</param>
     private void ApplySnapshot(TaskbarPanelSnapshot snapshot)
     {
         if (_disposed) return;
@@ -329,6 +358,9 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         Status(snapshot.Message);
     }
 
+    /// <summary>Reconfigures the grid for vertical/horizontal and compact/full layouts.</summary>
+    /// <param name="vertical">Vertical taskbar orientation.</param>
+    /// <param name="compact">Compact rendering mode.</param>
     private void ConfigureLayout(bool vertical, bool compact)
     {
         bool changed = _vertical != vertical || _compact != compact;
@@ -355,6 +387,9 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         if (changed) RefreshCountdown(GetLocationNow());
     }
 
+    /// <summary>Verifies the owned popup still has valid ownership and styles against the host.</summary>
+    /// <param name="host">The taskbar host window to check against.</param>
+    /// <returns>True when ownership and window styles are valid.</returns>
     private bool HasPopupOwnership(IntPtr host)
     {
         IntPtr own = _source?.Handle ?? IntPtr.Zero;
@@ -376,21 +411,31 @@ internal sealed class TaskbarCountdownPanel : IDisposable
             (extended & requiredExtended) == requiredExtended;
     }
 
+    /// <summary>P/Invoke declarations for DWM attributes and window-long styles used by the popup.</summary>
     private static class PopupNative
     {
+        /// <summary>Sets a DWM window attribute.</summary>
         [DllImport("dwmapi.dll")]
         internal static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 
+        /// <summary>Reads a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+        /// <param name="window">Target window handle.</param>
+        /// <param name="index">GWL_* index.</param>
+        /// <returns>The attribute value.</returns>
         internal static IntPtr GetWindowLongPtrW(IntPtr window, int index) => IntPtr.Size == 8
             ? GetWindowLongPtr64(window, index) : new IntPtr(GetWindowLong32(window, index));
 
+        /// <summary>Reads a 64-bit window-long attribute.</summary>
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
         private static extern IntPtr GetWindowLongPtr64(IntPtr window, int index);
 
+        /// <summary>Reads a 32-bit window-long attribute.</summary>
         [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
         private static extern int GetWindowLong32(IntPtr window, int index);
     }
 
+    /// <summary>Checks whether the tracked host and panel geometry are unchanged since verification.</summary>
+    /// <returns>True when host and panel geometry still match the last verified state.</returns>
     private bool HasUnchangedHostGeometry()
     {
         if (!_hostGeometryKnown || _lastLayoutVerifiedTicks == 0 || PanelHandle == IntPtr.Zero ||
@@ -411,6 +456,8 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         return true;
     }
 
+    /// <summary>Tracks a host window, hooking its WinEvent layout notifications.</summary>
+    /// <param name="host">The taskbar host to watch; zero detaches.</param>
     private void WatchHost(IntPtr host)
     {
         if (_trackedHost == host) return;
@@ -431,12 +478,21 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         }
     }
 
+    /// <summary>HwndSource hook; handles MA_NOACTIVATE for WM_MOUSEACTIVATE.</summary>
+    /// <param name="hwnd">The window handle.</param>
+    /// <param name="message">The window message.</param>
+    /// <param name="wparam">Message wParam.</param>
+    /// <param name="lparam">Message lParam.</param>
+    /// <param name="handled">Set to true when the message was handled.</param>
+    /// <returns>The message result.</returns>
     private IntPtr WindowMessage(IntPtr hwnd, int message, IntPtr wparam, IntPtr lparam, ref bool handled)
     {
         if (message == 0x0021) { handled = true; return new IntPtr(3); } // MA_NOACTIVATE
         return IntPtr.Zero;
     }
 
+    /// <summary>Publishes a status message, suppressing repeats of the last one.</summary>
+    /// <param name="text">Status message.</param>
     private void Status(string text)
     {
         if (_lastStatus == text) return;
@@ -444,6 +500,8 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         _publishStatus?.Invoke(text);
     }
 
+    /// <summary>Re-pins the owned popup topmost without replaying ShowWindow when already visible.</summary>
+    /// <returns>True when the popup remains visible.</returns>
     private bool RestorePopupVisibility()
     {
         if (_disposed || RendererMode != "popup" || !HasUnchangedHostGeometry()) return false;
@@ -455,6 +513,8 @@ internal sealed class TaskbarCountdownPanel : IDisposable
             0x0001 | 0x0002 | 0x0010 | 0x0200) && TaskbarPanelLayout.Native.IsWindowVisible(PanelHandle);
     }
 
+    /// <summary>Hides the panel while layout is pending, or re-pins it when geometry is unchanged.</summary>
+    /// <returns>True when the panel remains visible.</returns>
     private bool HideForPendingLayout()
     {
         // Discovery/cover rejection does not hide an independently valid placement.
@@ -477,6 +537,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         return false;
     }
 
+    /// <summary>Disposes the owned popup window and clears root visuals/hooks.</summary>
     private void RemoveChild()
     {
         HwndSource? source = _source;
@@ -488,6 +549,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         source.Dispose();
     }
 
+    /// <summary>Stops the timer and unhooks WinEvents; the popup is disposed.</summary>
     public void Dispose()
     {
         if (_disposed) return;

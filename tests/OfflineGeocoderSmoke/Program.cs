@@ -1,6 +1,9 @@
 using System.Net;
 using PrayerAutomation.UI;
 
+/// <summary>Requires the condition and throws otherwise.</summary>
+/// <param name="condition">Condition that must hold.</param>
+/// <param name="message">Failure message used when the condition is false.</param>
 static void Require(bool condition, string message)
 {
     if (!condition)
@@ -134,12 +137,21 @@ Require(cancellationPreventedSend && handler.RequestCount == 1,
     "revoking consent during location acquisition must prevent the HTTP request");
 Console.WriteLine("PASS: online geocoding is consent-gated, HTTPS-only, source-restricted, cached, and HTTP-mocked.");
 
+/// <summary>HTTP handler that records requests and returns a canned Nominatim response.</summary>
+/// <param name="json">Canned JSON body returned for every request.</param>
 sealed class RecordingHandler(string json) : HttpMessageHandler
 {
+    /// <summary>Number of requests received.</summary>
     public int RequestCount { get; private set; }
+    /// <summary>URI of the most recent request, if any.</summary>
     public Uri? LastRequestUri { get; private set; }
+    /// <summary>User-Agent header of the most recent request.</summary>
     public string LastUserAgent { get; private set; } = "";
 
+    /// <summary>Records the request and returns the canned response.</summary>
+    /// <param name="request">Incoming HTTP request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The canned 200 OK response.</returns>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         RequestCount++;

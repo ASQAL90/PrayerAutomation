@@ -2,8 +2,10 @@ using System.IO;
 using PrayerAutomation.UI;
 using static Program;
 
+/// <summary>Verifies the Windows lock-screen backend transaction flow against the fake native seam and synthetic files.</summary>
 internal static class BackendChecks
 {
+    /// <summary>Runs the backend capture/apply/restore checks, including diagnostic-trace and verification-read paths.</summary>
     internal static async Task RunAsync()
     {
         // All files live beneath the explicitly supplied scratch working directory, never the profile.
@@ -45,15 +47,32 @@ internal static class BackendChecks
         Check(normalRestoreReads > 0, "default null trace retains normal backend verification path");
     }
 }
+/// <summary>Fake <see cref="ILockScreenNativePlatform"/> recording image writes and mode flags, with injectable read failure.</summary>
 internal sealed class FakeImageNative : ILockScreenNativePlatform
 {
+    /// <summary>Current image path and mode flags reported by the fake, plus counters and a one-shot read failure switch.</summary>
     internal string Current=""; internal int Slideshow=0,Spotlight=1,Sets,Reads;internal bool ThrowOneRead;
+    /// <summary>Reports the platform as supported.</summary>
+    /// <returns>Always true.</returns>
     public bool IsSupported()=>true;
+    /// <summary>Returns the fake mode flags, counting reads and honoring the one-shot read failure.</summary>
+    /// <returns>The slideshow and spotlight mode flags.</returns>
     public (int,int) ReadModeFlags()
     { Reads++; if(ThrowOneRead){ThrowOneRead=false;throw new IOException("synthetic-private-path");}return(Slideshow,Spotlight); }
+    /// <summary>Returns the fake current image path.</summary>
+    /// <returns>The current image path.</returns>
     public string GetCurrentLocalImagePath()=>Current;
+    /// <summary>Records an image write when the ownership guard allows it.</summary>
+    /// <param name="image">Image path to apply.</param>
+    /// <param name="canWrite">Ownership guard; when it returns false the write is refused.</param>
+    /// <param name="token">Cancellation token (unused).</param>
+    /// <returns>A completed task.</returns>
     public Task SetImageAsync(string image,Func<bool> canWrite,CancellationToken token)
     { if(!canWrite())throw new InvalidOperationException("synthetic refusal");Current=image;Sets++;return Task.CompletedTask; }
+    /// <summary>Records fallback mode-flag writes when the ownership guard allows it.</summary>
+    /// <param name="slideshow">Slideshow mode flag to write.</param>
+    /// <param name="spotlight">Spotlight mode flag to write.</param>
+    /// <param name="canWrite">Optional ownership guard; when it returns false the write is refused.</param>
     public void WriteModeFlags(int slideshow,int spotlight,Func<bool>? canWrite=null)
     { if(canWrite is not null && !canWrite())throw new InvalidOperationException("synthetic refusal");Slideshow=slideshow;Spotlight=spotlight; }
 }

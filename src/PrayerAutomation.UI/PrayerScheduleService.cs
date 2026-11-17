@@ -1,7 +1,13 @@
+// Builds daily prayer-time entries from native calculations and user settings.
 namespace PrayerAutomation.UI;
 
+/// <summary>A single scheduled prayer (or related) time for a day.</summary>
+/// <param name="Key">Stable identifier of the entry (e.g. Fajr, Dhuhr).</param>
+/// <param name="Label">Display label for the entry.</param>
+/// <param name="Time">Time of day for the entry.</param>
 internal sealed record PrayerEntry(string Key, string Label, TimeSpan Time);
 
+/// <summary>Computes and filters daily prayer schedules from user settings and native calculations.</summary>
 internal static class PrayerScheduleService
 {
     private static readonly (string Key, string Label, Func<NativePrayerTimes, int> Minutes)[] PrayerOrder =
@@ -15,6 +21,10 @@ internal static class PrayerScheduleService
         ("Isha", "Isya", time => time.IshaMinutes),
     ];
 
+    /// <summary>Resolves a time zone by trying the given id, then IANA↔Windows conversions.</summary>
+    /// <param name="id">Time zone identifier (IANA or Windows).</param>
+    /// <returns>The resolved time zone.</returns>
+    /// <exception cref="TimeZoneNotFoundException">Thrown when the id cannot be resolved.</exception>
     public static TimeZoneInfo ResolveTimeZone(string id)
     {
         string candidate = id.Trim();
@@ -29,6 +39,10 @@ internal static class PrayerScheduleService
         }
     }
 
+    /// <summary>Returns the UTC offset in minutes for the given date in the given time zone.</summary>
+    /// <param name="date">Date to evaluate (noon is used to avoid daylight-saving edge cases).</param>
+    /// <param name="timezoneId">IANA or Windows time zone identifier.</param>
+    /// <returns>UTC offset in minutes.</returns>
     public static int GetUtcOffsetMinutes(DateTime date, string timezoneId)
     {
         TimeZoneInfo zone = ResolveTimeZone(timezoneId);
@@ -36,6 +50,10 @@ internal static class PrayerScheduleService
         return checked((int)zone.GetUtcOffset(localDate).TotalMinutes);
     }
 
+    /// <summary>Builds the full list of prayer entries for a date, applying corrections and settings.</summary>
+    /// <param name="date">Date to calculate.</param>
+    /// <param name="settings">Application settings (location, method, corrections).</param>
+    /// <returns>The prayer entries for the date.</returns>
     public static IReadOnlyList<PrayerEntry> ForDate(DateTime date, AppSettings settings)
     {
         settings.Normalize();
@@ -54,6 +72,9 @@ internal static class PrayerScheduleService
         return entries;
     }
 
+    /// <summary>Filters entries down to the essential prayers used for reminders (Fajr, Dhuhr, Asr, Maghrib, Isha).</summary>
+    /// <param name="entries">Entries to filter.</param>
+    /// <returns>Only the reminder-relevant entries.</returns>
     public static IReadOnlyList<PrayerEntry> ReminderEntries(IReadOnlyList<PrayerEntry> entries) =>
         entries.Where(entry => entry.Key is "Fajr" or "Dhuhr" or "Asr" or "Maghrib" or "Isha").ToArray();
 }

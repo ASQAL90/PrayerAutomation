@@ -1,9 +1,12 @@
+// Smoke test verifying execution-lease ABI layout, bounded watchdog behavior, and failure memoization through fake native power APIs.
 using System.Runtime.InteropServices;
 using PrayerAutomation.UI;
 using static Program;
 
+/// <summary>Verifies execution-request power lease ABI marshaling, acquire/extend/clear lifecycle, and failure handling.</summary>
 internal static class NativeChecks
 {
+    /// <summary>Runs the native lease ABI and lifecycle checks against the fake clock and power API.</summary>
     internal static void Run()
     {
         Check(Marshal.SizeOf<PowerRequestReasonContext>() == (IntPtr.Size == 8 ? 32 : 24), "full REASON_CONTEXT size matches host ABI");
@@ -72,14 +75,21 @@ internal static class NativeChecks
         }
     }
 }
+/// <summary>Modeled x86 layout of the documented full REASON_CONTEXT union reference.</summary>
 [StructLayout(LayoutKind.Sequential, Pack=4)]
 internal struct ReferenceReason32 { internal uint Version, Flags, Module, Id, Count, Strings; }
+/// <summary>Modeled x64 layout of the documented full REASON_CONTEXT union reference.</summary>
 [StructLayout(LayoutKind.Sequential, Pack=8)]
 internal struct ReferenceReason64 { internal uint Version, Flags; internal ulong Module; internal uint Id, Count; internal ulong Strings; }
+/// <summary>Fake <see cref="ILockScreenPowerNative"/> recording lease operations and optionally injecting failures.</summary>
 internal sealed class FakePower : ILockScreenPowerNative
 {
     internal int Creates, Sets, Clears, Closes, RequestType, ClearType;
     internal uint Version, Flags; internal bool ReasonValid; internal string Failure = "";
+    /// <summary>Simulates CreatePowerRequest, honoring the configured failure mode.</summary>
+    /// <param name="reason">Reason context to marshal and record.</param>
+    /// <param name="error">Win32-style error code output.</param>
+    /// <returns>A fake handle, or -1 when the configured failure is "create".</returns>
     public nint Create(ref PowerRequestReasonContext reason,out int error)
     {
         Creates++;Version=reason.Version;Flags=reason.Flags;
@@ -88,31 +98,71 @@ internal sealed class FakePower : ILockScreenPowerNative
         if(Failure == "throw-create") throw new EntryPointNotFoundException("private");
         return Failure == "create" ? -1 : 123;
     }
+    /// <summary>Simulates SetThreadExecutionState-style lease acquisition, honoring the configured failure mode.</summary>
+    /// <param name="handle">Handle returned by <see cref="Create"/>.</param>
+    /// <param name="type">Request type (3 = ExecutionRequired).</param>
+    /// <param name="error">Win32-style error code output.</param>
+    /// <returns>True on success; false when the configured failure is "set".</returns>
     public bool Set(nint handle,int type,out int error)
     { Sets++;RequestType=type;error=Failure=="set"?50:0;if(Failure=="throw-set")throw new EntryPointNotFoundException("private");return Failure!="set"; }
+    /// <summary>Simulates ClearThreadExecutionState-style lease release, honoring the configured failure mode.</summary>
+    /// <param name="handle">Handle to clear.</param>
+    /// <param name="type">Request type to clear.</param>
+    /// <param name="error">Win32-style error code output.</param>
+    /// <returns>True on success; false when the configured failure is "clear".</returns>
     public bool Clear(nint handle,int type,out int error)
     { Clears++;ClearType=type;error=Failure=="clear"?5:0;if(Failure=="throw-clear")throw new EntryPointNotFoundException("private");return Failure!="clear"; }
+    /// <summary>Simulates closing the power request handle.</summary>
+    /// <param name="handle">Handle to close.</param>
+    /// <returns>Always true.</returns>
     public bool Close(nint handle) { Closes++; return true; }
 }
+/// <summary>Manual <see cref="TimeProvider"/> for deterministic lease watchdog testing.</summary>
+/// <param name="now">Initial time.</param>
 internal sealed class ManualClock(DateTimeOffset now) : TimeProvider
 {
     private DateTimeOffset _now = now;
     internal TimeSpan Elapsed;
+    /// <summary>Gets or sets the current time; forward movement accumulates <see cref="Elapsed"/>.</summary>
     internal DateTimeOffset Now { get => _now; set { if (value > _now) Elapsed += value - _now; _now = value; } }
+    /// <summary>Jumps the clock to an absolute time without accumulating elapsed time.</summary>
+    /// <param name="value">New absolute time.</param>
     internal void JumpUtc(DateTimeOffset value) => _now = value;
+    /// <summary>Advances the clock by a span, accumulating elapsed time.</summary>
+    /// <param name="span">Amount to advance.</param>
     internal void Advance(TimeSpan span) { Elapsed += span; _now += span; }
     internal ManualTimer? Timer;
+    /// <summary>Returns the current manual time.</summary>
+    /// <returns>The current manual time.</returns>
     public override DateTimeOffset GetUtcNow() => Now;
+    /// <summary>Creates a manual timer bound to this clock.</summary>
+    /// <param name="callback">Timer callback.</param>
+    /// <param name="state">State passed to the callback.</param>
+    /// <param name="dueTime">Due time for the first tick.</param>
+    /// <param name="period">Period between ticks.</param>
+    /// <returns>The created manual timer.</returns>
     public override ITimer CreateTimer(TimerCallback callback,object? state,TimeSpan dueTime,TimeSpan period)
     { Timer = new(this,callback,state); Timer.Change(dueTime,period); return Timer; }
+    /// <summary>Fires the pending timer when its due time has been reached.</summary>
     internal void Fire() { if (Timer is { } timer && Elapsed >= timer.DueAt) timer.Callback(timer.State); }
+    /// <summary>Manual <see cref="ITimer"/> driven by <see cref="ManualClock.Elapsed"/>.</summary>
+    /// <param name="clock">Owning clock.</param>
+    /// <param name="callback">Timer callback.</param>
+    /// <param name="state">State passed to the callback.</param>
     internal sealed class ManualTimer(ManualClock clock,TimerCallback callback,object? state) : ITimer
     {
         internal readonly TimerCallback Callback=callback;internal readonly object? State=state;
         internal TimeSpan DueAt;
+        /// <summary>Schedules the timer relative to the owning clock's elapsed time.</summary>
+        /// <param name="dueTime">Due time, or <see cref="Timeout.InfiniteTimeSpan"/> to disable.</param>
+        /// <param name="period">Period between ticks.</param>
+        /// <returns>Always true.</returns>
         public bool Change(TimeSpan dueTime,TimeSpan period)
         { DueAt = dueTime == Timeout.InfiniteTimeSpan ? TimeSpan.MaxValue : clock.Elapsed + dueTime; return true; }
+        /// <summary>No-op disposal for the manual timer.</summary>
         public void Dispose() { }
+        /// <summary>Asynchronously disposes the timer; always completes.</summary>
+        /// <returns>A completed value task.</returns>
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

@@ -6,24 +6,51 @@ using System.Windows.Automation;
 
 namespace PrayerAutomation.UI;
 
+/// <summary>Result of capturing the taskbar layout: parent window, screen bounds, DPI, chosen slot and a message.</summary>
 internal sealed record TaskbarPanelSnapshot(IntPtr Parent, Rect ScreenBounds, int Dpi, Rect? Slot, string Message)
 {
+    /// <summary>True when the chosen placement is the compact variant.</summary>
     public bool Compact { get; init; }
+    /// <summary>True when the taskbar is vertical.</summary>
     public bool Vertical { get; init; }
     // No free-space proof; installed visibility is decided by independent host geometry.
+    /// <summary>True when occupancy evidence is unavailable; not an authority to hide an installed panel.</summary>
     public bool OccupancyUnavailable { get; init; }
 }
+/// <summary>A placement candidate: its bounds, compact/vertical flags.</summary>
 internal readonly record struct TaskbarPanelPlacement(Rect Bounds, bool Compact, bool Vertical);
 
+/// <summary>Read-only discovery and placement math for the taskbar countdown panel; never modifies Explorer.</summary>
 internal static class TaskbarPanelLayout
 {
+    /// <summary>Finds a free slot in the taskbar; shorthand for <see cref="FindPlacement"/> bounds.</summary>
+    /// <param name="width">Taskbar client width.</param>
+    /// <param name="height">Taskbar client height.</param>
+    /// <param name="scale">DPI scale factor.</param>
+    /// <param name="occupied">Rectangles known to be occupied.</param>
+    /// <returns>The slot bounds, or null when no placement fits.</returns>
     internal static Rect? FindSlot(double width, double height, double scale, IReadOnlyList<Rect> occupied)
         => FindPlacement(width, height, scale, occupied)?.Bounds;
 
+    /// <summary>Finds a placement without alignment preference.</summary>
+    /// <param name="width">Taskbar client width.</param>
+    /// <param name="height">Taskbar client height.</param>
+    /// <param name="scale">DPI scale factor.</param>
+    /// <param name="occupied">Rectangles known to be occupied.</param>
+    /// <param name="previous">The previously installed slot, when known.</param>
+    /// <returns>The placement, or null when none fits.</returns>
     internal static TaskbarPanelPlacement? FindPlacement(double width, double height, double scale,
         IReadOnlyList<Rect> occupied, Rect? previous = null)
         => FindPlacementForAlignment(width, height, scale, occupied, previous, false);
 
+    /// <summary>Finds a placement; horizontal taskbars prefer the trailing (or centered) free gap, vertical taskbars may keep the previous slot.</summary>
+    /// <param name="width">Taskbar client width.</param>
+    /// <param name="height">Taskbar client height.</param>
+    /// <param name="scale">DPI scale factor.</param>
+    /// <param name="occupied">Rectangles known to be occupied.</param>
+    /// <param name="previous">The previously installed slot, when known.</param>
+    /// <param name="centered">Whether the taskbar is centered (TaskbarAl=1).</param>
+    /// <returns>The placement, or null when none fits.</returns>
     internal static TaskbarPanelPlacement? FindPlacementForAlignment(double width, double height, double scale,
         IReadOnlyList<Rect> occupied, Rect? previous, bool centered)
     {
@@ -79,8 +106,13 @@ internal static class TaskbarPanelLayout
         return null;
     }
 
+    /// <summary>Returns true when the TaskbarAl registry value indicates centered alignment.</summary>
+    /// <param name="value">Raw registry value.</param>
+    /// <returns>True for the centered alignment value.</returns>
     internal static bool IsCenteredAlignmentValue(object? value) => value is int alignment && alignment == 1;
 
+    /// <summary>Reads the TaskbarAl Explorer preference; missing/unsupported values keep Left behavior.</summary>
+    /// <returns>True when the taskbar is configured centered.</returns>
     private static bool ReadCenteredAlignment()
     {
         // Explorer preference, not a geometry API. Missing/unsupported values keep Left behavior.
@@ -97,6 +129,9 @@ internal static class TaskbarPanelLayout
     }
 
     // Read-only discovery. Never move, resize, subclass or inject into Explorer.
+    /// <summary>Reads the taskbar host and its occupied regions; returns a placement snapshot or an explanatory message.</summary>
+    /// <param name="ownChild">The app-owned popup handle to exclude from occupied regions, or zero.</param>
+    /// <returns>The capture result.</returns>
     internal static TaskbarPanelSnapshot Capture(IntPtr ownChild)
     {
         IntPtr parent = Native.FindWindow("Shell_TrayWnd", null);
@@ -178,8 +213,15 @@ internal static class TaskbarPanelLayout
         }
     }
 
+    /// <summary>Builds a snapshot for the case where the taskbar host is unavailable.</summary>
+    /// <param name="message">User-facing explanation.</param>
+    /// <returns>The snapshot.</returns>
     private static TaskbarPanelSnapshot Missing(string message) => new(IntPtr.Zero, Rect.Empty, 96, null, message);
 
+    /// <summary>Checks whether the host is on a monitor and its bounds match that monitor.</summary>
+    /// <param name="host">The host window.</param>
+    /// <param name="screenBounds">Host screen bounds to verify.</param>
+    /// <returns>True when the host fully fits on one monitor.</returns>
     internal static bool IsHostOnMonitor(IntPtr host, Rect screenBounds)
     {
         if (screenBounds.IsEmpty || screenBounds.Width <= 0 || screenBounds.Height <= 0 ||
@@ -189,9 +231,15 @@ internal static class TaskbarPanelLayout
         return !visible.IsEmpty && visible.Width >= screenBounds.Width - 1 && visible.Height >= screenBounds.Height - 1;
     }
 
+    /// <summary>Whether the taskbar host covers a panel rectangle.</summary>
     internal enum CoverState { Clear, Covered, Unknown }
 
     // Use the caller's screen-coordinate/DPI context; do not sample outside the panel.
+    /// <summary>Determines whether the host is covered by another window; used to decide panel visibility.</summary>
+    /// <param name="host">The taskbar host window.</param>
+    /// <param name="panel">Panel rectangle in screen coordinates.</param>
+    /// <param name="ownWindow">The app-owned popup to skip, or zero.</param>
+    /// <returns>Clear, Covered, or Unknown.</returns>
     internal static CoverState GetPanelCoverState(IntPtr host, Rect panel, IntPtr ownWindow)
     {
         if (host == IntPtr.Zero || host == ownWindow || !Native.IsWindowVisible(host) ||
@@ -238,49 +286,89 @@ internal static class TaskbarPanelLayout
         return CoverState.Unknown;
     }
 
+    /// <summary>P/Invoke declarations and structures for taskbar discovery.</summary>
     internal static class Native
     {
+        /// <summary>Native RECT structure.</summary>
         [StructLayout(LayoutKind.Sequential)] internal struct Bounds
         {
             internal int Left, Top, Right, Bottom;
+            /// <summary>Converts the rect to a WPF Rect with non-negative size.</summary>
+            /// <returns>The converted rectangle.</returns>
             internal readonly Rect ToRect() => new(Left, Top, Math.Max(0, Right - Left), Math.Max(0, Bottom - Top));
         }
+        /// <summary>Simple integer point used by WindowFromPoint.</summary>
         [StructLayout(LayoutKind.Sequential)] internal readonly record struct Point(int X, int Y);
+        /// <summary>Native MONITORINFO structure.</summary>
         [StructLayout(LayoutKind.Sequential)] internal struct MonitorInfo
         {
+            /// <summary>Structure size (filled before calling), monitor bounds, work-area bounds, flags.</summary>
             internal int Size; internal Bounds Monitor, Work; internal uint Flags;
         }
+        /// <summary>Callback for EnumChildWindows.</summary>
         internal delegate bool EnumWindow(IntPtr window, IntPtr parameter);
+        /// <summary>Callback for SetWinEventHook.</summary>
         internal delegate void WinEvent(IntPtr hook, uint eventId, IntPtr window, int objectId, int childId, uint thread, uint time);
+        /// <summary>Gets the top-most child window of a parent.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetTopWindow(IntPtr window);
+        /// <summary>Gets a window handle relative to another window.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetWindow(IntPtr window, uint command);
+        /// <summary>Reads a DWM window attribute.</summary>
         [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(IntPtr window, uint attribute, out int value, int size);
+        /// <summary>Reads a DWM window attribute.</summary>
         [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(IntPtr window, uint attribute, out Bounds value, int size);
+        /// <summary>Gets the current thread DPI awareness context.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetThreadDpiAwarenessContext();
+        /// <summary>Compares two DPI awareness contexts.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
+        /// <summary>Gets the ancestor of a window.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetAncestor(IntPtr window, uint flags);
+        /// <summary>Gets the window handle at a point.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr WindowFromPoint(Point point);
+        /// <summary>Gets the monitor handle nearest a window.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+        /// <summary>Reads monitor information (see GetMonitorInfo wrapper).</summary>
         [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW")] private static extern bool ReadMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+        /// <summary>Reads monitor information, filling in the structure size first.</summary>
+        /// <param name="monitor">Monitor handle.</param>
+        /// <param name="info">The monitor information.</param>
+        /// <returns>True on success.</returns>
         internal static bool GetMonitorInfo(IntPtr monitor, out MonitorInfo info)
         { info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() }; return ReadMonitorInfo(monitor, ref info); }
+        /// <summary>Gets the thread and process IDs owning a window.</summary>
         [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+        /// <summary>Registers a WinEvent hook.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr SetWinEventHook(uint start, uint end, IntPtr module, WinEvent callback, uint processId, uint threadId, uint flags);
+        /// <summary>Removes a WinEvent hook.</summary>
         [DllImport("user32.dll")] internal static extern bool UnhookWinEvent(IntPtr hook);
+        /// <summary>Shows/hides a window.</summary>
         [DllImport("user32.dll")] internal static extern bool ShowWindow(IntPtr window, int command);
+        /// <summary>Finds a top-level window by class name and title.</summary>
         [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)] internal static extern IntPtr FindWindow(string name, string? title);
+        /// <summary>Reads a window class name.</summary>
         [DllImport("user32.dll", EntryPoint = "GetClassNameW", CharSet = CharSet.Unicode)] internal static extern int GetClassName(IntPtr window, StringBuilder text, int capacity);
+        /// <summary>Enumerates child windows of a window.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool EnumChildWindows(IntPtr window, EnumWindow callback, IntPtr parameter);
+        /// <summary>Gets the window bounds in screen coordinates.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool GetWindowRect(IntPtr window, out Bounds bounds);
+        /// <summary>Gets the client-area bounds of a window.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool GetClientRect(IntPtr window, out Bounds bounds);
+        /// <summary>Checks whether a window is visible.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool IsWindowVisible(IntPtr window);
+        /// <summary>Checks whether a handle is a valid window.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool IsWindow(IntPtr window);
+        /// <summary>Gets the DPI of a window.</summary>
         [DllImport("user32.dll")] internal static extern uint GetDpiForWindow(IntPtr window);
+        /// <summary>Gets the parent of a window.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetParent(IntPtr window);
+        /// <summary>Checks whether a window is a child of another.</summary>
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] internal static extern bool IsChild(IntPtr parent, IntPtr window);
+        /// <summary>Gets the DPI awareness context of a window.</summary>
         [DllImport("user32.dll")] internal static extern IntPtr GetWindowDpiAwarenessContext(IntPtr window);
+        /// <summary>Sets the DPI awareness context for the calling thread.</summary>
         [DllImport("user32.dll", SetLastError = true)] internal static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+        /// <summary>Sets window position, size, and Z-order.</summary>
         [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     }
