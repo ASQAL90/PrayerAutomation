@@ -89,11 +89,11 @@ def render_dual(payload_x86: dict[str, str], payload_x64: dict[str, str]) -> str
     return "\n".join(lines) + "\n"
 
 
-def write_output(output: Path, content: str) -> None:
+def write_output(output: Path, content: str, force: bool = False) -> None:
     if output.exists():
         existing = output.read_text(encoding="utf-8")
-        if existing != content and PLACEHOLDER_MARKER not in existing:
-            raise ValueError("Existing pin file differs; review deliberately instead of overwriting")
+        if existing != content and PLACEHOLDER_MARKER not in existing and not force:
+            raise ValueError("Existing pin file differs; review deliberately instead of overwriting (use --force after reviewing the new payload)")
     output.write_text(content, encoding="utf-8")
 
 
@@ -106,6 +106,7 @@ def main() -> None:
     parser.add_argument("--receipt-x64", type=Path)
     parser.add_argument("--source-x64", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--force", action="store_true", help="Replace an existing pin file after reviewing the new payload")
     args = parser.parse_args()
 
     single = args.receipt is not None or args.source is not None
@@ -139,7 +140,7 @@ def main() -> None:
     else:
         raise ValueError("Nothing to generate; pass a receipt/source pair")
 
-    write_output(args.output, content)
+    write_output(args.output, content, args.force)
     print(json.dumps(result, indent=2))
 
 

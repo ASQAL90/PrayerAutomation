@@ -49,7 +49,7 @@ export TMP="$TMPDIR" TEMP="$TMPDIR"
 
 Wajib pilih `/O` baru/kosong; jangan timpa direktori installer lama. Default source/output adalah `..\dist\portable-x86`, `..\dist\portable-x64`, dan `..\dist\installer`; contoh ini memakai output terpisah. Kedua define hanya boleh menunjuk salinan payload yang cocok dengan receipt masing-masing. Perbedaan satu berkas menghentikan compiler. Berkas ekstra tidak dikemas. Mode single-arch lama masih tersedia lewat `--receipt/--source`, tetapi installer 2.1.2 menginclude `AyoJamaahPayload-dual.iss`.
 
-`make_payload_receipt.py` dan `generate_accepted_payload.py` memvalidasi payload sebelum menghasilkan pin: receipt harus cocok persis dengan isi folder portable, arsitektur DLL harus sesuai, dan kedua arsitektur diverifikasi terhadap set berkasnya sendiri. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru.
+`make_payload_receipt.py` dan `generate_accepted_payload.py` memvalidasi payload sebelum menghasilkan pin: receipt harus cocok persis dengan isi folder portable, arsitektur DLL harus sesuai, dan kedua arsitektur diverifikasi terhadap set berkasnya sendiri. Jangan gunakan receipt lain atau membangun ulang runtime untuk mengganti pin tanpa penerimaan baru. Kalau payload sengaja dibangun ulang, buat receipt dengan `--force` lalu generate pin dengan `--force`; keduanya menolak menimpa hasil berbeda tanpa flag itu. Kalau payload sengaja dibangun ulang, buat receipt dengan `--force` lalu generate pin dengan `--force`; keduanya menolak menimpa hasil berbeda tanpa flag itu.
 
 ## Batas keselamatan
 
