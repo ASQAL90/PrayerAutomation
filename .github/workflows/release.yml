@@ -1,4 +1,4 @@
-# Build portable Windows lalu unggah ke GitHub Release saat tag v*
+# Build portable + installer lalu unggah ke GitHub Release saat tag v*
 name: Release
 
 on:
@@ -21,42 +21,56 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu
+          targets: x86_64-pc-windows-msvc, i686-pc-windows-msvc
 
-      - name: Install MinGW linker
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress -y
+
+      # Use the MSVC Rust targets so no MinGW cross-linker is needed.
+      - name: Publish portable x64
+        run: dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -r win-x64 -p:SelfContained=true -p:RustTarget=x86_64-pc-windows-msvc -o out/portable-x64
+
+      - name: Publish portable x86
+        run: dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -r win-x86 -p:SelfContained=true -p:RustTarget=i686-pc-windows-msvc -o out/portable-x86
+
+      - name: Receipt portable x64
+        shell: pwsh
+        run: python installer/make_payload_receipt.py --source out/portable-x64 --arch x64 --output out/receipt-x64.json
+
+      - name: Receipt portable x86
+        shell: pwsh
+        run: python installer/make_payload_receipt.py --source out/portable-x86 --arch x86 --output out/receipt-x86.json
+
+      - name: Build NSIS installer
+        shell: pwsh
+        env:
+          AYOJAMAAH_OUT: out
+        run: |
+          $env:PATH = "$env:PATH;C:\Program Files (x86)\NSIS"
+          python installer/build_installer_nsis.py
+
+      - name: Package ZIPs
         shell: pwsh
         run: |
-          choco install mingw --no-progress -y
-          $candidates = @(
-            'C:\ProgramData\mingw64\mingw64\bin',
-            'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin'
-          )
-          $mingw = $candidates | Where-Object { Test-Path (Join-Path $_ 'x86_64-w64-mingw32-gcc.exe') } | Select-Object -First 1
-          if (-not $mingw) {
-            $found = Get-ChildItem 'C:\ProgramData\chocolatey\lib' -Filter x86_64-w64-mingw32-gcc.exe -Recurse -ErrorAction SilentlyContinue |
-              Select-Object -First 1
-            if ($found) { $mingw = $found.DirectoryName }
+          Compress-Archive -Path out/portable-x64/* -DestinationPath AyoJamaah-win-x64.zip -Force
+          Compress-Archive -Path out/portable-x86/* -DestinationPath AyoJamaah-win-x86.zip -Force
+          Compress-Archive -Path out/installer/AyoJamaah.Setup-2.1.2.exe -DestinationPath AyoJamaah.Setup-2.1.2.zip -Force
+          $lines = foreach ($f in @('AyoJamaah-win-x64.zip','AyoJamaah-win-x86.zip','out\installer\AyoJamaah.Setup-2.1.2.exe','AyoJamaah.Setup-2.1.2.zip')) {
+            $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+            "$hash  $(Split-Path $f -Leaf)"
           }
-          if (-not $mingw) { throw 'MinGW (x86_64-w64-mingw32-gcc) tidak ditemukan setelah instalasi.' }
-          $mingw | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-          & (Join-Path $mingw 'x86_64-w64-mingw32-gcc.exe') --version | Select-Object -First 1
+          $lines | Out-File -Encoding ascii SHA256SUMS.txt
 
-      - name: Publish portable build
-        run: dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -r win-x64 -o out
-
-      - name: Package ZIP
-        shell: pwsh
-        run: |
-          Compress-Archive -Path out/* -DestinationPath AyoJamaah-win-x64.zip -Force
-          $hash = (Get-FileHash AyoJamaah-win-x64.zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  AyoJamaah-win-x64.zip" | Out-File -Encoding ascii SHA256SUMS.txt
-
-      - name: Upload build artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AyoJamaah-win-x64
+          name: AyoJamaah-release
           path: |
             AyoJamaah-win-x64.zip
+            AyoJamaah-win-x86.zip
+            out\installer\AyoJamaah.Setup-2.1.2.exe
+            AyoJamaah.Setup-2.1.2.zip
             SHA256SUMS.txt
 
       - name: Publish GitHub release
@@ -65,5 +79,8 @@ jobs:
         with:
           files: |
             AyoJamaah-win-x64.zip
+            AyoJamaah-win-x86.zip
+            out\installer\AyoJamaah.Setup-2.1.2.exe
+            AyoJamaah.Setup-2.1.2.zip
             SHA256SUMS.txt
           generate_release_notes: true
