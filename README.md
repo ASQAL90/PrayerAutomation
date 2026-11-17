@@ -34,6 +34,17 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 3. Atur kapan notifikasi muncul, simpan, selesai.
 4. Kalau waktu sholat tiba, tinggalkan layar dan bersegera ke masjid.
 
+## Tangkapan layar
+
+|  |  |
+|---|---|
+| ![Ringkasan jadwal harian](site/screenshot-main.png) | ![Tema, pengingat, dan widget](site/screenshot-settings.png) |
+| Ringkasan jadwal harian (tema terang) | Tema, pengingat, dan widget |
+| ![Startup dan lock screen](site/screenshot-advanced.png) | ![Kalender Masehi](site/screenshot-calendar-masehi.png) |
+| Startup, kunci Windows & gambar lock screen | Kalender Masehi tahunan |
+| ![Kalender Hijriyah](site/screenshot-calendar-hijriyah.png) | ![Desktop: widget & pengaturan](site/screenshot-desktop.png) |
+| Kalender Hijriyah tahunan | Pengaturan, widget & jadwal di desktop (tema gelap) |
+
 ## Unduh
 
 ### v2.1.2 (terbaru)
