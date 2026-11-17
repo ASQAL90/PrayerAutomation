@@ -1,6 +1,5 @@
-; Packages a self-contained win-x64 runtime today; win-x86 support is prepared in the
-; project file but needs a generated dual-architecture payload before it can ship.
-; ISCC /DMyAppSourceDirX64="..\dist\portable-x64" /O"..\dist\installer"
+; Packages self-contained win-x86 and win-x64 runtimes; no product rebuild.
+; ISCC /DMyAppSourceDirX86="..\dist\portable-x86" /DMyAppSourceDirX64="..\dist\portable-x64" /O"..\dist\installer"
 #define MyAppName "Ayo Jama'ah!"
 #define MyAppVersion "2.1.2"
 #define MyAppPublisher "Ayo Jama'ah!"
@@ -34,9 +33,9 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=
-; Enable `x86compatible or x64compatible` only together with a generated
-; AyoJamaahPayload-dual.iss; the single-architecture payload below is x64.
-ArchitecturesAllowed=x64compatible
+; The dual payload is generated from matching x86/x64 receipts; the checked-in file is a
+; placeholder that fails compilation until it has been regenerated for the active build.
+ArchitecturesAllowed=x86compatible or x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 UninstallDisplayIcon={app}\{#MyAppExeName}
@@ -49,13 +48,9 @@ AllowCancelDuringInstall=yes
 ; No AppMutex: custom guard explains Keluar and restore refusal, then holds it.
 
 [Files]
-; Every reviewed payload file is individually hash-pinned at compile time.
-; A dual-architecture payload must be generated from matching x86/x64 portable
-; folders; until then the reviewed x64 payload stays active.
-#ifndef MyAppSourceDir
-  #define MyAppSourceDir MyAppSourceDirX64
-#endif
-#include "AyoJamaahPayload.iss"
+; Every payload file is individually hash-pinned at compile time.
+; Shared files are pinned once; architecture-specific files are pinned per architecture.
+#include "AyoJamaahPayload-dual.iss"
 
 [Icons]
 Name: "{userprograms}\{#MyAppName}\AyoJamaah"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"

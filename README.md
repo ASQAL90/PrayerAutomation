@@ -12,7 +12,7 @@ Aplikasi jadwal sholat untuk Windows. Perhitungan jadwal ada di library Rust, ta
 
 Nama di layar adalah Ayo Jama'ah!, file executable-nya `AyoJamaah.exe`. Portable dan installer yang saya simpan di `dist/` belum diunggah ke halaman Releases. Keduanya belum ditandatangani, jadi SmartScreen akan memberi peringatan saat pertama dijalankan. Nama publisher di metadata file juga belum terverifikasi.
 
-Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Installer menambah halaman "Mulai dari baru" dan opsi penutupan paksa setelah konfirmasi. Payload installer 2.1.2 belum diregenerasi, jadi build installer masih menunggu receipt yang cocok.
+Versi 2.1.2 merapikan panel taskbar menjadi popup saja, menambah pratinjau gambar lock screen di Pengaturan, memindahkan estimasi jadwal harian ke atas form lokasi, dan menyiapkan publish win-x86 di samping win-x64. Installer menambah halaman "Mulai dari baru", opsi penutupan paksa setelah konfirmasi, dan payload dual x86+x64. Payload 2.1.2 belum dibangun di repo ini: `AyoJamaahPayload-dual.iss` masih placeholder dan harus digenerate dari receipt build sebelum installer dikompilasi.
 
 Sejauh ini baru diuji di Windows 11. Versi Windows lain dan konfigurasi taskbar yang berbeda belum dicoba semua. Perubahan UI 2.1.2 baru diverifikasi secara statis, belum lewat penerimaan visual di Windows.
 
@@ -80,7 +80,7 @@ dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:
 dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 --self-contained true -o ../AyoJamaah-build/portable-x86
 ```
 
-`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish; payload dual-arsitektur belum tersedia.
+`Arch` default-nya `x64`. MSBuild membangun Rust untuk target yang sesuai sebelum UI. Output publish sengaja ditaruh di luar repo. Installer butuh receipt payload dan hash pin yang cocok, jadi bukan sekadar hasil publish; generate `AyoJamaahPayload-dual.iss` dari receipt x86+x64 sebelum compile (lihat [panduan installer](installer/README_ID.md)).
 
 ## Pengujian
 

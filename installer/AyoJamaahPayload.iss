@@ -1,3 +1,4 @@
+; HISTORIS 2.1.0 — receipt payload x64 lama; installer 2.1.2 memakai AyoJamaahPayload-dual.iss.
 ; Generated from the technically reviewed Ayo Jama'ah! receipt. Normal UI/native acceptance PENDING. Do not substitute/rebuild runtime.
 ; GetSHA256OfFile is ISPP; mismatches stop compilation before packaging.
 #if GetSHA256OfFile(MyAppSourceDir + "\Accessibility.dll") != "79c8466d82324e8f599efbc039e9cbe833b2a21e6246dd4c2290a4fe84445412"

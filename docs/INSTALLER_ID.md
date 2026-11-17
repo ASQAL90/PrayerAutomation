@@ -1,6 +1,6 @@
 # Installer Ayo Jama'ah! 2.1.2
 
-> **Status 2.1.2:** source installer di repo sudah memakai versi 2.1.2, halaman opsional "Mulai dari baru", dan penutupan paksa setelah konfirmasi. Project UI bisa dipublikasikan win-x86, tetapi installer masih mengemas payload x64 tunggal; payload dual-arsitektur belum dibuat dan hash pin belum diregenerasi untuk 2.1.2. Catatan 2.1.0 di bawah tetap menjadi riwayat artefak yang pernah dibuat.
+> **Status 2.1.2:** source installer di repo memakai versi 2.1.2, halaman opsional "Mulai dari baru", penutupan paksa setelah konfirmasi, dan payload dual x86+x64. `AyoJamaahPayload-dual.iss` masih placeholder sampai digenerate dari receipt x86/x64 yang cocok; compile akan berhenti dengan pesan jelas. `AyoJamaahPayload.iss` hanya receipt historis 2.1.0. Catatan 2.1.0 di bawah tetap menjadi riwayat artefak yang pernah dibuat.
 
 ## Kandidat finalisasi branding 11 November 2026
 
