@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from generate_accepted_payload import validated_payload  # noqa: E402
-from generate_nsis_payload import render, write_output  # noqa: E402
+from generate_nsis_payload import render, render_files_list, write_output  # noqa: E402
 
 APP_VERSION = "2.1.2"
 DEFAULT_OUTPUT = f"AyoJamaah.Setup-{APP_VERSION}.exe"
@@ -96,6 +96,9 @@ def main() -> None:
 
     include = nsis_dir / "AyoJamaahPayload-dual.nsh"
     write_output(include, render(payload_x64, payload_x86), force=True)
+    for arch, payload in (("x64", payload_x64), ("x86", payload_x86)):
+        write_output(nsis_dir / f"AyoJamaahPayloadFiles-{arch}.txt",
+                     render_files_list(list(payload)), force=True)
 
     result = {
         "status": "PASS",

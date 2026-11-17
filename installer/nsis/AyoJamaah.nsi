@@ -111,6 +111,10 @@ Var DesktopShortcutSelected
 Section "Aplikasi" SEC_INSTALL_MAIN
   SectionIn RO
 
+  InitPluginsDir
+  File /oname=$PLUGINSDIR\ayojamaah-payload-x64.txt "AyoJamaahPayloadFiles-x64.txt"
+  File /oname=$PLUGINSDIR\ayojamaah-payload-x86.txt "AyoJamaahPayloadFiles-x86.txt"
+
   StrCpy $SafetyUninstall 0
   Call RequireSafeBoundary
   ${If} $SafetyProblem != ""
@@ -449,6 +453,36 @@ Function AppendPreviousInstallHKLM64
   ${EndIf}
 FunctionEnd
 
+Function ${P}IsPayloadFile
+  ; Input: $R1 = relative POSIX path. Output: $R0 = 1 when the file is part
+  ; of the payload that will be installed on this machine, so the stale-file
+  ; cleanup can leave it alone and let the payload copy overwrite it.
+  StrCpy $R0 0
+  ${If} ${RunningX64}
+    FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x64.txt" r
+  ${Else}
+    FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x86.txt" r
+  ${EndIf}
+  ${If} $2 == ""
+    Return
+  ${EndIf}
+  ${Do}
+    FileRead $2 $3
+    ${If} $3 == ""
+      ${ExitDo}
+    ${EndIf}
+    StrCpy $3 $3 -2
+    ${If} $3 == ""
+      ${Continue}
+    ${EndIf}
+    ${If} $3 == $R1
+      StrCpy $R0 1
+      ${ExitDo}
+    ${EndIf}
+  ${Loop}
+  FileClose $2
+FunctionEnd
+
 Function RemoveStalePayload
   StrCpy $SafetyProblem ""
   FileOpen $0 "${APP_MANIFEST}" r
@@ -487,9 +521,30 @@ Function RemoveStalePayload
 
     StrCpy $SafetyPath2 "$INSTDIR\$1"
     ${If} ${FileExists} "$SafetyPath2"
-      Delete "$SafetyPath2"
-      ${If} ${FileExists} "$SafetyPath2"
-        StrCpy $SafetyProblem "Berkas lama tidak dapat dihapus: $SafetyPath2"
+      ; Files that are part of the new payload are overwritten in place;
+      ; deleting them first only makes the install fail for no reason.
+      StrCpy $R1 $1
+      Call ${P}IsPayloadFile
+      ${If} $R0 != 0
+        DetailPrint "Pertahankan (akan ditimpa payload): $1"
+        ${Continue}
+      ${EndIf}
+      StrCpy $R3 0
+      retry_delete:
+        System::Call 'kernel32::SetFileAttributesW(w "$SafetyPath2", i 128) i .R4'
+        System::Call 'kernel32::DeleteFileW(w "$SafetyPath2") i .R5 ?e'
+        Pop $R6
+        ${If} $R5 != 0
+          Goto delete_done
+        ${EndIf}
+        IntOp $R3 $R3 + 1
+        ${If} $R3 < 4
+          Sleep 250
+          Goto retry_delete
+        ${EndIf}
+      delete_done:
+      ${If} $R5 == 0
+        StrCpy $SafetyProblem "Berkas lama tidak dapat dihapus: $SafetyPath2 (Windows $R6). Tutup aplikasi yang memakai berkas ini lalu jalankan ulang pemasang."
         Goto done
       ${EndIf}
     ${EndIf}

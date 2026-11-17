@@ -54,7 +54,7 @@ Perilaku yang dipertahankan dari `installer/SafetyGuard.iss`:
 - Proses produk (`AyoJamaah.exe`, `PrayerAutomation.UI.exe`, `PrayerAutomation.exe`, `prayer_automation.exe`) dan interpreter `python.exe`/`pythonw.exe`/`dotnet.exe` yang image-nya berada di folder produk dideteksi.
 - Mutex global `Global\PrayerAutomation.Desktop.SingleInstance` diperiksa, lalu installer menahan mutex itu selama tahap tulis/hapus dan memeriksa ulang boundary.
 - Setiap file target diperiksa dengan `CreateFileW` read+write tanpa share; file yang terkunci, reparse point, atau tidak terbaca memblokir operasi.
-- Sebelum menulis payload NSIS baru, entri manifest lama dihapus agar file stale tidak tertinggal. Untuk instalasi Inno lama tanpa manifest NSIS, `$INSTDIR` dibersihkan setelah boundary check.
+- Sebelum menulis payload NSIS baru, entri manifest lama dihapus agar file stale tidak tertinggal — kecuali berkas yang juga ada di payload baru (akan ditimpa di tempat; daftar payload per arsitektur dibundel sebagai `AyoJamaahPayloadFiles-x64.txt`/`-x86.txt`). Penghapusan berkas stale memakai `DeleteFileW` dengan percobaan ulang (4×, 250 ms) dan melaporkan kode galat Windows. Untuk instalasi Inno lama tanpa manifest NSIS, `$INSTDIR` dibersihkan setelah boundary check.
 - Hanya union path payload yang dihapus saat uninstall; `%APPDATA%\PrayerAutomation` dan data pengguna tidak disentuh.
 
 Batasan yang berbeda dari Inno:

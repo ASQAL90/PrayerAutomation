@@ -110,6 +110,11 @@ def render(payload_x64: dict[str, str], payload_x86: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def render_files_list(files: list[str]) -> str:
+    """Line-based list of relative POSIX paths for the installer's cleanup."""
+    return "\n".join(sorted(files)) + "\n"
+
+
 def write_output(output: Path, content: str, force: bool) -> None:
     if output.exists():
         existing = output.read_text(encoding="utf-8")
@@ -135,6 +140,9 @@ def main() -> None:
     payload_x86 = validated_payload(args.receipt_x86, args.source_x86)
     content = render(payload_x64, payload_x86)
     write_output(args.output, content, args.force)
+    for arch, payload in (("x64", payload_x64), ("x86", payload_x86)):
+        write_output(args.output.with_name(f"AyoJamaahPayloadFiles-{arch}.txt"),
+                     render_files_list(list(payload)), args.force)
     print(json.dumps({
         "status": "PASS",
         "mode": "nsis-dual",
