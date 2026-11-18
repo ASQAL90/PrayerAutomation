@@ -332,7 +332,7 @@
                                         Content="{TemplateBinding Content}"
                                         ContentTemplate="{TemplateBinding ContentTemplate}"
                                         ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
-                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        HorizontalAlignment="Stretch"
                                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                         Margin="{TemplateBinding Padding}" />
                 <ScrollBar x:Name="PART_VerticalScrollBar" Orientation="Vertical"
