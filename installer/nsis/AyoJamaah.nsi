@@ -38,6 +38,12 @@ Unicode true
 !include "FileFunc.nsh"
 !include "x64.nsh"
 !include "nsDialogs.nsh"
+
+; Read-only multiline text that wraps word-wise and only shows a vertical scrollbar.
+!define __NSD_MLWrap_CLASS EDIT
+!define __NSD_MLWrap_STYLE ${DEFAULT_STYLES}|${WS_TABSTOP}|${ES_AUTOVSCROLL}|${ES_MULTILINE}|${WS_VSCROLL}
+!define __NSD_MLWrap_EXSTYLE ${WS_EX_WINDOWEDGE}|${WS_EX_CLIENTEDGE}
+!insertmacro __NSD_DefineControl MLWrap
 !include "WinMessages.nsh"
 !insertmacro GetParameters
 !insertmacro GetParent
@@ -272,7 +278,7 @@ Function InfoPageCreate
     Abort
   ${EndIf}
 
-  ${NSD_CreateMLText} 0 0 100% 96u ""
+  ${NSD_CreateMLWrap} 0 0 100% 96u ""
   Pop $1
   ${NSD_SetText} $1 \
     "${APP_NAME} ${APP_VERSION} dipasang untuk pengguna saat ini.$\r$\n$\r$\n\
@@ -302,7 +308,7 @@ Function StartFreshPageCreate
     Abort
   ${EndIf}
 
-  ${NSD_CreateMLText} 0 0 100% 72u ""
+  ${NSD_CreateMLWrap} 0 0 100% 72u ""
   Pop $1
   ${NSD_SetText} $1 \
     "Pengaturan tersimpan di folder profil pengguna ditemukan.$\r$\n$\r$\n\

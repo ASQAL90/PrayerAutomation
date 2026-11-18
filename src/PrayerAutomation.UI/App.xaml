@@ -334,13 +334,13 @@
                            HorizontalAlignment="Right" Width="10" Margin="0"
                            Maximum="{TemplateBinding ScrollableHeight}"
                            ViewportSize="{TemplateBinding ViewportHeight}"
-                           Value="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=VerticalOffset, Mode=TwoWay}"
+                           Value="{TemplateBinding VerticalOffset}"
                            Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
                 <ScrollBar x:Name="PART_HorizontalScrollBar" Orientation="Horizontal"
                            VerticalAlignment="Bottom" Height="10" Margin="0"
                            Maximum="{TemplateBinding ScrollableWidth}"
                            ViewportSize="{TemplateBinding ViewportWidth}"
-                           Value="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=HorizontalOffset, Mode=TwoWay}"
+                           Value="{TemplateBinding HorizontalOffset}"
                            Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
             </Grid>
         </ControlTemplate>
