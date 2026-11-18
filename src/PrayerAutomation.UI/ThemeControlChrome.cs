@@ -94,31 +94,8 @@ internal static class ThemeControlChrome
         }
         else if (control is ScrollBar scrollBar)
         {
-            foreach (Border border in Descendants(scrollBar).OfType<Border>()
-                .Where(border => ReferenceEquals(border.TemplatedParent, scrollBar)))
-                BindSurface(border, scrollBar);
-            foreach (RepeatButton button in Descendants(scrollBar).OfType<RepeatButton>()
-                .Where(button => ReferenceEquals(button.TemplatedParent, scrollBar)))
-            {
-                button.SetResourceReference(FrameworkElement.StyleProperty, "ThemedScrollRepeatButton");
-                button.ApplyTemplate();
-                foreach (Border border in Descendants(button).OfType<Border>()
-                    .Where(border => ReferenceEquals(border.TemplatedParent, button)))
-                    BindSurface(border, button);
-            }
-            foreach (Thumb thumb in Descendants(scrollBar).OfType<Thumb>()
-                .Where(thumb => ReferenceEquals(thumb.TemplatedParent, scrollBar)))
-            {
-                thumb.SetResourceReference(FrameworkElement.StyleProperty, "ThemedScrollThumb");
-                thumb.ApplyTemplate();
-                foreach (Shape shape in Descendants(thumb).OfType<Shape>()
-                    .Where(shape => ReferenceEquals(shape.TemplatedParent, thumb)))
-                    Bind(shape, Shape.FillProperty, thumb, nameof(Control.Background));
-            }
-            // RepeatButton content is realized after its style/template is applied.
-            scrollBar.UpdateLayout();
-            foreach (Path arrow in Descendants(scrollBar).OfType<Path>())
-                Bind(arrow, Shape.FillProperty, FindContentOwner(arrow) ?? scrollBar, nameof(Control.Foreground));
+            // Overlay scrollbars are themed via the shared resources; attach auto-hide.
+            AutoHideScrollBar.Attach(scrollBar);
         }
         else if (control is ComboBoxItem item)
         {

@@ -242,9 +242,23 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <!-- Slim minimalist scrollbar template: thumb only, page-clickable track, no arrow buttons. -->
-        <ControlTemplate x:Key="SlimScrollBarTemplate" TargetType="{x:Type ScrollBar}">
-            <Border Background="{TemplateBinding Background}" CornerRadius="5" Padding="1">
+        <!-- Overlay scrollbar (macOS-style): no track, thin floating thumb, auto-hide when idle. -->
+        <ControlTemplate x:Key="OverlayScrollThumbTemplate" TargetType="{x:Type Thumb}">
+            <Border x:Name="ThumbBody" Background="{TemplateBinding Background}" CornerRadius="3" Margin="2,1" Opacity="0.9" />
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="ThumbBody" Property="Opacity" Value="1" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="OverlayScrollThumb" TargetType="{x:Type Thumb}">
+            <Setter Property="Background" Value="{DynamicResource MutedTextBrush}" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Template" Value="{StaticResource OverlayScrollThumbTemplate}" />
+        </Style>
+        <ControlTemplate x:Key="OverlayScrollBarTemplate" TargetType="{x:Type ScrollBar}">
+            <Border Background="Transparent" Padding="1,0">
                 <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="False" SnapsToDevicePixels="True">
                     <Track.DecreaseRepeatButton>
                         <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" />
@@ -253,7 +267,7 @@
                         <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" />
                     </Track.IncreaseRepeatButton>
                     <Track.Thumb>
-                        <Thumb Style="{StaticResource ThemedScrollThumb}" Width="8" Focusable="False" />
+                        <Thumb x:Name="PART_Thumb" Style="{StaticResource OverlayScrollThumb}" Focusable="False" />
                     </Track.Thumb>
                 </Track>
             </Border>
@@ -265,13 +279,13 @@
         </ControlTemplate>
         <Style TargetType="{x:Type ScrollBar}">
             <Setter Property="local:ThemeControlChrome.Enabled" Value="True" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="ContextMenu" Value="{x:Null}" />
             <Setter Property="Width" Value="10" />
             <Setter Property="Height" Value="10" />
-            <Setter Property="Template" Value="{StaticResource SlimScrollBarTemplate}" />
+            <Setter Property="Template" Value="{StaticResource OverlayScrollBarTemplate}" />
         </Style>
         <Style TargetType="{x:Type ContextMenu}">
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
