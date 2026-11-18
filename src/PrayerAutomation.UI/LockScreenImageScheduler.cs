@@ -244,6 +244,19 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>True when a lock-screen restore journal is still pending.</summary>
+    internal bool HasPendingRecovery => _transaction.HasPending;
+
+    /// <summary>Cancels a pending recovery without restoring; the current lock-screen state is left as-is.</summary>
+    internal void CancelPendingRecovery()
+    {
+        ThrowIfDisposed();
+        StopTimer();
+        _recoveryPending = false;
+        ClearExecutionRequest();
+        _transaction.ClearPending();
+    }
+
     /// <summary>Disposes the scheduler and its power request; the timer is stopped.</summary>
     public void Dispose()
     {

@@ -396,6 +396,20 @@ public partial class App : Application
         }
     }
 
+    /// <summary>True when a pending lock-screen restore journal is blocking install/uninstall.</summary>
+    internal bool HasPendingLockScreenRecovery => _lockScreenScheduler?.HasPendingRecovery == true;
+
+    /// <summary>Cancels a pending lock-screen recovery after explicit user confirmation.</summary>
+    internal void CancelLockScreenRecovery()
+    {
+        _lockScreenScheduler?.CancelPendingRecovery();
+        Settings.LockScreenEnabled = false;
+        Settings.LockScreenOptIn = false;
+        SettingsStore.Save(Settings);
+        _mainWindow?.SetLockScreenStatus(
+            "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; jurnal dihapus.");
+    }
+
     /// <summary>Loads the application icon from the base directory, or null if it is missing.</summary>
     /// <returns>The decoded icon frame, or null when the icon file does not exist.</returns>
     internal static BitmapFrame? LoadApplicationIcon()

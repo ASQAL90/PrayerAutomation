@@ -358,7 +358,7 @@
 
                             <GroupBox Header="Tema, Pengingat dan Tampilan Widget" Style="{StaticResource CardGroup}">
                                 <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                         <TextBlock Text="Tema warna" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="ThemeBox" AutomationProperties.AutomationId="ThemeBox" Margin="3,4,3,4" SelectedIndex="0" SelectionChanged="ThemeBox_SelectionChanged">
@@ -372,7 +372,8 @@
                                             <ComboBoxItem Content="Dracula" Tag="dracula" />
                                         </ComboBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="ThemeApplyHint" Text="Tema langsung terlihat. Simpan untuk menyimpan; Batalkan atau tutup ke area notifikasi untuk kembali ke tema tersimpan." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
-                                        <CheckBox Name="ReminderEnabledCheckBox" Margin="0,12,0,0" >
+                                        <TextBlock Text="Pengingat teks" Style="{StaticResource FieldLabel}" Margin="0,12,0,2" />
+                                        <CheckBox Name="ReminderEnabledCheckBox" Margin="3,2,3,2" >
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Aktifkan pengingat teks (tanpa suara)" />
                                         </CheckBox>
                                         <StackPanel Orientation="Horizontal" Margin="3,5"><TextBlock Text="Menit sebelum waktu sholat" Width="185" VerticalAlignment="Center" /><TextBox Name="ReminderMinutesBox" Width="58" /></StackPanel>
@@ -381,46 +382,47 @@
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="ReminderMessageLimitLabel" AutomationProperties.AutomationId="ReminderMessageLimitLabel" Text="Maksimal 200 karakter." Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <CheckBox Name="WidgetEnabledCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" >
+                                        <TextBlock Text="Widget desktop" Style="{StaticResource FieldLabel}" />
+                                        <CheckBox Name="WidgetEnabledCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,2,3,2" >
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Tampilkan widget jadwal di desktop" />
                                         </CheckBox>
                                         <TextBlock Text="Mode widget" Style="{StaticResource FieldLabel}" />
-                                        <ComboBox Name="WidgetModeBox" AutomationProperties.AutomationId="WidgetModeBox" Margin="3,4,3,4" SelectedIndex="0" SelectionChanged="WidgetModeBox_SelectionChanged">
+                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetModeBox" AutomationProperties.AutomationId="WidgetModeBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetModeBox_SelectionChanged">
                                             <ComboBoxItem Content="Essential — 5 waktu, satu baris" Tag="essential" />
                                             <ComboBoxItem Content="Minimalist — sholat berikutnya" Tag="minimalist" />
                                             <ComboBoxItem Content="Medium detail — jadwal lengkap" Tag="detail" />
-                                        </ComboBox>
+                                        </ComboBox></Grid>
                                         <TextBlock Name="WidgetMotionLabel" Text="Gerak mode Essential" Style="{StaticResource FieldLabel}" />
-                                        <ComboBox Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" Margin="3,4,3,4" SelectedIndex="0" SelectionChanged="WidgetPreviewOptions_Changed">
+                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Statis — lima waktu tetap" Tag="static" />
                                             <ComboBoxItem Content="Marquee — bergerak pelan" Tag="marquee" />
-                                        </ComboBox>
+                                        </ComboBox></Grid>
                                         <TextBlock Name="WidgetPositionLabel" Text="Posisi widget desktop (semua mode)" Style="{StaticResource FieldLabel}" />
-                                        <ComboBox Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" Margin="3,4,3,4" SelectedIndex="0" SelectionChanged="WidgetPreviewOptions_Changed">
+                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Tengah atas" Tag="tc" />
                                             <ComboBoxItem Content="Sudut kiri atas" Tag="tl" />
                                             <ComboBoxItem Content="Sudut kanan atas" Tag="tr" />
                                             <ComboBoxItem Content="Sudut kiri bawah" Tag="bl" />
                                             <ComboBoxItem Content="Sudut kanan bawah" Tag="br" />
-                                        </ComboBox>
+                                        </ComboBox></Grid>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Essential: lima waktu. Minimalist: hitung mundur. Posisi berlaku untuk semua mode." Foreground="{DynamicResource MutedTextBrush}" />
-                                        <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
-                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />
-                                        </CheckBox>
-                                        <TextBlock Name="WidgetAlwaysOnTopHint" Style="{StaticResource FormHelpText}" Text="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
-                                        <CheckBox Name="WidgetClickThroughCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
-                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Klik tembus ke jendela di belakang widget" />
-                                        </CheckBox>
-                                        <TextBlock Name="WidgetClickThroughHint" Style="{StaticResource FormHelpText}" Text="Widget tetap terlihat penuh; klik diteruskan ke jendela di bawahnya. Untuk mematikan, buka pengaturan atau menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
-                                        <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
-                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Sembunyikan saat kursor mendekat" />
-                                        </CheckBox>
-                                        <TextBlock Name="WidgetAutoHideHint" Style="{StaticResource FormHelpText}" Text="Berlaku untuk Essential dan Minimalist. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                         <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
                                         </CheckBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Jika taskbar Windows diganti taskbar kustom, panel tetap tampil di area taskbar terakhir selama auto-hide dan aplikasi fullscreen tidak aktif." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Opsi widget" Style="{StaticResource FieldLabel}" Margin="3,0,3,2" />
+                                        <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar.">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />
+                                        </CheckBox>
+                                        <CheckBox Name="WidgetClickThroughCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Widget tetap terlihat penuh; klik diteruskan ke jendela di bawahnya. Untuk mematikan, buka pengaturan atau menu ikon tray.">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Klik tembus ke jendela di belakang widget" />
+                                        </CheckBox>
+                                        <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Essential dan Minimalist. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray.">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Sembunyikan saat kursor mendekat" />
+                                        </CheckBox>
                                     </StackPanel>
                                 </Grid>
                             </GroupBox>
@@ -463,6 +465,7 @@
                                             <TextBlock Style="{StaticResource FormHelpText}" Text="Gambar diganti saat lima waktu sholat. Fitur ini tidak mengunci sesi atau mengubah wallpaper. Setelah durasi pilihan habis, aplikasi mencoba memulihkan mode awal. Picture memakai salinan gambar lama. Jika salinan pemulihan atau verifikasi gagal, gambar tidak diubah. Tanpa hak administrator." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
                                             <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenSafetyText" Text="Memeriksa syarat pemulihan lock screen..." Margin="0,8,0,0" TextWrapping="Wrap" />
                                             <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenStatus" AutomationProperties.AutomationId="LockScreenStatus" Text="Memeriksa profil lock screen Windows..." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                            <Button Name="LockScreenCancelRecoveryButton" Content="Batalkan pemulihan tertunda" AutomationProperties.AutomationId="LockScreenCancelRecoveryButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Visibility="Collapsed" Click="LockScreenCancelRecovery_Click" ToolTip="Hapus jurnal pemulihan dan biarkan gambar lock screen seperti saat ini. Gunakan hanya bila verifikasi tidak dapat dilakukan." />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>

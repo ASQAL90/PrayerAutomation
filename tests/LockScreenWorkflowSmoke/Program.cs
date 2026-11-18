@@ -275,6 +275,8 @@ internal sealed class MemoryLockScreenRestoreStore : ILockScreenRestoreStore
     public void Save(LockScreenRestoreSnapshot snapshot) => _snapshot = snapshot;
     /// <summary>Clears the stored snapshot.</summary>
     public void Delete() => _snapshot = null;
+    /// <summary>Clears the stored snapshot and any quarantined variant.</summary>
+    public void ClearAll() => Delete();
 }
 
 /// <summary>Fake lock-screen backend simulating mode transitions, external user changes, and injectable failures.</summary>

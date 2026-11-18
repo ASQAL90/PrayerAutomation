@@ -1223,6 +1223,29 @@ public partial class MainWindow : Window
         LockScreenSafetyText.Text = safety.Message;
         LockScreenStatus.Text = status ?? safety.Message;
         LockScreenStatus.Visibility = status is null ? Visibility.Collapsed : Visibility.Visible;
+        if (LockScreenCancelRecoveryButton is not null)
+            LockScreenCancelRecoveryButton.Visibility =
+                Application.Current is App app && app.HasPendingLockScreenRecovery
+                    ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Clears a stuck lock-screen restore journal after an explicit, informed confirmation.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private void LockScreenCancelRecovery_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is not App app) return;
+        System.Windows.MessageBoxResult answer = System.Windows.MessageBox.Show(this,
+            "Pemulihan lock screen tertunda dan memblokir pemasangan/penghapusan.\r\n\r\n" +
+            "Batalkan pemulihan? Jurnal dihapus, fitur gambar lock screen dinonaktifkan, dan gambar lock screen " +
+            "dibiarkan seperti saat ini. Lanjutkan hanya bila mode/gambar lock screen sudah sesuai dan verifikasi " +
+            "tidak dapat dilakukan.",
+            "Batalkan pemulihan lock screen", System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning, System.Windows.MessageBoxResult.No);
+        if (answer != System.Windows.MessageBoxResult.Yes) return;
+        app.CancelLockScreenRecovery();
+        LockScreenCheckBox.IsChecked = false;
+        RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; jurnal dihapus dan fitur gambar dinonaktifkan.");
     }
 
     /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>
@@ -1254,8 +1277,7 @@ public partial class MainWindow : Window
     {
         if (WidgetMotionBox is null || WidgetPositionBox is null ||
             WidgetMotionLabel is null || WidgetPositionLabel is null ||
-            WidgetAlwaysOnTopCheckBox is null || WidgetAlwaysOnTopHint is null ||
-            WidgetAutoHideCheckBox is null || WidgetAutoHideHint is null)
+            WidgetAlwaysOnTopCheckBox is null || WidgetAutoHideCheckBox is null)
             return;
 
         string selectedMode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "essential";
@@ -1270,11 +1292,9 @@ public partial class MainWindow : Window
         // Medium Detail never stays above other windows, so the option only
         // applies to the thin Essential/Minimalist bars.
         WidgetAlwaysOnTopCheckBox.IsEnabled = !isDetailMode;
-        WidgetAlwaysOnTopHint.IsEnabled = !isDetailMode;
         // The large Detail panel is interacted with directly, so hover-hiding is
         // limited to the thin Essential/Minimalist bars.
         WidgetAutoHideCheckBox.IsEnabled = !isDetailMode;
-        WidgetAutoHideHint.IsEnabled = !isDetailMode;
     }
 
     /// <summary>Schedules a save-free schedule preview refresh when a settings input changes.</summary>

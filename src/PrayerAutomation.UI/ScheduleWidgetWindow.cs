@@ -248,11 +248,10 @@ internal sealed class ScheduleWidgetWindow : Window
             WindowState = WindowState.Normal;
         ResizeMode = ResizeMode.NoResize;
         // Medium Detail is large enough to get in the way, so it stays in the normal
-        // z-order. Essential/Minimalist follow the user's "always on top" option.
-        // During a settings preview Detail is raised briefly so it can be seen.
+        // z-order even while a settings preview is active. Essential/Minimalist
+        // follow the user's "always on top" option.
         bool alwaysOnTop = _previewAlwaysOnTop ?? _settings.WidgetAlwaysOnTop;
-        Topmost = !_taskbarDashboard &&
-            (IsDetailMode ? _appearancePreview is not null : alwaysOnTop);
+        Topmost = !_taskbarDashboard && !IsDetailMode && alwaysOnTop;
         Width = requestedWidth;
         Height = requestedHeight;
         Background = System.Windows.Media.Brushes.Transparent;

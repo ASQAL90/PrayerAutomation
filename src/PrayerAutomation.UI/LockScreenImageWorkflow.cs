@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -117,6 +118,8 @@ internal interface ILockScreenRestoreStore
     void Save(LockScreenRestoreSnapshot snapshot);
     /// <summary>Deletes the journaled snapshot.</summary>
     void Delete();
+    /// <summary>Deletes the journal and every quarantined variant; used for explicit user cancellation.</summary>
+    void ClearAll();
 }
 
 /// <summary>Coordinates capture, apply, extend, recovery and restore of the temporary lock-screen image under a gate.</summary>
@@ -229,6 +232,29 @@ internal sealed class LockScreenImageTransaction
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>True when a restore journal exists, including an unreadable or quarantined one.</summary>
+    internal bool HasPending
+    {
+        get
+        {
+            try { return _store.Load() is not null; }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                return true;
+            }
+        }
+    }
+
+    /// <summary>Clears the pending journal without restoring; only for explicit user cancellation.</summary>
+    internal void ClearPending()
+    {
+        LockScreenRestoreSnapshot? pending = null;
+        try { pending = _store.Load(); }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException) { }
+        if (pending is not null) ClearPending(pending);
+        _store.ClearAll();
     }
 
     /// <summary>Restores the previous lock-screen state, verifying the result.</summary>

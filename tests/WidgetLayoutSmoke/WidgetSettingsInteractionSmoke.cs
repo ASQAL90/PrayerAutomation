@@ -50,6 +50,8 @@ internal static class WidgetSettingsInteractionSmoke
             "Changing widget appearance must update the existing actual widget, not a separate imitation.");
         Assert(fixture.WidgetMode == "detail" && fixture.Widget.Height >= 300,
             "Selecting Medium detail must change the actual widget immediately before Save.");
+        Assert(!widget.Topmost,
+            "Medium Detail must stay in the normal z-order even while a settings preview is active.");
         Rect workArea = SystemParameters.WorkArea;
         Assert(Math.Abs(widget.Left - (workArea.Right - widget.Width - 12)) < 1 &&
                Math.Abs(widget.Top - (workArea.Bottom - widget.Height - 12)) < 1,

@@ -121,6 +121,23 @@ internal sealed class FileLockScreenRestoreStore : ILockScreenRestoreStore
         }
     }
 
+    /// <summary>Deletes the restore journal and every quarantined variant; used for explicit user cancellation.</summary>
+    public void ClearAll()
+    {
+        lock (_sync)
+        {
+            try { if (File.Exists(_journalPath)) File.Delete(_journalPath); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            if (!Directory.Exists(_directory)) return;
+            foreach (string path in Directory.EnumerateFiles(_directory,
+                         LockScreenStatePaths.JournalFileName + ".invalid-*", SearchOption.TopDirectoryOnly))
+            {
+                try { File.Delete(path); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+    }
+
     /// <summary>Blocks new operations when a quarantined journal is awaiting explicit review.</summary>
     private void ThrowIfRecoveryBlocked()
     {

@@ -253,11 +253,6 @@ Function .onInit
     SectionSetFlags ${SEC_PAYLOAD_X86} ${SF_SELECTED}
   ${EndIf}
 
-  Call ReviewPreviousInstallations
-  ${If} $SafetyProblem == "CANCEL"
-    SetErrorLevel 2
-    Quit
-  ${EndIf}
   Return
 
   silent_blocked:
@@ -379,57 +374,6 @@ Function CheckUnsafeCommandLine
   ${EndIf}
 FunctionEnd
 
-
-Function ReviewPreviousInstallations
-  StrCpy $SafetyProblem ""
-  StrCpy $SafetyDetails ""
-
-  Call AppendPreviousInstallHKCU
-  SetRegView 32
-  Call AppendPreviousInstallHKLM32
-  ${If} ${RunningX64}
-    SetRegView 64
-    Call AppendPreviousInstallHKLM64
-    SetRegView 32
-  ${EndIf}
-
-  ${If} $SafetyDetails != ""
-    MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \
-      "Instalasi sebelumnya ditemukan:$\r$\n$SafetyDetails$\r$\nVersi baru hanya dipasang untuk pengguna saat ini. Folder Python lama, data, dan startup lama tetap disimpan. Catatan uninstall pengguna dengan ID yang sama dapat diperbarui; jangan jalankan uninstaller Python lama pada folder versi baru. Matikan startup versi lama dari aplikasinya sendiri bila perlu. Lanjutkan?" \
-      IDYES return
-    StrCpy $SafetyProblem "CANCEL"
-  ${EndIf}
-  return:
-FunctionEnd
-
-Function AppendPreviousInstallHKCU
-  ReadRegStr $0 HKCU "${APP_UNINSTALL_KEY}" "DisplayVersion"
-  ReadRegStr $1 HKCU "${APP_UNINSTALL_KEY}" "InstallLocation"
-  ${If} $0 != ""
-    StrCpy $SafetyDetails "Pengguna: versi $0, lokasi $1$\r$\n$SafetyDetails"
-  ${EndIf}
-  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AyoJamaah" "DisplayVersion"
-  ReadRegStr $1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\AyoJamaah" "InstallLocation"
-  ${If} $0 != ""
-    StrCpy $SafetyDetails "Pengguna (NSIS lama): versi $0, lokasi $1$\r$\n$SafetyDetails"
-  ${EndIf}
-FunctionEnd
-
-Function AppendPreviousInstallHKLM32
-  ReadRegStr $0 HKLM "${APP_UNINSTALL_KEY}" "DisplayVersion"
-  ReadRegStr $1 HKLM "${APP_UNINSTALL_KEY}" "InstallLocation"
-  ${If} $0 != ""
-    StrCpy $SafetyDetails "Komputer (32-bit, hanya dibaca): versi $0, lokasi $1$\r$\n$SafetyDetails"
-  ${EndIf}
-FunctionEnd
-
-Function AppendPreviousInstallHKLM64
-  ReadRegStr $0 HKLM "${APP_UNINSTALL_KEY}" "DisplayVersion"
-  ReadRegStr $1 HKLM "${APP_UNINSTALL_KEY}" "InstallLocation"
-  ${If} $0 != ""
-    StrCpy $SafetyDetails "Komputer (64-bit, hanya dibaca): versi $0, lokasi $1$\r$\n$SafetyDetails"
-  ${EndIf}
-FunctionEnd
 
 Function ${P}IsPayloadFile
   ; Input: $R1 = relative POSIX path. Output: $R0 = 1 when the file is part
