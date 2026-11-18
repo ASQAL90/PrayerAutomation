@@ -47,7 +47,7 @@ public partial class MainWindow : Window
     private readonly Action<string> _applyThemePreview;
     private readonly Action _refreshDependentViews;
     private readonly Action _restoreWidgetAppearancePreview;
-    private readonly Action<bool, string, string, string, bool, bool> _applyWidgetAppearancePreview;
+    private readonly Action<bool, string, string, string, bool, bool, bool> _applyWidgetAppearancePreview;
     private readonly Action<bool, string> _applyTaskbarAppearancePreview;
     private readonly Action _restoreTaskbarAppearancePreview;
     private readonly LocationDetectionService _locationDetectionService = new();
@@ -127,8 +127,9 @@ public partial class MainWindow : Window
         _applyThemePreview = id => ((App)Application.Current).ApplyThemePreview(id);
         _refreshDependentViews = () => ((App)Application.Current).RefreshDependentViews();
         _restoreWidgetAppearancePreview = () => ((App)Application.Current).RestoreWidgetAppearancePreview();
-        _applyWidgetAppearancePreview = (enabled, mode, motion, position, alwaysOnTop, clickThrough) =>
-            ((App)Application.Current).ApplyWidgetAppearancePreview(enabled, mode, motion, position, alwaysOnTop, clickThrough);
+        _applyWidgetAppearancePreview = (enabled, mode, motion, position, alwaysOnTop, clickThrough, autoHideOnHover) =>
+            ((App)Application.Current).ApplyWidgetAppearancePreview(enabled, mode, motion, position, alwaysOnTop,
+                clickThrough, autoHideOnHover);
         _applyTaskbarAppearancePreview = (enabled, mode) =>
             ((App)Application.Current).ApplyTaskbarAppearancePreview(enabled, mode);
         _restoreTaskbarAppearancePreview = () =>
@@ -1057,6 +1058,7 @@ public partial class MainWindow : Window
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WidgetPosition, StringComparison.OrdinalIgnoreCase));
             WidgetAlwaysOnTopCheckBox.IsChecked = _settings.WidgetAlwaysOnTop;
             WidgetClickThroughCheckBox.IsChecked = _settings.WidgetClickThrough;
+            WidgetAutoHideCheckBox.IsChecked = _settings.WidgetAutoHideOnHover;
             ThemeBox.SelectedItem = ThemeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.ThemeId, StringComparison.OrdinalIgnoreCase));
             DhuhaAfterSunriseBox.Text = _settings.DhuhaAfterSunriseMinutes.ToString(CultureInfo.InvariantCulture);
@@ -1132,7 +1134,8 @@ public partial class MainWindow : Window
         string position = (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag as string ?? _settings.WidgetPosition;
         _applyWidgetAppearancePreview(
             WidgetEnabledCheckBox.IsChecked == true, mode, motion, position,
-            WidgetAlwaysOnTopCheckBox.IsChecked == true, WidgetClickThroughCheckBox.IsChecked == true);
+            WidgetAlwaysOnTopCheckBox.IsChecked == true, WidgetClickThroughCheckBox.IsChecked == true,
+            WidgetAutoHideCheckBox.IsChecked == true);
     }
 
     /// <summary>Applies the startup registration when the startup checkbox changes.</summary>
@@ -1251,7 +1254,8 @@ public partial class MainWindow : Window
     {
         if (WidgetMotionBox is null || WidgetPositionBox is null ||
             WidgetMotionLabel is null || WidgetPositionLabel is null ||
-            WidgetAlwaysOnTopCheckBox is null || WidgetAlwaysOnTopHint is null)
+            WidgetAlwaysOnTopCheckBox is null || WidgetAlwaysOnTopHint is null ||
+            WidgetAutoHideCheckBox is null || WidgetAutoHideHint is null)
             return;
 
         string selectedMode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "essential";
@@ -1267,6 +1271,10 @@ public partial class MainWindow : Window
         // applies to the thin Essential/Minimalist bars.
         WidgetAlwaysOnTopCheckBox.IsEnabled = !isDetailMode;
         WidgetAlwaysOnTopHint.IsEnabled = !isDetailMode;
+        // The large Detail panel is interacted with directly, so hover-hiding is
+        // limited to the thin Essential/Minimalist bars.
+        WidgetAutoHideCheckBox.IsEnabled = !isDetailMode;
+        WidgetAutoHideHint.IsEnabled = !isDetailMode;
     }
 
     /// <summary>Schedules a save-free schedule preview refresh when a settings input changes.</summary>
@@ -1915,6 +1923,7 @@ public partial class MainWindow : Window
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
         candidate.WidgetAlwaysOnTop = WidgetAlwaysOnTopCheckBox.IsChecked == true;
         candidate.WidgetClickThrough = WidgetClickThroughCheckBox.IsChecked == true;
+        candidate.WidgetAutoHideOnHover = WidgetAutoHideCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         candidate.TaskbarWidgetMode = "popup";
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
@@ -2036,6 +2045,7 @@ public partial class MainWindow : Window
         destination.WidgetPosition = source.WidgetPosition;
         destination.WidgetAlwaysOnTop = source.WidgetAlwaysOnTop;
         destination.WidgetClickThrough = source.WidgetClickThrough;
+        destination.WidgetAutoHideOnHover = source.WidgetAutoHideOnHover;
         destination.ThemeId = source.ThemeId;
         destination.ReminderMinutes = source.ReminderMinutes;
         destination.ReminderMessage = source.ReminderMessage;
@@ -2097,7 +2107,7 @@ public partial class MainWindow : Window
         WidgetEnabledCheckBox.IsChecked, (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
         (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag, (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag,
         WidgetAlwaysOnTopCheckBox.IsChecked, WidgetClickThroughCheckBox.IsChecked,
-        TaskbarWidgetEnabledCheckBox.IsChecked,
+        WidgetAutoHideCheckBox.IsChecked, TaskbarWidgetEnabledCheckBox.IsChecked,
         (ThemeBox.SelectedItem as ComboBoxItem)?.Tag,
         StartupEnabledCheckBox.IsChecked, StartHiddenCheckBox.IsChecked, AutoLockEnabledCheckBox.IsChecked,
         LockScreenCheckBox.IsChecked, LockScreenDurationBox.Text

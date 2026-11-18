@@ -412,6 +412,10 @@
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Klik tembus ke jendela di belakang widget" />
                                         </CheckBox>
                                         <TextBlock Name="WidgetClickThroughHint" Style="{StaticResource FormHelpText}" Text="Widget tetap terlihat penuh; klik diteruskan ke jendela di bawahnya. Untuk mematikan, buka pengaturan atau menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+                                        <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Sembunyikan saat kursor mendekat" />
+                                        </CheckBox>
+                                        <TextBlock Name="WidgetAutoHideHint" Style="{StaticResource FormHelpText}" Text="Berlaku untuk Essential dan Minimalist. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                         <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
                                         </CheckBox>

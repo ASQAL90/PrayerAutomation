@@ -68,6 +68,8 @@ internal static class WidgetSettingsInteractionSmoke
             "Medium Detail must be a fixed-size window without a resize grip.");
         Assert(!fixture.Field<CheckBox>("WidgetAlwaysOnTopCheckBox").IsEnabled,
             "The always-on-top option must be disabled for Medium Detail.");
+        Assert(!fixture.Field<CheckBox>("WidgetAutoHideCheckBox").IsEnabled,
+            "The hover auto-hide option must be disabled for Medium Detail.");
         double width = widget.Width;
         double height = widget.Height;
         widget.WindowState = WindowState.Maximized;
@@ -99,6 +101,8 @@ internal static class WidgetSettingsInteractionSmoke
             "Enabling click-through must add WS_EX_TRANSPARENT to the real widget window.");
         Assert(widget.Opacity == 1,
             "Click-through must not fade the widget; opacity and the solid panel stay unchanged.");
+        Assert(fixture.Field<CheckBox>("WidgetAutoHideCheckBox").IsEnabled,
+            "The hover auto-hide option must be available for Essential mode.");
         fixture.Field<CheckBox>("WidgetClickThroughCheckBox").IsChecked = false;
         Pump();
         Assert(!HasTransparentStyle(handle),

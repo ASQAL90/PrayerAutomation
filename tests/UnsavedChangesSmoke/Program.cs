@@ -192,7 +192,7 @@ internal static class Program
         ((DispatcherTimer)Field("_locationSearchTimer").GetValue(Window)!).Stop();
         foreach (string n in new[]{"_refreshDependentViews","_restoreWidgetAppearancePreview","_restoreTaskbarAppearancePreview"}) Field(n).SetValue(Window,(Action)(()=>{}));
         Field("_applyThemePreview").SetValue(Window,(Action<string>)(id => AppType.GetMethod("ApplyThemePreview",I)!.Invoke(App,[id])));
-        Field("_applyWidgetAppearancePreview").SetValue(Window,(Action<bool,string,string,string,bool,bool>)((a,b,c,d,e,f)=>{}));
+        Field("_applyWidgetAppearancePreview").SetValue(Window,(Action<bool,string,string,string,bool,bool,bool>)((a,b,c,d,e,f,g)=>{}));
         Field("_applyTaskbarAppearancePreview").SetValue(Window,(Action<bool,string>)((a,b)=>{}));
         FieldInfo? logger = Window.GetType().GetField("_logSettingsError",I);
         if (!ConstructorLoggerInjected) logger?.SetValue(Window,loggerCounter);

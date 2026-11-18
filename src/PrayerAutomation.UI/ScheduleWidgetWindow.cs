@@ -18,6 +18,7 @@ internal sealed class ScheduleWidgetWindow : Window
     private const double MarqueePixelsPerTick = 1.25;
     private const int GwlExStyle = -20;
     private const long WsExTransparent = 0x00000020;
+    private const double AutoHideMarginDips = 6;
     private static readonly CultureInfo IndonesianCulture = CultureInfo.GetCultureInfo("id-ID");
 
     private readonly AppSettings _settings;
@@ -30,10 +31,13 @@ internal sealed class ScheduleWidgetWindow : Window
     private (string Mode, string Motion, string Position)? _appearancePreview;
     private bool? _previewAlwaysOnTop;
     private bool? _previewClickThrough;
+    private bool? _previewAutoHideOnHover;
+    private bool _autoHidden;
     private readonly Dictionary<DateTime, IReadOnlyList<PrayerEntry>> _scheduleCache = new();
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _marqueeTimer;
     private readonly DispatcherTimer _marqueeStartTimer;
+    private readonly DispatcherTimer _autoHideTimer;
     private Border _frame = null!;
     private System.Windows.Controls.Panel _body = null!;
     private System.Windows.Controls.Panel _schedule = null!;
@@ -83,8 +87,13 @@ internal sealed class ScheduleWidgetWindow : Window
             WindowState = WindowState.Normal;
         }
         WindowStartupLocation = WindowStartupLocation.Manual;
-        SourceInitialized += (_, _) => ApplyClickThrough();
+        SourceInitialized += (_, _) => ApplyAutoHideVisualState();
         StateChanged += (_, _) => RestoreFixedPlacementAfterStateChange();
+        IsVisibleChanged += (_, _) =>
+        {
+            // A manual hide/show must not leave the widget transparent or click-through.
+            if (!IsVisible) SetAutoHidden(false);
+        };
         Closing += (_, e) =>
         {
             if (_taskbarDashboard && !_allowClose)
@@ -105,11 +114,14 @@ internal sealed class ScheduleWidgetWindow : Window
             _marqueeAnimationReady = true;
             ConfigureMarquee(force: true);
         };
+        _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _autoHideTimer.Tick += (_, _) => UpdateAutoHide();
         Closed += (_, _) =>
         {
             _clockTimer.Stop();
             _marqueeTimer.Stop();
             _marqueeStartTimer.Stop();
+            _autoHideTimer.Stop();
         };
 
         RefreshSchedule();
@@ -139,6 +151,9 @@ internal sealed class ScheduleWidgetWindow : Window
     private bool IsDetailMode => Mode == "detail";
     /// <summary>True when clicks should pass through the desktop widget to the window below it.</summary>
     private bool ClickThrough => !_taskbarDashboard && (_previewClickThrough ?? _settings.WidgetClickThrough);
+    /// <summary>True when the thin Essential/Minimalist widget hides while the cursor is near it.</summary>
+    private bool AutoHideOnHover => !_taskbarDashboard && !IsDetailMode &&
+        (_previewAutoHideOnHover ?? _settings.WidgetAutoHideOnHover);
 
     /// <summary>Applies a transient appearance preview without saving settings.</summary>
     /// <param name="mode">Mode to preview.</param>
@@ -146,13 +161,16 @@ internal sealed class ScheduleWidgetWindow : Window
     /// <param name="position">Position to preview.</param>
     /// <param name="alwaysOnTop">Whether the previewed widget should stay above other windows.</param>
     /// <param name="clickThrough">Whether clicks pass through the previewed widget.</param>
-    internal void ApplyAppearancePreview(string mode, string motion, string position, bool alwaysOnTop, bool clickThrough)
+    /// <param name="autoHideOnHover">Whether the previewed widget hides while the cursor is near it.</param>
+    internal void ApplyAppearancePreview(string mode, string motion, string position, bool alwaysOnTop,
+        bool clickThrough, bool autoHideOnHover)
     {
         _appearancePreview = (WidgetSettingsLogic.NormalizeMode(mode),
             WidgetSettingsLogic.NormalizeMotion(motion, legacyMinimalMode: false),
             WidgetSettingsLogic.NormalizePosition(position));
         _previewAlwaysOnTop = alwaysOnTop;
         _previewClickThrough = clickThrough;
+        _previewAutoHideOnHover = autoHideOnHover;
         RefreshSchedule();
     }
 
@@ -163,6 +181,7 @@ internal sealed class ScheduleWidgetWindow : Window
         _appearancePreview = null;
         _previewAlwaysOnTop = null;
         _previewClickThrough = null;
+        _previewAutoHideOnHover = null;
         RefreshSchedule();
     }
 
@@ -423,6 +442,59 @@ internal sealed class ScheduleWidgetWindow : Window
             }
         };
         ApplyPlacement(requestedWidth, requestedHeight);
+        RefreshAutoHide();
+        ApplyClickThrough();
+    }
+
+    /// <summary>Starts or stops cursor polling based on the effective auto-hide option.</summary>
+    private void RefreshAutoHide()
+    {
+        if (AutoHideOnHover)
+        {
+            if (!_autoHideTimer.IsEnabled) _autoHideTimer.Start();
+            return;
+        }
+        _autoHideTimer.Stop();
+        SetAutoHidden(false);
+    }
+
+    /// <summary>Hides the widget when the cursor is inside its bounds and restores it after the cursor leaves.</summary>
+    private void UpdateAutoHide()
+    {
+        if (!IsVisible || !AutoHideOnHover)
+        {
+            if (_autoHidden) SetAutoHidden(false);
+            return;
+        }
+        SetAutoHidden(CursorIsNearWidget());
+    }
+
+    /// <summary>Checks the global cursor position against the widget's physical screen bounds.</summary>
+    /// <returns>True when the cursor is inside the widget plus a small margin.</returns>
+    private bool CursorIsNearWidget()
+    {
+        IntPtr handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !GetCursorPos(out NativePoint cursor) ||
+            !GetWindowRect(handle, out NativeRect bounds)) return false;
+        double margin = AutoHideMarginDips * VisualTreeHelper.GetDpi(this).DpiScaleX;
+        return cursor.X >= bounds.Left - margin && cursor.X <= bounds.Right + margin &&
+            cursor.Y >= bounds.Top - margin && cursor.Y <= bounds.Bottom + margin;
+    }
+
+    /// <summary>Applies the auto-hidden state: invisible and temporarily click-through.</summary>
+    /// <param name="hidden">True to hide the widget until the cursor moves away.</param>
+    private void SetAutoHidden(bool hidden)
+    {
+        if (_autoHidden == hidden) return;
+        _autoHidden = hidden;
+        ApplyAutoHideVisualState();
+    }
+
+    /// <summary>Applies opacity, hit testing, and click-through for the current auto-hide state.</summary>
+    private void ApplyAutoHideVisualState()
+    {
+        Opacity = _autoHidden ? 0 : 1;
+        IsHitTestVisible = !_autoHidden;
         ApplyClickThrough();
     }
 
@@ -432,7 +504,8 @@ internal sealed class ScheduleWidgetWindow : Window
         IntPtr handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
         long style = GetWindowLongPtr(handle, GwlExStyle).ToInt64();
-        long updated = ClickThrough ? style | WsExTransparent : style & ~WsExTransparent;
+        bool passThrough = ClickThrough || _autoHidden;
+        long updated = passThrough ? style | WsExTransparent : style & ~WsExTransparent;
         if (updated == style) return;
         SetWindowLongPtr(handle, GwlExStyle, new IntPtr(updated));
     }
@@ -467,6 +540,26 @@ internal sealed class ScheduleWidgetWindow : Window
     /// <summary>Writes a 32-bit window-long attribute.</summary>
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static extern int SetWindowLong32(IntPtr window, int index, int value);
+
+    /// <summary>Native cursor coordinates used by GetCursorPos.</summary>
+    [StructLayout(LayoutKind.Sequential)] private struct NativePoint
+    {
+        public int X, Y;
+    }
+
+    /// <summary>Native window bounds in physical screen pixels.</summary>
+    [StructLayout(LayoutKind.Sequential)] private struct NativeRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    /// <summary>Reads the current cursor position in physical screen pixels.</summary>
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
+
+    /// <summary>Reads the window rectangle in physical screen pixels.</summary>
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr window, out NativeRect bounds);
 
     /// <summary>Positions the window on the work area according to mode, dashboard flag, and configured position.</summary>
     /// <param name="requestedWidth">Requested width before placement adjustment.</param>
