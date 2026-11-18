@@ -30,6 +30,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
     private readonly LockScreenImageTransaction _transaction;
     private readonly Action<string, Exception>? _log;
     private readonly Action<string, string>? _trace;
+    private readonly Func<string, string>? _imagePathProvider;
     private DateTimeOffset? _lastTickUtc;
     private DateTimeOffset? _lastRecoveryTraceUtc;
     private LockScreenTransactionResult? _lastRecoveryResult;
@@ -57,6 +58,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
     /// <param name="durationMinutes">Optional override for the temporary image duration.</param>
     /// <param name="executionRequest">Optional execution-required power request helper.</param>
     /// <param name="trace">Optional trace sink for timeline events.</param>
+    /// <param name="imagePathProvider">Optional factory generating the image shown at each prayer time instead of a fixed path.</param>
     internal LockScreenImageScheduler(
         Func<bool> isEnabled,
         Func<DateTime, IReadOnlyList<LockScreenPrayerTrigger>> scheduleForDate,
@@ -66,7 +68,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
         Action<string, Exception>? log = null,
         Func<int>? durationMinutes = null,
         ILockScreenExecutionRequest? executionRequest = null,
-        Action<string, string>? trace = null)
+        Action<string, string>? trace = null,
+        Func<string, string>? imagePathProvider = null)
     {
         _isEnabled = isEnabled;
         _scheduleForDate = scheduleForDate;
@@ -77,6 +80,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         _log = log;
         _executionRequest = executionRequest;
         _trace = trace;
+        _imagePathProvider = imagePathProvider;
     }
 
     /// <summary>Raised when a user-facing status message becomes available.</summary>
@@ -185,8 +189,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
                     TimeSpan duration = TimeSpan.FromMinutes(Math.Clamp(_durationMinutes(), 1, 120));
                     Trace("trigger", nowUtc, $"triggerUtc={nowUtc.Add(triggerTime - localNow):O} deadlineUtc={nowUtc.Add(duration):O}");
                     RequestExecutionUntil(nowUtc.Add(duration), acquireOnly: true);
+                    string imagePath = _imagePathProvider?.Invoke(trigger.Key) ?? _imagePath;
                     LockScreenTransactionResult result = await _transaction.BeginOrExtendAsync(
-                        _imagePath, nowUtc, CancellationToken.None, duration);
+                        imagePath, nowUtc, CancellationToken.None, duration);
                     SynchronizeExecutionRequest(result);
                     Trace("apply-result", nowUtc, $"result={result} deadlineUtc={ReadDiagnosticDeadline():O} visual=unverified");
                     results.Add(result);

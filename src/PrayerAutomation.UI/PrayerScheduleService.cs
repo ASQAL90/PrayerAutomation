@@ -21,6 +21,12 @@ internal static class PrayerScheduleService
         ("Isha", "Isya", time => time.IshaMinutes),
     ];
 
+    /// <summary>Resolves a prayer label for a stable key (e.g. Fajr to Subuh), or null if unknown.</summary>
+    /// <param name="key">Stable prayer key.</param>
+    /// <returns>The Indonesian label for the entry.</returns>
+    internal static string? LabelFor(string key) => Array.Find(PrayerOrder, p =>
+        string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase)).Label;
+
     /// <summary>Resolves a time zone by trying the given id, then IANA↔Windows conversions.</summary>
     /// <param name="id">Time zone identifier (IANA or Windows).</param>
     /// <returns>The resolved time zone.</returns>

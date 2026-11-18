@@ -87,7 +87,8 @@ public partial class App : Application
             AppLogger.Write,
             () => Settings.LockScreenDurationMinutes,
             new WindowsLockScreenExecutionRequest(AppLogger.WriteInfo),
-            AppLogger.WriteInfo);
+            AppLogger.WriteInfo,
+            imagePathProvider: LockScreenImageRenderer.RenderPrayerImage);
         _lockScreenScheduler.StatusChanged += message => _mainWindow?.SetLockScreenStatus(message);
         try
         {

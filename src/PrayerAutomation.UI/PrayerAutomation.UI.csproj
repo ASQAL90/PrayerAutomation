@@ -37,6 +37,8 @@
   <ItemGroup>
     <Content Include="../../sedang_sholat.png" Link="sedang_sholat.png"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/AyoJamaah-logo-white.png" Link="AyoJamaah-logo-white.png"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Data/geonames/cities1000.tsv.gz" Link="geonames/cities1000.tsv.gz"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Data/geonames/NOTICE.txt" Link="geonames/NOTICE.txt"
