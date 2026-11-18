@@ -47,6 +47,13 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private Size _hostClientSize;
     private int _hostDpi;
     private HwndSource? _source;
+    private bool _standaloneSource;
+    private bool _fallbackActive;
+    private string? _fallbackMessage;
+    private Rect _lastPanelScreenRect;
+    private bool _lastVertical;
+    private bool _lastCompact;
+    private bool _hasLastPanelRect;
     private Task<TaskbarPanelSnapshot>? _captureTask;
     private long _captureStarted;
     private DateTime _scheduleDay;
@@ -201,6 +208,9 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     {
         if (_disposed) return;
         RefreshCountdown(GetLocationNow());
+        // A custom shell can start or stop a fullscreen app between captures; react
+        // immediately so the floating fallback never covers a fullscreen window.
+        if (_fallbackActive) UpdateStandaloneState(_fallbackMessage ?? "Taskbar kustom terdeteksi.");
         if (_captureTask is null)
         {
             RequestCapture();
@@ -278,8 +288,17 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     private void ApplySnapshot(TaskbarPanelSnapshot snapshot)
     {
         if (_disposed) return;
-        if (snapshot.Slot is not Rect slot || snapshot.Parent == IntPtr.Zero || !TaskbarPanelLayout.Native.IsWindow(snapshot.Parent))
+        // A custom shell replaces Shell_TrayWnd. Keep the last verified slot alive
+        // as a standalone topmost panel instead of disappearing without a trace.
+        if (snapshot.Parent == IntPtr.Zero || !TaskbarPanelLayout.Native.IsWindow(snapshot.Parent) ||
+            !TaskbarPanelLayout.Native.IsWindowVisible(snapshot.Parent))
         {
+            EnterStandalone(snapshot.Message);
+            return;
+        }
+        if (snapshot.Slot is not Rect slot)
+        {
+            StopStandalone();
             Status(HideForPendingLayout() ? "Panel tetap aktif. Posisi taskbar menunggu pembacaan baru." : snapshot.Message);
             return;
         }
@@ -298,6 +317,12 @@ internal sealed class TaskbarCountdownPanel : IDisposable
                 : "Posisi taskbar berubah atau tersembunyi. Panel menunggu posisi baru.");
             return;
         }
+        _lastPanelScreenRect = new Rect(snapshot.ScreenBounds.Left + slot.Left,
+            snapshot.ScreenBounds.Top + slot.Top, slot.Width, slot.Height);
+        _lastVertical = snapshot.Vertical;
+        _lastCompact = snapshot.Compact;
+        _hasLastPanelRect = true;
+        StopStandalone();
         WatchHost(snapshot.Parent);
         if (TaskbarPanelLayout.Native.GetAncestor(snapshot.Parent, 2) != snapshot.Parent)
         {
@@ -385,6 +410,162 @@ internal sealed class TaskbarCountdownPanel : IDisposable
         _countdown.FontSize = vertical ? compact ? 8 : 10 : compact ? 13 : 16;
         _root.Padding = vertical ? new Thickness(3, 2, 3, 2) : new Thickness(5, 2, 5, 2);
         if (changed) RefreshCountdown(GetLocationNow());
+    }
+
+    /// <summary>Keeps the last verified taskbar slot visible when a custom shell replaces Shell_TrayWnd.</summary>
+    /// <param name="message">Capture message explaining why the host is unavailable.</param>
+    private void EnterStandalone(string message)
+    {
+        if (!_hasLastPanelRect)
+        {
+            StopStandalone();
+            Status(message);
+            return;
+        }
+        if (!_fallbackActive)
+        {
+            WatchHost(IntPtr.Zero);
+            _fallbackActive = true;
+        }
+        _fallbackMessage = message;
+        UpdateStandaloneState(message);
+    }
+
+    /// <summary>Shows or hides the standalone fallback according to fullscreen, auto-hide, and monitor state.</summary>
+    /// <param name="message">Capture message to append to the fallback status.</param>
+    private void UpdateStandaloneState(string message)
+    {
+        if (_disposed || !_fallbackActive) return;
+        // Auto-hide means the old taskbar area is intentionally empty; a floating
+        // panel there would look like a broken taskbar.
+        if (IsTaskbarAutoHideEnabled())
+        {
+            HideStandalone();
+            Status("Taskbar auto-hide aktif. Panel menunggu taskbar kembali terlihat.");
+            return;
+        }
+        if (IsFullscreenActive())
+        {
+            HideStandalone();
+            Status("Aplikasi fullscreen aktif. Panel disembunyikan sementara.");
+            return;
+        }
+        if (!IsRectOnAnyMonitor(_lastPanelScreenRect))
+        {
+            StopStandalone();
+            Status("Posisi taskbar terakhir tidak lagi tersedia. Panel menunggu taskbar baru.");
+            return;
+        }
+        EnsureStandaloneSource();
+        ShowStandalone();
+        Status(message + " Panel tetap di area taskbar terakhir.");
+    }
+
+    /// <summary>Creates the standalone topmost renderer when no taskbar host owns it.</summary>
+    private void EnsureStandaloneSource()
+    {
+        if (_source is not null && _standaloneSource) return;
+        RemoveChild();
+        var parameters = new HwndSourceParameters("PrayerAutomation.TaskbarCountdownFallback")
+        {
+            ParentWindow = IntPtr.Zero,
+            WindowStyle = PopupStyle,
+            ExtendedWindowStyle = NoActivateToolWindow,
+            PositionX = (int)_lastPanelScreenRect.Left,
+            PositionY = (int)_lastPanelScreenRect.Top,
+            Width = Math.Max(1, (int)_lastPanelScreenRect.Width),
+            Height = Math.Max(1, (int)_lastPanelScreenRect.Height),
+            AdjustSizingForNonClientArea = false,
+            UsesPerPixelTransparency = true
+        };
+        HwndSource source = _source = new HwndSource(parameters);
+        _standaloneSource = true;
+        source.AddHook(WindowMessage);
+        source.RootVisual = _root;
+        int excludedFromPeek = 1; // Win32 BOOL, not a one-byte managed bool.
+        Marshal.ThrowExceptionForHR(PopupNative.DwmSetWindowAttribute(source.Handle, 12,
+            ref excludedFromPeek, sizeof(int))); // DWMWA_EXCLUDED_FROM_PEEK
+        int transitionsForcedDisabled = 1; // Keep the fallback visually quiet.
+        Marshal.ThrowExceptionForHR(PopupNative.DwmSetWindowAttribute(source.Handle, 3,
+            ref transitionsForcedDisabled, sizeof(int))); // DWMWA_TRANSITIONS_FORCEDISABLED
+        Matrix transform = source.CompositionTarget.TransformFromDevice;
+        var size = new Size(Math.Max(1, _lastPanelScreenRect.Width * transform.M11),
+            Math.Max(1, _lastPanelScreenRect.Height * transform.M22));
+        _root.Width = size.Width;
+        _root.Height = size.Height;
+        ConfigureLayout(_lastVertical, _lastCompact);
+        _root.Measure(size);
+        _root.Arrange(new Rect(size));
+        _root.UpdateLayout();
+    }
+
+    /// <summary>Pins the standalone fallback to the cached taskbar rectangle.</summary>
+    private void ShowStandalone()
+    {
+        HwndSource? source = _source;
+        if (source is null) return;
+        if (!TaskbarPanelLayout.Native.IsWindowVisible(source.Handle))
+            TaskbarPanelLayout.Native.ShowWindow(source.Handle, 8); // SW_SHOWNA: no activation.
+        if (!TaskbarPanelLayout.Native.SetWindowPos(source.Handle, new IntPtr(-1),
+            (int)_lastPanelScreenRect.Left, (int)_lastPanelScreenRect.Top,
+            Math.Max(1, (int)_lastPanelScreenRect.Width), Math.Max(1, (int)_lastPanelScreenRect.Height),
+            0x0010 | 0x0040 | 0x0200))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
+
+    /// <summary>Hides the standalone fallback without disposing its renderer.</summary>
+    private void HideStandalone()
+    {
+        if (_source is not null && TaskbarPanelLayout.Native.IsWindowVisible(_source.Handle))
+            TaskbarPanelLayout.Native.ShowWindow(_source.Handle, 0);
+    }
+
+    /// <summary>Disposes the fallback renderer and leaves the panel waiting for a real taskbar host.</summary>
+    private void StopStandalone()
+    {
+        if (!_fallbackActive && !_standaloneSource) return;
+        _fallbackActive = false;
+        _fallbackMessage = null;
+        RemoveChild();
+    }
+
+    /// <summary>Checks the Windows taskbar auto-hide preference.</summary>
+    /// <returns>True when auto-hide is enabled.</returns>
+    private static bool IsTaskbarAutoHideEnabled()
+    {
+        var data = new TaskbarPanelLayout.Native.AppBarData
+        {
+            Size = Marshal.SizeOf<TaskbarPanelLayout.Native.AppBarData>()
+        };
+        IntPtr state = TaskbarPanelLayout.Native.SHAppBarMessage(4, ref data); // ABM_GETSTATE
+        return (state.ToInt64() & 0x1) != 0; // ABS_AUTOHIDE
+    }
+
+    /// <summary>Checks whether a fullscreen, presentation, or lock-screen state hides notifications.</summary>
+    /// <returns>True when the fallback should stay hidden.</returns>
+    private static bool IsFullscreenActive()
+    {
+        int result = TaskbarPanelLayout.Native.SHQueryUserNotificationState(out int state);
+        return result >= 0 && state is >= 1 and <= 4;
+    }
+
+    /// <summary>Checks whether a cached panel rectangle still fits one monitor.</summary>
+    /// <param name="rect">Panel rectangle in physical screen coordinates.</param>
+    /// <returns>True when the rectangle lies fully inside a monitor.</returns>
+    private static bool IsRectOnAnyMonitor(Rect rect)
+    {
+        if (rect.IsEmpty || rect.Width <= 0 || rect.Height <= 0 ||
+            !double.IsFinite(rect.Left) || !double.IsFinite(rect.Top) ||
+            !double.IsFinite(rect.Right) || !double.IsFinite(rect.Bottom)) return false;
+        var bounds = new TaskbarPanelLayout.Native.Bounds
+        {
+            Left = (int)rect.Left, Top = (int)rect.Top,
+            Right = (int)rect.Right, Bottom = (int)rect.Bottom
+        };
+        IntPtr monitor = TaskbarPanelLayout.Native.MonitorFromRect(ref bounds, 0); // MONITOR_DEFAULTTONULL
+        if (monitor == IntPtr.Zero || !TaskbarPanelLayout.Native.GetMonitorInfo(monitor, out var info)) return false;
+        return bounds.Left >= info.Monitor.Left && bounds.Top >= info.Monitor.Top &&
+            bounds.Right <= info.Monitor.Right && bounds.Bottom <= info.Monitor.Bottom;
     }
 
     /// <summary>Verifies the owned popup still has valid ownership and styles against the host.</summary>
@@ -542,6 +723,7 @@ internal sealed class TaskbarCountdownPanel : IDisposable
     {
         HwndSource? source = _source;
         _source = null;
+        _standaloneSource = false;
         _hostGeometryKnown = false;
         if (source is null || source.IsDisposed) return;
         source.RootVisual = null;

@@ -146,6 +146,8 @@ using (JsonDocument defaults = NormalizeSettings("{}"))
            autoLockEnabled.ValueKind == JsonValueKind.False &&
            defaults.RootElement.TryGetProperty("widget_always_on_top", out JsonElement widgetAlwaysOnTop) &&
            widgetAlwaysOnTop.ValueKind == JsonValueKind.True &&
+           defaults.RootElement.TryGetProperty("widget_click_through", out JsonElement widgetClickThrough) &&
+           widgetClickThrough.ValueKind == JsonValueKind.False &&
            defaults.RootElement.TryGetProperty("lock_enabled", out JsonElement lockEnabled) &&
            lockEnabled.ValueKind == JsonValueKind.False &&
            defaults.RootElement.TryGetProperty("lock_screen_opt_in", out JsonElement lockScreenOptIn) &&
@@ -154,7 +156,7 @@ using (JsonDocument defaults = NormalizeSettings("{}"))
            startHidden.ValueKind == JsonValueKind.False &&
            IsJsonString(defaults.RootElement, "online_geocoding_endpoint", AppSettings.DefaultOnlineGeocodingEndpoint) &&
            !defaults.RootElement.TryGetProperty("online_geocoding_consent", out _),
-        "New installs must default to the readable one-line widget, static text, top-center position, Light theme, lock screen and auto-lock disabled, startup visible, and explicit non-persisted geocoding consent.");
+        "New installs must default to the readable one-line widget, static text, top-center position, always-on-top enabled, click-through disabled, Light theme, lock screen and auto-lock disabled, startup visible, and explicit non-persisted geocoding consent.");
 }
 
 using (JsonDocument legacyMinimal = NormalizeSettings("{\"widget_mode\":\"minimal\"}"))

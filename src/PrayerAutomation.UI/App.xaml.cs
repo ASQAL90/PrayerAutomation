@@ -186,7 +186,8 @@ public partial class App : Application
     /// <param name="motion">Widget motion to preview.</param>
     /// <param name="position">Widget position to preview.</param>
     /// <param name="alwaysOnTop">Whether the previewed widget stays above other windows.</param>
-    internal void ApplyWidgetAppearancePreview(bool enabled, string mode, string motion, string position, bool alwaysOnTop)
+    /// <param name="clickThrough">Whether clicks pass through the previewed widget.</param>
+    internal void ApplyWidgetAppearancePreview(bool enabled, string mode, string motion, string position, bool alwaysOnTop, bool clickThrough)
     {
         if (!_widgetAppearancePreviewActive)
         {
@@ -202,7 +203,7 @@ public partial class App : Application
         }
 
         ScheduleWidgetWindow widget = EnsureWidget();
-        widget.ApplyAppearancePreview(mode, motion, position, alwaysOnTop);
+        widget.ApplyAppearancePreview(mode, motion, position, alwaysOnTop, clickThrough);
         if (!widget.IsVisible)
         {
             bool showActivated = widget.ShowActivated;

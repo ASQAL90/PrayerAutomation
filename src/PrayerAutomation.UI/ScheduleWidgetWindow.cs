@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Button = System.Windows.Controls.Button;
@@ -14,6 +16,8 @@ namespace PrayerAutomation.UI;
 internal sealed class ScheduleWidgetWindow : Window
 {
     private const double MarqueePixelsPerTick = 1.25;
+    private const int GwlExStyle = -20;
+    private const long WsExTransparent = 0x00000020;
     private static readonly CultureInfo IndonesianCulture = CultureInfo.GetCultureInfo("id-ID");
 
     private readonly AppSettings _settings;
@@ -25,6 +29,7 @@ internal sealed class ScheduleWidgetWindow : Window
     private System.Windows.Controls.Image _nextPrayerIcon = null!;
     private (string Mode, string Motion, string Position)? _appearancePreview;
     private bool? _previewAlwaysOnTop;
+    private bool? _previewClickThrough;
     private readonly Dictionary<DateTime, IReadOnlyList<PrayerEntry>> _scheduleCache = new();
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _marqueeTimer;
@@ -78,6 +83,7 @@ internal sealed class ScheduleWidgetWindow : Window
             WindowState = WindowState.Normal;
         }
         WindowStartupLocation = WindowStartupLocation.Manual;
+        SourceInitialized += (_, _) => ApplyClickThrough();
         StateChanged += (_, _) => RestoreFixedPlacementAfterStateChange();
         Closing += (_, e) =>
         {
@@ -131,18 +137,22 @@ internal sealed class ScheduleWidgetWindow : Window
     private bool IsMinimalistMode => Mode == "minimalist";
     /// <summary>True when the effective mode is "detail".</summary>
     private bool IsDetailMode => Mode == "detail";
+    /// <summary>True when clicks should pass through the desktop widget to the window below it.</summary>
+    private bool ClickThrough => !_taskbarDashboard && (_previewClickThrough ?? _settings.WidgetClickThrough);
 
     /// <summary>Applies a transient appearance preview without saving settings.</summary>
     /// <param name="mode">Mode to preview.</param>
     /// <param name="motion">Motion to preview.</param>
     /// <param name="position">Position to preview.</param>
     /// <param name="alwaysOnTop">Whether the previewed widget should stay above other windows.</param>
-    internal void ApplyAppearancePreview(string mode, string motion, string position, bool alwaysOnTop)
+    /// <param name="clickThrough">Whether clicks pass through the previewed widget.</param>
+    internal void ApplyAppearancePreview(string mode, string motion, string position, bool alwaysOnTop, bool clickThrough)
     {
         _appearancePreview = (WidgetSettingsLogic.NormalizeMode(mode),
             WidgetSettingsLogic.NormalizeMotion(motion, legacyMinimalMode: false),
             WidgetSettingsLogic.NormalizePosition(position));
         _previewAlwaysOnTop = alwaysOnTop;
+        _previewClickThrough = clickThrough;
         RefreshSchedule();
     }
 
@@ -152,6 +162,7 @@ internal sealed class ScheduleWidgetWindow : Window
         if (_appearancePreview is null) return;
         _appearancePreview = null;
         _previewAlwaysOnTop = null;
+        _previewClickThrough = null;
         RefreshSchedule();
     }
 
@@ -412,7 +423,50 @@ internal sealed class ScheduleWidgetWindow : Window
             }
         };
         ApplyPlacement(requestedWidth, requestedHeight);
+        ApplyClickThrough();
     }
+
+    /// <summary>Adds or removes WS_EX_TRANSPARENT so clicks pass through the widget without changing its appearance.</summary>
+    private void ApplyClickThrough()
+    {
+        IntPtr handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        long style = GetWindowLongPtr(handle, GwlExStyle).ToInt64();
+        long updated = ClickThrough ? style | WsExTransparent : style & ~WsExTransparent;
+        if (updated == style) return;
+        SetWindowLongPtr(handle, GwlExStyle, new IntPtr(updated));
+    }
+
+    /// <summary>Reads a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+    /// <param name="window">Target window handle.</param>
+    /// <param name="index">GWL_* index.</param>
+    /// <returns>The attribute value.</returns>
+    private static IntPtr GetWindowLongPtr(IntPtr window, int index) => IntPtr.Size == 8
+        ? GetWindowLongPtr64(window, index) : new IntPtr(GetWindowLong32(window, index));
+
+    /// <summary>Writes a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+    /// <param name="window">Target window handle.</param>
+    /// <param name="index">GWL_* index.</param>
+    /// <param name="value">The new attribute value.</param>
+    /// <returns>The previous attribute value.</returns>
+    private static IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value) => IntPtr.Size == 8
+        ? SetWindowLongPtr64(window, index, value) : new IntPtr(SetWindowLong32(window, index, value.ToInt32()));
+
+    /// <summary>Reads a 64-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr window, int index);
+
+    /// <summary>Reads a 32-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr window, int index);
+
+    /// <summary>Writes a 64-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr window, int index, IntPtr value);
+
+    /// <summary>Writes a 32-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr window, int index, int value);
 
     /// <summary>Positions the window on the work area according to mode, dashboard flag, and configured position.</summary>
     /// <param name="requestedWidth">Requested width before placement adjustment.</param>

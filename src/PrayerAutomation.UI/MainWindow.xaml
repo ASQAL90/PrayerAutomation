@@ -408,10 +408,15 @@
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />
                                         </CheckBox>
                                         <TextBlock Name="WidgetAlwaysOnTopHint" Style="{StaticResource FormHelpText}" Text="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+                                        <CheckBox Name="WidgetClickThroughCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Klik tembus ke jendela di belakang widget" />
+                                        </CheckBox>
+                                        <TextBlock Name="WidgetClickThroughHint" Style="{StaticResource FormHelpText}" Text="Widget tetap terlihat penuh; klik diteruskan ke jendela di bawahnya. Untuk mematikan, buka pengaturan atau menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                         <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
                                         </CheckBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Text="Jika taskbar Windows diganti taskbar kustom, panel tetap tampil di area taskbar terakhir selama auto-hide dan aplikasi fullscreen tidak aktif." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
                             </GroupBox>

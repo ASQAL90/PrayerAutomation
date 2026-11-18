@@ -135,12 +135,16 @@ internal static class TaskbarPanelLayout
     internal static TaskbarPanelSnapshot Capture(IntPtr ownChild)
     {
         IntPtr parent = Native.FindWindow("Shell_TrayWnd", null);
-        if (parent == IntPtr.Zero || !Native.GetWindowRect(parent, out Native.Bounds screen) ||
-            !Native.GetClientRect(parent, out Native.Bounds client) || !Native.IsWindowVisible(parent))
+        if (parent == IntPtr.Zero)
+            return Missing("Taskbar Windows belum tersedia; widget desktop tetap dapat digunakan.");
+        if (!Native.GetWindowRect(parent, out Native.Bounds screen) ||
+            !Native.GetClientRect(parent, out Native.Bounds client))
             return Missing("Taskbar Windows belum tersedia; widget desktop tetap dapat digunakan.");
         int dpi = (int)Native.GetDpiForWindow(parent);
         if (dpi <= 0) dpi = 96;
         Rect screenBounds = screen.ToRect();
+        if (!Native.IsWindowVisible(parent))
+            return new(parent, screenBounds, dpi, null, "Taskbar tersembunyi. Panel ikut disembunyikan.");
         if (!IsHostOnMonitor(parent, screenBounds))
             return new(parent, screenBounds, dpi, null, "Taskbar tersembunyi. Panel ikut disembunyikan.");
         var occupied = new List<Rect>();
@@ -371,5 +375,21 @@ internal static class TaskbarPanelLayout
         /// <summary>Sets window position, size, and Z-order.</summary>
         [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
+        /// <summary>Native APPBARDATA structure used to query taskbar state.</summary>
+        [StructLayout(LayoutKind.Sequential)] internal struct AppBarData
+        {
+            internal int Size;
+            internal IntPtr Window;
+            internal uint CallbackMessage;
+            internal uint Edge;
+            internal Bounds Rect;
+            internal IntPtr Parameter;
+        }
+        /// <summary>Sends an appbar message such as ABM_GETSTATE.</summary>
+        [DllImport("shell32.dll")] internal static extern IntPtr SHAppBarMessage(uint message, ref AppBarData data);
+        /// <summary>Queries whether a fullscreen or presentation application is active.</summary>
+        [DllImport("shell32.dll")] internal static extern int SHQueryUserNotificationState(out int state);
+        /// <summary>Finds the monitor nearest a rectangle.</summary>
+        [DllImport("user32.dll")] internal static extern IntPtr MonitorFromRect(ref Bounds rect, uint flags);
     }
 }

@@ -5,9 +5,11 @@ using System.Reflection;
 using System.IO;
 using System.Linq.Expressions;
 using Expression = System.Linq.Expressions.Expression;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 
@@ -24,6 +26,7 @@ internal static class WidgetSettingsInteractionSmoke
         {
             VerifyAppearanceChangesOnActualWidget(fixture);
             VerifyDetailWidgetStaysFixedSize(fixture);
+            VerifyClickThroughToggle(fixture);
             VerifyCancelRestoresSavedAppearance(fixture);
             VerifyCloseToTrayRestoresSavedAppearance(fixture);
             VerifyTemporaryVisibilityRestoresPriorVisibility(fixture);
@@ -79,6 +82,53 @@ internal static class WidgetSettingsInteractionSmoke
             "The restored Medium Detail widget must stay inside the work area.");
         Console.WriteLine("WIDGET_FIXED_SIZE PASS: no resize grip, maximize undone, fixed size and placement restored.");
     }
+
+    /// <summary>Verifies the click-through option toggles WS_EX_TRANSPARENT without fading the widget.</summary>
+    /// <param name="fixture">Fixture under test.</param>
+    private static void VerifyClickThroughToggle(Fixture fixture)
+    {
+        fixture.Select("WidgetModeBox", "essential");
+        Pump();
+        Window widget = fixture.Widget;
+        IntPtr handle = new WindowInteropHelper(widget).Handle;
+        Assert(handle != IntPtr.Zero, "The click-through test requires a created widget window.");
+        Assert(!HasTransparentStyle(handle), "A new widget must not start click-through.");
+        fixture.Field<CheckBox>("WidgetClickThroughCheckBox").IsChecked = true;
+        Pump();
+        Assert(HasTransparentStyle(handle),
+            "Enabling click-through must add WS_EX_TRANSPARENT to the real widget window.");
+        Assert(widget.Opacity == 1,
+            "Click-through must not fade the widget; opacity and the solid panel stay unchanged.");
+        fixture.Field<CheckBox>("WidgetClickThroughCheckBox").IsChecked = false;
+        Pump();
+        Assert(!HasTransparentStyle(handle),
+            "Disabling click-through must remove WS_EX_TRANSPARENT from the real widget window.");
+        Console.WriteLine("WIDGET_CLICK_THROUGH PASS: WS_EX_TRANSPARENT applied and removed, opacity unchanged.");
+    }
+
+    /// <summary>Checks whether the window has the WS_EX_TRANSPARENT extended style.</summary>
+    /// <param name="handle">Window handle.</param>
+    /// <returns>True when clicks pass through the window.</returns>
+    private static bool HasTransparentStyle(IntPtr handle) =>
+        (GetWindowLongPtr(handle, GwlExStyle).ToInt64() & WsExTransparent) != 0;
+
+    /// <summary>Reads a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+    /// <param name="handle">Window handle.</param>
+    /// <param name="index">GWL_* index.</param>
+    /// <returns>The attribute value.</returns>
+    private static IntPtr GetWindowLongPtr(IntPtr handle, int index) => IntPtr.Size == 8
+        ? GetWindowLongPtrW(handle, index) : new IntPtr(GetWindowLongW(handle, index));
+
+    private const int GwlExStyle = -20;
+    private const long WsExTransparent = 0x00000020;
+
+    /// <summary>Reads a 64-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtrW(IntPtr handle, int index);
+
+    /// <summary>Reads a 32-bit window-long attribute.</summary>
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLongW(IntPtr handle, int index);
 
     /// <summary>Verifies Cancel restores the saved mode, position, theme, and widget visibility.</summary>
     /// <param name="fixture">Fixture under test.</param>
