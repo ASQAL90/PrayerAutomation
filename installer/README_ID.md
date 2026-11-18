@@ -1,4 +1,4 @@
-# Pemasang Ayo Jama'ah! 2.1.2
+# Pemasang Ayo Jama'ah! 2.2.0
 
 Installer dibangun dengan **NSIS** saja. Tujuannya agar installer bisa dibangun langsung dari Termux/proot Debian tanpa menunggu Windows. Uji install/upgrade/uninstall dan verifikasi visual tetap wajib di Windows.
 
@@ -16,7 +16,7 @@ ayojamaah-build installer
 ayojamaah-build installer --check-only
 ```
 
-Output default: `../AyoJamaah-build/installer/AyoJamaah.Setup-2.1.2.exe`. Build root dapat diganti dengan `AYOJAMAAH_OUT`. Di Termux, `makensis` dijalankan lewat `proot-distro login debian`; di Windows, skrip memakai `makensis` di `PATH` atau `--makensis <path>`.
+Output default: `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.0.exe`. Build root dapat diganti dengan `AYOJAMAAH_OUT`. Di Termux, `makensis` dijalankan lewat `proot-distro login debian`; di Windows, skrip memakai `makensis` di `PATH` atau `--makensis <path>`.
 
 File yang terlibat:
 
@@ -31,7 +31,7 @@ File yang terlibat:
 | `installer/nsis/AyoJamaahPayloadFiles-x64.txt` / `-x86.txt` | Hasil generate; daftar payload per arsitektur untuk pembersihan upgrade |
 | `installer/nsis/wizard-banner.bmp` | Banner sisi kiri halaman Selamat datang/Selesai |
 
-Receipt 2.1.2: 482 file x64, 481 file x86, 484 file unik, 9 file shared. Generator memvalidasi ulang hash receipt terhadap folder portable sebelum menulis include. Entry point build selalu menulis ulang include dari receipt; kalau hasilnya berubah, review diff `AyoJamaahPayload-dual.nsh` sebelum komit.
+Receipt 2.2.0: 482 file x64, 481 file x86, 484 file unik, 9 file shared. Generator memvalidasi ulang hash receipt terhadap folder portable sebelum menulis include. Entry point build selalu menulis ulang include dari receipt; kalau hasilnya berubah, review diff `AyoJamaahPayload-dual.nsh` sebelum komit.
 
 Payload tidak dibangun ulang oleh installer. Kalau portable berubah, buat receipt baru dengan `make_payload_receipt.py --force`, review, lalu build. Jangan mengganti file payload atau mengedit include secara manual.
 

@@ -26,7 +26,7 @@ internal sealed class UpdateService
     }
 
     /// <summary>Queries GitHub and returns the newest release when it is newer than the current version.</summary>
-    /// <param name="currentVersion">Current application version, e.g. "2.1.2".</param>
+    /// <param name="currentVersion">Current application version, e.g. "2.2.0".</param>
     /// <param name="cancellationToken">Cancels the request.</param>
     /// <returns>Update information, or null when already up to date or unavailable.</returns>
     internal async Task<UpdateInfo?> CheckAsync(string currentVersion, CancellationToken cancellationToken)

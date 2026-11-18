@@ -1,6 +1,6 @@
 # Metadata publisher — Ayo Jama'ah! 2.1.0
 
-> **Catatan 2.1.2:** backend taskbar WinUI tidak lagi diproduksi. Tabel di bawah mendokumentasikan build 2.1.0 untuk referensi historis; metadata `AyoJamaah.exe`/`AyoJamaah.dll` tetap berlaku.
+> **Catatan 2.2.0:** backend taskbar WinUI tidak lagi diproduksi. Tabel di bawah mendokumentasikan build 2.1.0 untuk referensi historis; metadata `AyoJamaah.exe`/`AyoJamaah.dll` tetap berlaku.
 
 ## Identitas yang dirapikan
 

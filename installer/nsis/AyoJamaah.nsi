@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.1.2"
-!define APP_VERSION_QUAD "2.1.2.0"
+!define APP_VERSION "2.2.0"
+!define APP_VERSION_QUAD "2.2.0.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"

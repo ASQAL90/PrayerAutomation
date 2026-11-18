@@ -1,6 +1,6 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.1.2
+## Mulai di sini — ringkasan 2.2.0
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
@@ -13,10 +13,10 @@
 
 ## Panduan rinci — sebagian masih perlu sinkronisasi
 
-Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.1.2**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
+Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.2.0**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): jalur NSIS 2.1.2.
+- [Installer](INSTALLER_ID.md): jalur NSIS 2.2.0.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.
