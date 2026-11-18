@@ -3,8 +3,8 @@
 ; re-hashed before this file was written. Re-run the generator instead.
 ; Shared files are installed once; architecture files are gated at runtime.
 ; x64 files=483 x86 files=482 unique=485 shared=10
-; ui_sha256_x64=ea98eb142843ee54e3aafb68da47c31e63a40cac9738b6ef13f2184756ab366b
-; ui_sha256_x86=1c002481d1e7a4714a9cd574280891b53222c2b986ea808ebc170d09a8568235
+; ui_sha256_x64=ac8cabd2532d680d7a245daabff89c19eb1bf7e5d9d9f251436c5d5832229a62
+; ui_sha256_x86=27a61668c29b670f4ee3ff999926a9bb4e96969304222d6b4e77d03aa75c10e4
 
 !define NSIS_PAYLOAD_COUNT_X64 483
 !define NSIS_PAYLOAD_COUNT_X86 482
