@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PrayerAutomation.UI"
         Title="{x:Static local:AppBranding.WindowTitle}" Width="1180" Height="820"
-        MinWidth="940" MinHeight="650" WindowStartupLocation="CenterScreen"
-        ResizeMode="CanResize" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        MinWidth="1180" MinHeight="820" WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" UseLayoutRounding="True" SnapsToDevicePixels="True"
         Background="{DynamicResource AppBackgroundBrush}" Foreground="{DynamicResource PrimaryTextBrush}">
     <Window.Resources>
         <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
