@@ -1,4 +1,5 @@
 Accessibility.dll
+AyoJamaah-logo-white.png
 AyoJamaah.deps.json
 AyoJamaah.dll
 AyoJamaah.exe
