@@ -156,7 +156,7 @@ Section "Finalisasi" SEC_INSTALL_FINAL
   IfFileExists "$INSTDIR\Uninstall.exe" 0 uninstaller_failed
     Goto uninstaller_ok
   uninstaller_failed:
-    MessageBox MB_ICONSTOP "Uninstaller tidak dapat dibuat di $INSTDIR. Pemasangan dibatalkan."
+    MessageBox MB_ICONSTOP "Uninstaller tidak bisa dibuat di $INSTDIR. Pemasangan dibatalkan."
     SetErrorLevel 5
     Quit
   uninstaller_ok:
@@ -339,37 +339,37 @@ Function CheckUnsafeCommandLine
   ; switches that must never silently change the safety boundary.
   System::Call 'shlwapi::StrStrIW(w r0, w "/LOADINF") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Impor opsi melalui /LOADINF tidak didukung karena dapat menonaktifkan pembatalan pengaman atau mengaktifkan penutupan/restart aplikasi otomatis. Jalankan pemasang tanpa /LOADINF."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak diizinkan. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/CLOSEAPPLICATIONS") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi penutupan otomatis, penghentian paksa, restart aplikasi, pemasangan semua pengguna, atau menonaktifkan pembatalan pengaman tidak didukung."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak didukung. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/FORCECLOSEAPPLICATIONS") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi penutupan otomatis, penghentian paksa, restart aplikasi, pemasangan semua pengguna, atau menonaktifkan pembatalan pengaman tidak didukung."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak didukung. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/RESTARTAPPLICATIONS") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi penutupan otomatis, penghentian paksa, restart aplikasi, pemasangan semua pengguna, atau menonaktifkan pembatalan pengaman tidak didukung."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak didukung. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/ALLUSERS") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi penutupan otomatis, penghentian paksa, restart aplikasi, pemasangan semua pengguna, atau menonaktifkan pembatalan pengaman tidak didukung."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak didukung. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/NOCANCEL") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi penutupan otomatis, penghentian paksa, restart aplikasi, pemasangan semua pengguna, atau menonaktifkan pembatalan pengaman tidak didukung."
+    StrCpy $SafetyProblem "Opsi pemasangan khusus tidak didukung. Jalankan pemasang biasa."
     Return
   ${EndIf}
   System::Call 'shlwapi::StrStrIW(w r0, w "/NCRC") p .r1'
   ${If} $1 != 0
-    StrCpy $SafetyProblem "Opsi /NCRC tidak didukung karena menonaktifkan pemeriksaan integritas pemasang."
+    StrCpy $SafetyProblem "Opsi /NCRC tidak diizinkan. Jalankan pemasang biasa."
     Return
   ${EndIf}
 FunctionEnd
@@ -427,17 +427,17 @@ Function RemoveStalePayload
     StrCpy $2 $1 1
     ${If} $2 == "\"
     ${OrIf} $2 == "/"
-      StrCpy $SafetyProblem "Manifest pemasangan berisi path absolut; pemasangan dibatalkan."
+      StrCpy $SafetyProblem "Manifest pemasangan tidak aman; pemasangan dibatalkan."
       Goto done
     ${EndIf}
     System::Call 'shlwapi::StrStrIW(w r1, w "..") p .r2'
     ${If} $2 != 0
-      StrCpy $SafetyProblem "Manifest pemasangan berisi path tidak aman; pemasangan dibatalkan."
+      StrCpy $SafetyProblem "Manifest pemasangan tidak aman; pemasangan dibatalkan."
       Goto done
     ${EndIf}
     System::Call 'shlwapi::StrStrIW(w r1, w ":") p .r2'
     ${If} $2 != 0
-      StrCpy $SafetyProblem "Manifest pemasangan berisi path tidak aman; pemasangan dibatalkan."
+      StrCpy $SafetyProblem "Manifest pemasangan tidak aman; pemasangan dibatalkan."
       Goto done
     ${EndIf}
 
@@ -466,7 +466,7 @@ Function RemoveStalePayload
         ${EndIf}
       delete_done:
       ${If} $R5 == 0
-        StrCpy $SafetyProblem "Berkas lama tidak dapat dihapus: $SafetyPath2 (Windows $R6). Tutup aplikasi yang memakai berkas ini lalu jalankan ulang pemasang."
+        StrCpy $SafetyProblem "Berkas lama tidak bisa dihapus: $SafetyPath2. Tutup aplikasi yang memakai berkas ini, lalu coba lagi."
         Goto done
       ${EndIf}
     ${EndIf}
@@ -492,7 +492,7 @@ Function ApplyStartFresh
   ${If} $R1 != -1
     IntOp $R2 $R1 & 0x400
     ${If} $R2 != 0
-      MessageBox MB_ICONEXCLAMATION "Folder pengaturan adalah tautan/junction. Mulai dari baru dilewati agar lokasi lain tidak terhapus; pengaturan lama dipertahankan."
+      MessageBox MB_ICONEXCLAMATION "Folder pengaturan adalah tautan, bukan folder biasa. Mulai dari baru dilewati agar lokasi lain tidak terhapus; pengaturan lama tetap ada."
       Return
     ${EndIf}
   ${EndIf}
@@ -627,7 +627,7 @@ Function ${P}DetectRunningProduct
 
   System::Call 'kernel32::CreateToolhelp32Snapshot(i 0x2, i 0) p .r1'
   ${If} $1 == -1
-    StrCpy $SafetyProblem "Pemeriksaan proses Windows gagal. Tidak ada berkas aplikasi yang diubah."
+    StrCpy $SafetyProblem "Pemasangan dibatalkan karena jendela sistem tidak merespons. Tidak ada berkas yang diubah."
     Return
   ${EndIf}
 
@@ -723,7 +723,7 @@ Function ${P}ForceCloseProductProcesses
 
   System::Call 'kernel32::CreateToolhelp32Snapshot(i 0x2, i 0) p .r1'
   ${If} $1 == -1
-    StrCpy $SafetyProblem "Pemeriksaan proses Windows gagal; tidak ada proses yang dihentikan."
+    StrCpy $SafetyProblem "Pemeriksaan proses Windows gagal; tidak ada yang dihentikan."
     Return
   ${EndIf}
 
@@ -795,12 +795,12 @@ Function ${P}ForceCloseProductProcesses
         ${If} $InspectSameSession != 0
           System::Call 'kernel32::OpenProcess(i 0x00100001, i 0, i r7) p .r3'
           ${If} $3 == 0
-            StrCpy $SafetyProblem "Proses $8 (PID $7) tidak dapat dibuka untuk dihentikan."
+            StrCpy $SafetyProblem "Proses $8 tidak dapat ditutup."
             Goto done
           ${EndIf}
           System::Call 'kernel32::TerminateProcess(p r3, i 0) i .r4'
           ${If} $4 == 0
-            StrCpy $SafetyProblem "Proses $8 (PID $7) tidak dapat dihentikan."
+            StrCpy $SafetyProblem "Proses $8 tidak dapat dihentikan."
             System::Call 'kernel32::CloseHandle(p r3)'
             Goto done
           ${EndIf}
@@ -828,11 +828,11 @@ Function ${P}CheckProductMutex
   Pop $R2
   ${If} $R1 != 0
     System::Call 'kernel32::CloseHandle(p R1)'
-    StrCpy $SafetyProblem "Penanda aplikasi masih aktif. Pilih Keluar lalu tunggu sampai proses selesai. Penanda global dapat berasal dari sesi/pengguna lain; pemasang tidak menghentikannya."
+    StrCpy $SafetyProblem "Aplikasi masih terbuka (mungkin dari sesi Windows lain). Pilih Keluar di dalam aplikasi, tunggu sampai tertutup, lalu coba lagi."
     Return
   ${EndIf}
   ${If} $R2 != 2
-    StrCpy $SafetyProblem "Penanda aplikasi tidak dapat diperiksa (Windows $R2)."
+    StrCpy $SafetyProblem "Aplikasi tidak dapat diperiksa (Windows $R2). Coba lagi."
   ${EndIf}
 FunctionEnd
 
@@ -844,10 +844,10 @@ Function ${P}AcquireSafetyMutex
   System::Call 'kernel32::CreateMutexW(p 0, i 0, w "${APP_MUTEX}") p .R1 ?e'
   Pop $R2
   ${If} $R1 == 0
-    StrCpy $SafetyProblem "Penanda pengaman pemasangan tidak dapat dibuat."
+    StrCpy $SafetyProblem "Pemasang tidak dapat mulai dalam mode aman. Coba lagi."
   ${ElseIf} $R2 == 183
     System::Call 'kernel32::CloseHandle(p R1)'
-    StrCpy $SafetyProblem "Aplikasi atau pemasang lain mulai berjalan. Batalkan atau coba lagi setelah Keluar."
+    StrCpy $SafetyProblem "Aplikasi atau pemasang lain sedang berjalan. Tutup dulu, lalu coba lagi."
   ${Else}
     StrCpy $SafetyMutex $R1
   ${EndIf}
@@ -872,17 +872,17 @@ Function ${P}CheckFileUnlocked
     ${ElseIf} $R2 == 3
       Return
     ${EndIf}
-    StrCpy $SafetyProblem "Berkas tidak dapat diperiksa: $SafetyPath"
+    StrCpy $SafetyProblem "Berkas tidak bisa diperiksa: $SafetyPath"
     Return
   ${EndIf}
   IntOp $R2 $R1 & 0x400
   ${If} $R2 != 0
-    StrCpy $SafetyProblem "Tautan/junction tidak diizinkan pada berkas tujuan: $SafetyPath"
+    StrCpy $SafetyProblem "Lokasi tujuan adalah tautan, bukan folder biasa: $SafetyPath. Gunakan folder biasa."
     Return
   ${EndIf}
   System::Call 'kernel32::CreateFileW(w "$SafetyPath", i 0xC0000000, i 0, p 0, i 3, i 0x80, p 0) p .R3'
   ${If} $R3 == -1
-    StrCpy $SafetyProblem "Berkas masih digunakan atau tidak dapat diakses: $SafetyPath. Tutup aplikasi secara normal; jangan paksa penghentian."
+    StrCpy $SafetyProblem "Berkas masih dipakai: $SafetyPath. Tutup aplikasi secara normal, lalu coba lagi."
   ${Else}
     System::Call 'kernel32::CloseHandle(p R3)'
   ${EndIf}
@@ -899,10 +899,10 @@ Function ${P}CheckTargetFiles
     ${If} $R2 == -1
       ${If} $R3 != 2
       ${AndIf} $R3 != 3
-        StrCpy $SafetyProblem "Isi direktori tujuan tidak dapat diperiksa: $SafetyPath"
+        StrCpy $SafetyProblem "Folder tujuan tidak bisa diperiksa: $SafetyPath"
       ${EndIf}
     ${Else}
-      StrCpy $SafetyProblem "Isi direktori tujuan tidak dapat diperiksa: $SafetyPath"
+      StrCpy $SafetyProblem "Folder tujuan tidak bisa diperiksa: $SafetyPath"
     ${EndIf}
     Return
   ${EndIf}
@@ -916,12 +916,12 @@ Function ${P}CheckTargetFiles
       StrCpy $SafetyPath2 "$SafetyPath\$1"
       System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath2") i .R2'
       ${If} $R2 == -1
-        StrCpy $SafetyProblem "Isi direktori tujuan tidak dapat diperiksa: $SafetyPath2"
+        StrCpy $SafetyProblem "Folder tujuan tidak bisa diperiksa: $SafetyPath2"
         ${ExitDo}
       ${EndIf}
       IntOp $R3 $R2 & 0x400
       ${If} $R3 != 0
-        StrCpy $SafetyProblem "Tautan/junction ditemukan: $SafetyPath2"
+        StrCpy $SafetyProblem "Folder tujuan berisi tautan, bukan folder biasa: $SafetyPath2"
         ${ExitDo}
       ${EndIf}
       IntOp $R3 $R2 & 0x10
@@ -972,10 +972,10 @@ Function ${P}ValidateInstallTarget
   Goto check_ancestors
 
   wrong_dir:
-    StrCpy $SafetyProblem "Lokasi wajib untuk pengguna saat ini: ${APP_INSTALL_DIR}. Opsi /DIR lain tidak didukung."
+    StrCpy $SafetyProblem "Aplikasi hanya dipasang di folder standar untuk pengguna ini."
     Return
   legacy_python:
-    StrCpy $SafetyProblem "Folder tujuan berisi instalasi Python lama. Jangan timpa. Simpan folder lama terlebih dahulu secara manual; data tidak dimigrasikan oleh pemasang."
+    StrCpy $SafetyProblem "Folder tujuan berisi instalasi versi Python lama. Jangan timpa; simpan folder lama secara manual dulu."
     Return
 
   check_ancestors:
@@ -1009,18 +1009,18 @@ Function ${P}ValidateInstallTarget
       ${If} $1 != -1
         IntOp $2 $1 & 0x400
         ${If} $2 != 0
-          StrCpy $SafetyProblem "Lokasi tujuan/induk berupa junction atau symlink: $SafetyPath"
+          StrCpy $SafetyProblem "Lokasi pemasangan adalah tautan, bukan folder biasa: $SafetyPath. Gunakan folder biasa."
           Return
         ${EndIf}
         IntOp $2 $1 & 0x10
         ${If} $2 == 0
-          StrCpy $SafetyProblem "Lokasi tujuan/induk bukan direktori: $SafetyPath"
+          StrCpy $SafetyProblem "Lokasi pemasangan bukan folder biasa: $SafetyPath"
           Return
         ${EndIf}
       ${Else}
         ${If} $2 != 2
         ${AndIf} $2 != 3
-          StrCpy $SafetyProblem "Lokasi tujuan tidak dapat diperiksa: $SafetyPath (Windows $2)"
+          StrCpy $SafetyProblem "Lokasi pemasangan tidak bisa diperiksa: $SafetyPath (Windows $2)"
           Return
         ${EndIf}
       ${EndIf}
@@ -1040,17 +1040,17 @@ Function ${P}CheckRecoveryComponent
     ${ElseIf} $R2 == 3
       Return
     ${EndIf}
-    StrCpy $SafetyProblem "Direktori pemulihan/induk tidak dapat diverifikasi: $SafetyPath"
+    StrCpy $SafetyProblem "Folder data aplikasi tidak bisa diperiksa: $SafetyPath"
     Return
   ${EndIf}
   IntOp $R2 $R1 & 0x10
   ${If} $R2 == 0
-    StrCpy $SafetyProblem "Direktori pemulihan/induk bukan direktori biasa: $SafetyPath"
+    StrCpy $SafetyProblem "Folder data aplikasi bukan folder biasa: $SafetyPath"
     Return
   ${EndIf}
   IntOp $R2 $R1 & 0x400
   ${If} $R2 != 0
-    StrCpy $SafetyProblem "Direktori pemulihan/induk berupa tautan/junction: $SafetyPath"
+    StrCpy $SafetyProblem "Folder data aplikasi adalah tautan, bukan folder biasa: $SafetyPath"
     Return
   ${EndIf}
   StrCpy $SafetyRecoveryExists 1
@@ -1065,7 +1065,7 @@ Function ${P}CheckPersistentRecovery
     Return
   ${EndIf}
   ${If} $SafetyRecoveryExists == 0
-    StrCpy $SafetyProblem "Direktori induk profil pengguna tidak dapat diverifikasi: $SafetyPath"
+    StrCpy $SafetyProblem "Folder profil pengguna tidak bisa diperiksa: $SafetyPath"
     Return
   ${EndIf}
 
@@ -1098,11 +1098,11 @@ Function ${P}CheckPersistentRecovery
     Pop $R7
     ${If} $R9 == -1
       ${If} $R7 != 2
-        StrCpy $SafetyProblem "Isi direktori pemulihan tidak dapat diverifikasi: $SafetyPath (Windows $R7)"
+        StrCpy $SafetyProblem "Folder pemulihan lock screen tidak bisa diperiksa: $SafetyPath"
       ${EndIf}
     ${Else}
       System::Call 'kernel32::FindClose(p R9)'
-      StrCpy $SafetyProblem "Isi direktori pemulihan tidak dapat diverifikasi: $SafetyPath"
+      StrCpy $SafetyProblem "Folder pemulihan lock screen tidak bisa diperiksa: $SafetyPath"
     ${EndIf}
     System::Free $R8
     Return
@@ -1116,17 +1116,17 @@ Function ${P}CheckPersistentRecovery
       StrCpy $SafetyPath2 "$SafetyPath\$1"
       System::Call 'kernel32::GetFileAttributesW(w "$SafetyPath2") i .R2'
       ${If} $R2 == -1
-        StrCpy $SafetyProblem "Isi direktori pemulihan tidak dapat diverifikasi: $SafetyPath2"
+        StrCpy $SafetyProblem "Folder pemulihan lock screen tidak bisa diperiksa: $SafetyPath2"
         ${ExitDo}
       ${EndIf}
       IntOp $R3 $R2 & 0x400
       ${If} $R3 != 0
-        StrCpy $SafetyProblem "Tautan/junction ditemukan dalam direktori pemulihan: $1"
+        StrCpy $SafetyProblem "Folder pemulihan lock screen berisi tautan: $1"
         ${ExitDo}
       ${EndIf}
       StrCpy $R4 $1 24
       ${If} $R4 == "lock-screen-restore.json"
-        StrCpy $SafetyProblem "Pemulihan lock screen masih tertunda atau tidak dapat diverifikasi ($1). Batalkan pemasangan/penghapusan. Pulihkan dan verifikasi melalui ${APP_NAME}; jangan hapus jurnal atau paksa Keluar."
+        StrCpy $SafetyProblem "Lock screen masih menampilkan gambar sholat.\r\n\r\nBuka Ayo Jama'ah! lalu ke Pengaturan tambahan, klik Pulihkan lock screen sekarang, tunggu sampai selesai, dan coba lagi. Kalau gambar sudah sesuai, klik Batalkan pemulihan tertunda."
         ${ExitDo}
       ${EndIf}
     ${EndIf}
@@ -1149,7 +1149,7 @@ Function ${P}BoundarySnapshot
     Return
   ${EndIf}
   ${If} $SafetyDetails != ""
-    StrCpy $SafetyProblem "${APP_NAME}/versi lama Python terkait masih berjalan:$\r$\n$SafetyDetails"
+    StrCpy $SafetyProblem "Ayo Jama'ah! masih terbuka:$\r$\n$SafetyDetails"
     Return
   ${EndIf}
 
@@ -1165,7 +1165,7 @@ FunctionEnd
 Function ${P}RecheckHeldBoundary
   StrCpy $SafetyProblem ""
   ${If} $SafetyMutex == 0
-    StrCpy $SafetyProblem "Penanda pengaman tidak aktif. Operasi dibatalkan."
+    StrCpy $SafetyProblem "Pemasang tidak bisa berjalan aman. Coba lagi."
     Return
   ${EndIf}
   Call ${P}CheckPersistentRecovery
@@ -1177,7 +1177,7 @@ Function ${P}RecheckHeldBoundary
     Return
   ${EndIf}
   ${If} $SafetyDetails != ""
-    StrCpy $SafetyProblem "Aplikasi masih berjalan:$\r$\n$SafetyDetails"
+    StrCpy $SafetyProblem "Ayo Jama'ah! masih terbuka:$\r$\n$SafetyDetails"
     Return
   ${EndIf}
   StrCpy $SafetyPath "$INSTDIR"
@@ -1189,15 +1189,15 @@ Function ${P}RequireSafeBoundary
   Call ${P}BoundarySnapshot
   ${If} $SafetyProblem != ""
     MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \
-      "$SafetyProblem$\r$\n$\r$\nAplikasi masih berjalan. Pilih Ya untuk MENUTUP PAKSA aplikasi dan melanjutkan pemasangan. Perubahan yang belum disimpan di aplikasi akan HILANG, dan pemulihan lock screen yang belum selesai dapat terganggu. Pilih Tidak untuk menutup aplikasi secara normal (Keluar dari menu tray/aplikasi) dan mencoba lagi." \
+      "$SafetyProblem$\r$\n$\r$\nAyo Jama'ah! masih terbuka. Pilih Ya untuk menutup paksa dan melanjutkan, atau Tidak untuk menutup aplikasi secara normal lalu coba lagi." \
       IDYES force_close
 
     ; Retry loop after the user closes the application normally.
     retry:
       MessageBox MB_RETRYCANCEL|MB_ICONINFORMATION \
-        "Pilih Keluar pada ${APP_NAME}, tunggu pemulihan lock screen dan proses selesai. Klik Coba Lagi untuk memeriksa ulang, atau Batal.$\r$\n$\r$\n$SafetyProblem" \
+        "Tutup Ayo Jama'ah! lewat ikon tray atau tombol Keluar di dalam aplikasi, tunggu beberapa detik, lalu klik Coba Lagi. Klik Batal untuk mengurungkan pemasangan." \
         IDRETRY retry_check
-      StrCpy $SafetyProblem "Operasi dibatalkan; aplikasi/pengaturan tidak diubah."
+      StrCpy $SafetyProblem "Pemasangan dibatalkan; tidak ada yang diubah."
       Return
 
     retry_check:
@@ -1216,7 +1216,7 @@ Function ${P}RequireSafeBoundary
       Sleep 750
       Call ${P}BoundarySnapshot
       ${If} $SafetyProblem != ""
-        StrCpy $SafetyProblem "Aplikasi dihentikan paksa, tetapi pemeriksaan ulang gagal:$\r$\n$SafetyProblem"
+        StrCpy $SafetyProblem "Ayo Jama'ah! ditutup paksa, tetapi lock screen atau berkas masih belum bersih. Selesaikan lewat Ayo Jama'ah! lalu coba lagi."
         Return
       ${EndIf}
   ${EndIf}

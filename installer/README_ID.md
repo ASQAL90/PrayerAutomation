@@ -50,7 +50,7 @@ Payload tidak dibangun ulang oleh installer. Kalau portable berubah, buat receip
 
 - Target wajib tepat di lokasi per-user; ancestor junction/symlink/reparse ditolak.
 - Folder instalasi Python lama di target diblokir, bukan ditimpa.
-- Jurnal `LockScreen\lock-screen-restore.json` beserta variannya memblokir install/uninstall dan tidak dihapus installer.
+- Jurnal `LockScreen\lock-screen-restore.json` beserta variannya memblokir install/uninstall dan tidak dihapus installer. Pesan galat mengarahkan pengguna ke **Pulihkan lock screen sekarang** dan **Batalkan pemulihan tertunda** di pengaturan aplikasi.
 - Proses produk dan interpreter yang image-nya di folder produk dideteksi lewat Toolhelp32 + session ID.
 - Mutex global produk diperiksa, ditahan selama operasi, lalu boundary diperiksa ulang.
 - File target diuji dengan `CreateFileW` read+write tanpa share.

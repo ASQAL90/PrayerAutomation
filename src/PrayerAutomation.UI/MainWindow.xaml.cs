@@ -1229,6 +1229,24 @@ public partial class MainWindow : Window
                     ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>Restores the lock-screen image immediately, without waiting for the scheduled restore.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private async void LockScreenRestoreNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is not App app) return;
+        LockScreenRestoreNowButton.IsEnabled = false;
+        try
+        {
+            await app.RestoreLockScreenNowAsync();
+        }
+        finally
+        {
+            LockScreenRestoreNowButton.IsEnabled = true;
+        }
+        RefreshLockScreenSafety();
+    }
+
     /// <summary>Clears a stuck lock-screen restore journal after an explicit, informed confirmation.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>

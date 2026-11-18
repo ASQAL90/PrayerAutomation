@@ -50,7 +50,7 @@ Tidak ada silent install/uninstall, `/ALLUSERS`, impor opsi, restart otomatis, a
 Perilaku pengaman (yang diport dari desain pengaman Inno yang kini dihapus):
 
 - Lokasi wajib `%LOCALAPPDATA%\Programs\PrayerAutomation`; ancestor junction/symlink/reparse dan folder instalasi Python lama ditolak.
-- Jurnal `%LOCALAPPDATA%\PrayerAutomation\LockScreen\lock-screen-restore.json` (dan variannya) memblokir install/uninstall. Jurnal tidak dihapus atau diperbaiki oleh installer; bila verifikasi tidak mungkin, pengguna dapat membatalkan lewat tombol **Batalkan pemulihan tertunda** di pengaturan aplikasi.
+- Jurnal `%LOCALAPPDATA%\PrayerAutomation\LockScreen\lock-screen-restore.json` (dan variannya) memblokir install/uninstall. Jurnal tidak dihapus atau diperbaiki oleh installer. Bila lock screen masih menampilkan gambar sholat, pengguna membuka **Pengaturan tambahan** di aplikasi lalu klik **Pulihkan lock screen sekarang**; bila gambar sudah sesuai dan verifikasi tidak mungkin, klik **Batalkan pemulihan tertunda**. Pesan galat installer mengarahkan ke dua tombol tersebut.
 - Tidak ada prompt "instalasi sebelumnya ditemukan". Upgrade dari versi lama langsung berjalan; pemeriksaan target, proses, mutex, dan jurnal tetap berlaku.
 - Proses produk (`AyoJamaah.exe`, `PrayerAutomation.UI.exe`, `PrayerAutomation.exe`, `prayer_automation.exe`) dan interpreter `python.exe`/`pythonw.exe`/`dotnet.exe` yang image-nya berada di folder produk dideteksi.
 - Mutex global `Global\PrayerAutomation.Desktop.SingleInstance` diperiksa, lalu installer menahan mutex itu selama tahap tulis/hapus dan memeriksa ulang boundary.

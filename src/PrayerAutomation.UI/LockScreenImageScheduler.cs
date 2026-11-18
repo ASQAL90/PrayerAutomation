@@ -257,6 +257,27 @@ internal sealed class LockScreenImageScheduler : IDisposable
         _transaction.ClearPending();
     }
 
+    /// <summary>Restores the previous lock-screen state immediately, without waiting for the restore deadline.</summary>
+    /// <returns>The outcome of the restore transaction.</returns>
+    internal async Task<LockScreenTransactionResult> RequestRestoreNowAsync()
+    {
+        ThrowIfDisposed();
+        if (_isProcessing && _processingCompleted is not null) await _processingCompleted.Task;
+        _recoveryPending = true;
+        try
+        {
+            LockScreenTransactionResult result = await _transaction.RestoreAsync(CancellationToken.None);
+            SynchronizeExecutionRequest(result);
+            _recoveryPending = result == LockScreenTransactionResult.PendingVerification;
+            PublishRecoveryStatus(result);
+            return result;
+        }
+        finally
+        {
+            _nextRecoveryCheckAtUtc = DateTimeOffset.UtcNow.Add(RecoveryPollInterval);
+        }
+    }
+
     /// <summary>Disposes the scheduler and its power request; the timer is stopped.</summary>
     public void Dispose()
     {

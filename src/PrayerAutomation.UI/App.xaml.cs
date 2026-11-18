@@ -399,6 +399,22 @@ public partial class App : Application
     /// <summary>True when a pending lock-screen restore journal is blocking install/uninstall.</summary>
     internal bool HasPendingLockScreenRecovery => _lockScreenScheduler?.HasPendingRecovery == true;
 
+    /// <summary>Restores the previous lock-screen state immediately, without waiting for the scheduled restore.</summary>
+    internal async Task RestoreLockScreenNowAsync()
+    {
+        if (_lockScreenScheduler is null) return;
+        try
+        {
+            await _lockScreenScheduler.RequestRestoreNowAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("lock-screen.restore-now", ex);
+            _mainWindow?.SetLockScreenStatus(
+                "Pemulihan lock screen belum berhasil; aplikasi tetap berjalan untuk percobaan berikutnya.");
+        }
+    }
+
     /// <summary>Cancels a pending lock-screen recovery after explicit user confirmation.</summary>
     internal void CancelLockScreenRecovery()
     {
