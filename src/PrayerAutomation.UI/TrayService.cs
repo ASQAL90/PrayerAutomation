@@ -10,6 +10,7 @@ namespace PrayerAutomation.UI;
 internal sealed class TrayService : IDisposable
 {
     private readonly NotifyIcon _icon;
+    private readonly ToolStripMenuItem _widgetItem;
     private readonly App _app;
     private readonly AboutPopupController _about = new();
 
@@ -24,20 +25,26 @@ internal sealed class TrayService : IDisposable
         menu.Items.Add("Buka aplikasi", null, (_, _) => Dispatch(() => _app.ShowMainWindow()));
         menu.Items.Add("Pengaturan", null, (_, _) => Dispatch(() => _app.OpenSettings()));
         menu.Items.Add("Buka kalender", null, (_, _) => Dispatch(() => _app.OpenCalendar()));
-        menu.Items.Add("Tampilkan widget jadwal", null, (_, _) => Dispatch(() => _app.ToggleWidget()));
-        menu.Items.Add("Tentang", null, (_, _) => Dispatch(_about.Show));
+        _widgetItem = new ToolStripMenuItem("Tampilkan widget jadwal", null,
+            (_, _) => Dispatch(() => _app.ToggleWidget()));
+        menu.Items.Add(_widgetItem);
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Periksa pembaruan", null, (_, _) => Dispatch(() => _app.CheckForUpdatesNow()));
+        menu.Items.Add("Tentang", null, (_, _) => Dispatch(_about.Show));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Keluar", null, (_, _) => Dispatch(() => _app.ShutdownApplication()));
+        menu.Opening += (_, _) => RefreshWidgetItem();
         _icon = new NotifyIcon { Icon = icon, Text = AppBranding.DisplayName, ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => Dispatch(() => _app.ShowMainWindow());
     }
 
-    /// <summary>Shows a tray notification with the application name and message.</summary>
-    /// <param name="message">Text to display in the balloon.</param>
-    internal void Notify(string message)
+    /// <summary>Shows the widget entry only when the feature is on, and labels it by current visibility.</summary>
+    private void RefreshWidgetItem()
     {
-        _icon.ShowBalloonTip(5000, AppBranding.DisplayName, message, ToolTipIcon.Info);
+        _widgetItem.Visible = _app.IsWidgetMenuAvailable;
+        _widgetItem.Text = _app.IsScheduleWidgetVisible
+            ? "Sembunyikan widget jadwal"
+            : "Tampilkan widget jadwal";
     }
 
     /// <summary>Runs an action on the WPF dispatcher, marshaling to it when called off the UI thread.</summary>

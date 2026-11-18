@@ -163,6 +163,12 @@ public partial class App : Application
         ShowWidget();
     }
 
+    /// <summary>True when the widget is enabled in settings, so the tray entry makes sense.</summary>
+    internal bool IsWidgetMenuAvailable => Settings.WidgetEnabled;
+
+    /// <summary>True when the schedule widget currently exists and is visible.</summary>
+    internal bool IsScheduleWidgetVisible => _widget is not null && _widget.IsVisible;
+
     /// <summary>Returns the schedule widget, creating it if it does not exist.</summary>
     /// <returns>The schedule widget instance.</returns>
     private ScheduleWidgetWindow EnsureWidget()

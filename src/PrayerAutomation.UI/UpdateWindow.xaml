@@ -7,6 +7,16 @@
         WindowStartupLocation="CenterScreen" Background="{DynamicResource SurfaceBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Segoe UI"
         UseLayoutRounding="True" PreviewKeyDown="OnPreviewKeyDown">
+    <Window.Resources>
+        <Style x:Key="UpdateHelpText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="TextAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+    </Window.Resources>
     <Border BorderThickness="1" BorderBrush="{DynamicResource AppBorderBrush}"
             Background="{DynamicResource SurfaceBrush}">
         <Grid Margin="20">
@@ -31,10 +41,10 @@
             </Grid>
 
             <StackPanel Grid.Row="1">
-                <TextBlock Style="{StaticResource FormHelpText}" Name="InstalledVersionText"
+                <TextBlock Style="{StaticResource UpdateHelpText}" Name="InstalledVersionText"
                            AutomationProperties.AutomationId="UpdateInstalledVersion"
                            Foreground="{DynamicResource MutedTextBrush}" />
-                <TextBlock Style="{StaticResource FormHelpText}" Name="StatusText"
+                <TextBlock Style="{StaticResource UpdateHelpText}" Name="StatusText"
                            AutomationProperties.AutomationId="UpdateStatusText"
                            Height="96" Margin="0,10,0,0" ClipToBounds="True"
                            ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
@@ -42,7 +52,7 @@
                 <ProgressBar Name="DownloadProgress" Height="6" Minimum="0" Maximum="100"
                              Visibility="Collapsed" Margin="0,8,0,0"
                              AutomationProperties.AutomationId="UpdateProgress" />
-                <TextBlock Style="{StaticResource FormHelpText}" Name="ProgressText"
+                <TextBlock Style="{StaticResource UpdateHelpText}" Name="ProgressText"
                            AutomationProperties.AutomationId="UpdateProgressText"
                            Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0" />
             </StackPanel>
