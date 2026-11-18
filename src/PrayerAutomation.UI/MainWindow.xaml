@@ -387,32 +387,31 @@
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Tampilkan widget jadwal di desktop" />
                                         </CheckBox>
                                         <TextBlock Text="Mode widget" Style="{StaticResource FieldLabel}" />
-                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetModeBox" AutomationProperties.AutomationId="WidgetModeBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetModeBox_SelectionChanged">
+                                        <ComboBox Name="WidgetModeBox" AutomationProperties.AutomationId="WidgetModeBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetModeBox_SelectionChanged">
                                             <ComboBoxItem Content="Essential — 5 waktu, satu baris" Tag="essential" />
                                             <ComboBoxItem Content="Minimalist — sholat berikutnya" Tag="minimalist" />
                                             <ComboBoxItem Content="Medium detail — jadwal lengkap" Tag="detail" />
-                                        </ComboBox></Grid>
+                                        </ComboBox>
                                         <TextBlock Name="WidgetMotionLabel" Text="Gerak mode Essential" Style="{StaticResource FieldLabel}" />
-                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
+                                        <ComboBox Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Statis — lima waktu tetap" Tag="static" />
                                             <ComboBoxItem Content="Marquee — bergerak pelan" Tag="marquee" />
-                                        </ComboBox></Grid>
+                                        </ComboBox>
                                         <TextBlock Name="WidgetPositionLabel" Text="Posisi widget desktop (semua mode)" Style="{StaticResource FieldLabel}" />
-                                        <Grid Margin="3,4,3,4" HorizontalAlignment="Stretch"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><ComboBox Grid.Column="0" Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
+                                        <ComboBox Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Tengah atas" Tag="tc" />
                                             <ComboBoxItem Content="Sudut kiri atas" Tag="tl" />
                                             <ComboBoxItem Content="Sudut kanan atas" Tag="tr" />
                                             <ComboBoxItem Content="Sudut kiri bawah" Tag="bl" />
                                             <ComboBoxItem Content="Sudut kanan bawah" Tag="br" />
-                                        </ComboBox></Grid>
+                                        </ComboBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Essential: lima waktu. Minimalist: hitung mundur. Posisi berlaku untuk semua mode." Foreground="{DynamicResource MutedTextBrush}" />
                                         <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
                                         </CheckBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
-                                        <TextBlock Style="{StaticResource FormHelpText}" Text="Jika taskbar Windows diganti taskbar kustom, panel tetap tampil di area taskbar terakhir selama auto-hide dan aplikasi fullscreen tidak aktif." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Top">
                                         <TextBlock Text="Opsi widget" Style="{StaticResource FieldLabel}" Margin="3,0,3,2" />
                                         <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar.">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />

@@ -319,6 +319,35 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
+        <!-- Overlay ScrollViewer: vertical scrollbar floats above the content edge, macOS-style. -->
+        <ControlTemplate x:Key="OverlayScrollViewerTemplate" TargetType="{x:Type ScrollViewer}">
+            <Grid>
+                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                        CanContentScroll="{TemplateBinding CanContentScroll}"
+                                        Content="{TemplateBinding Content}"
+                                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                                        ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                        Margin="{TemplateBinding Padding}" />
+                <ScrollBar x:Name="PART_VerticalScrollBar" Orientation="Vertical"
+                           HorizontalAlignment="Right" Width="10" Margin="0"
+                           Maximum="{TemplateBinding ScrollableHeight}"
+                           ViewportSize="{TemplateBinding ViewportHeight}"
+                           Value="{TemplateBinding VerticalOffset, Mode=TwoWay}"
+                           Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                <ScrollBar x:Name="PART_HorizontalScrollBar" Orientation="Horizontal"
+                           VerticalAlignment="Bottom" Height="10" Margin="0"
+                           Maximum="{TemplateBinding ScrollableWidth}"
+                           ViewportSize="{TemplateBinding ViewportWidth}"
+                           Value="{TemplateBinding HorizontalOffset, Mode=TwoWay}"
+                           Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+            </Grid>
+        </ControlTemplate>
+        <Style TargetType="{x:Type ScrollViewer}">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template" Value="{StaticResource OverlayScrollViewerTemplate}" />
+        </Style>
         <Style TargetType="{x:Type TabItem}">
             <Setter Property="local:ThemeControlChrome.Enabled" Value="True" />
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
