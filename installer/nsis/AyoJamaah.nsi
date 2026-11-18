@@ -101,6 +101,7 @@ Var SafetyProblem
 Var SafetyDetails
 Var SafetyPath
 Var SafetyPath2
+Var SafetyPayload
 Var SafetyRecoveryExists
 Var SafetyCandidate
 Var InspectPid
@@ -381,38 +382,46 @@ Function CheckUnsafeCommandLine
 FunctionEnd
 
 
-Function ${P}IsPayloadFile
-  ; Input: $R1 = relative POSIX path. Output: $R0 = 1 when the file is part
-  ; of the payload that will be installed on this machine, so the stale-file
-  ; cleanup can leave it alone and let the payload copy overwrite it.
-  StrCpy $R0 0
+Function ${P}LoadPayload
+  ; Reads the whole payload list once into memory as a newline-delimited
+  ; string so IsPayloadFile costs a single substring search per manifest entry.
+  StrCpy $SafetyPayload "$\n"
   ${If} ${RunningX64}
     FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x64.txt" r
   ${Else}
     FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x86.txt" r
   ${EndIf}
-  ${If} $2 == ""
+  ${If} $2 != ""
+    ${Do}
+      FileRead $2 $3
+      ${If} $3 == ""
+        ${ExitDo}
+      ${EndIf}
+      StrCpy $SafetyPayload "$SafetyPayload$3"
+    ${Loop}
+    FileClose $2
+  ${EndIf}
+  StrCpy $SafetyPayload "$SafetyPayload$\n"
+FunctionEnd
+
+Function ${P}IsPayloadFile
+  ; Input: $R1 = relative POSIX path. Output: $R0 = 1 when the file is part
+  ; of the payload that will be installed on this machine, so the stale-file
+  ; cleanup can leave it alone and let the payload copy overwrite it.
+  StrCpy $R0 0
+  ${If} $SafetyPayload == ""
     Return
   ${EndIf}
-  ${Do}
-    FileRead $2 $3
-    ${If} $3 == ""
-      ${ExitDo}
-    ${EndIf}
-    StrCpy $3 $3 -2
-    ${If} $3 == ""
-      ${Continue}
-    ${EndIf}
-    ${If} $3 == $R1
-      StrCpy $R0 1
-      ${ExitDo}
-    ${EndIf}
-  ${Loop}
-  FileClose $2
+  StrCpy $R9 "$\n$R1$\n"
+  System::Call 'shlwapi::StrStrIW(w "$SafetyPayload", w "$R9") p .R9'
+  ${If} $R9 != 0
+    StrCpy $R0 1
+  ${EndIf}
 FunctionEnd
 
 Function RemoveStalePayload
   StrCpy $SafetyProblem ""
+  Call ${P}LoadPayload
   FileOpen $0 "${APP_MANIFEST}" r
   ${If} $0 == ""
     Return
