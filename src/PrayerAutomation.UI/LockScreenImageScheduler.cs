@@ -378,8 +378,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
         {
             DateTimeOffset? restoreAt = _transaction.RestoreAtUtc;
             SetStatus(restoreAt.HasValue
-                ? $"Gambar lock screen sementara aktif; pemulihan dijadwalkan sekitar {restoreAt.Value.ToLocalTime():HH:mm}. Mode awal akan dipulihkan; fitur gambar tidak mengunci sesi."
-                : "Gambar lock screen sementara aktif; waktu pemulihan belum dapat dibaca dari jurnal.");
+                ? $"Gambar sholat tampil sementara; gambar semula dikembalikan sekitar {restoreAt.Value.ToLocalTime():HH:mm}. Mode awal akan dipulihkan; fitur gambar tidak mengunci sesi."
+                : "Gambar lock screen sementara aktif; waktu pengembalian belum bisa dibaca.");
         }
         else if (result == LockScreenTransactionResult.ExternalChangePreserved)
         {
@@ -396,11 +396,11 @@ internal sealed class LockScreenImageScheduler : IDisposable
     private void PublishRecoveryStatus(LockScreenTransactionResult result)
     {
         if (result == LockScreenTransactionResult.Restored)
-            SetStatus("Mode lock screen sebelumnya telah dipulihkan; gambar asal dipulihkan hanya untuk mode Picture.");
+            SetStatus("Lock screen kembali seperti semula (gambar asli hanya dikembalikan untuk mode gambar).");
         else if (result == LockScreenTransactionResult.ExternalChangePreserved)
             SetStatus("Perubahan lock screen dari pengguna dipertahankan; aplikasi tidak menimpanya.");
         else if (result == LockScreenTransactionResult.PendingVerification)
-            SetStatus("Pemulihan lock screen tertunda karena status gambar belum dapat diverifikasi.");
+            SetStatus("Lock screen belum bisa dipastikan; pemulihan ditunda.");
         else if (result == LockScreenTransactionResult.Active)
         {
             SetStatus("Gambar lock screen sementara masih aktif; pemulihan otomatis tetap berjalan.");

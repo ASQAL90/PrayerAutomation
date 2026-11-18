@@ -96,7 +96,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             AppLogger.Write("lock-screen.startup", ex);
-            _mainWindow?.SetLockScreenStatus("Pemulihan lock screen belum terverifikasi; tidak ada perubahan baru yang dijalankan.");
+            _mainWindow?.SetLockScreenStatus("Lock screen belum bisa dipastikan; tidak ada perubahan baru yang dijalankan.");
         }
         CompleteWidgetStartup();
     }
@@ -337,7 +337,7 @@ public partial class App : Application
                 LockScreenTransactionResult restoreResult = await _lockScreenScheduler.StopAndRestoreAsync();
                 if (restoreResult == LockScreenTransactionResult.PendingVerification)
                 {
-                    _mainWindow?.SetLockScreenStatus("Lock screen belum dapat diverifikasi; aplikasi tetap berjalan agar pemulihan dapat dicoba lagi.");
+                    _mainWindow?.SetLockScreenStatus("Lock screen belum bisa dipastikan; aplikasi tetap berjalan agar pemulihan bisa dicoba lagi.");
                     _isShuttingDown = false;
                     return;
                 }
@@ -392,7 +392,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             AppLogger.Write("lock-screen.refresh", ex);
-            _mainWindow?.SetLockScreenStatus("Status lock screen belum terverifikasi; perubahan ditahan demi keamanan.");
+            _mainWindow?.SetLockScreenStatus("Lock screen belum bisa dipastikan; perubahan ditahan demi keamanan.");
         }
     }
 
@@ -423,7 +423,7 @@ public partial class App : Application
         Settings.LockScreenOptIn = false;
         SettingsStore.Save(Settings);
         _mainWindow?.SetLockScreenStatus(
-            "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; jurnal dihapus.");
+            "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; catatan pemulihan dihapus.");
     }
 
     /// <summary>Loads the application icon from the base directory, or null if it is missing.</summary>

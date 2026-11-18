@@ -72,11 +72,11 @@ internal sealed class LocationDetectionService
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new LocationLookupException($"Penyedia lokasi {endpoint.Host} tidak merespons dalam batas waktu.");
+            throw new LocationLookupException($"Server lokasi {endpoint.Host} tidak merespons. Coba lagi nanti.");
         }
         catch (HttpRequestException ex)
         {
-            throw new LocationLookupException($"Penyedia lokasi {endpoint.Host} tidak dapat dihubungi.", ex);
+            throw new LocationLookupException($"Server lokasi {endpoint.Host} tidak bisa dihubungi. Coba lagi nanti.", ex);
         }
     }
 
@@ -111,7 +111,7 @@ internal sealed class LocationDetectionService
         if (!root.TryGetProperty("success", out JsonElement success) ||
             success.ValueKind != JsonValueKind.True)
         {
-            throw new LocationLookupException("Penyedia lokasi ipwho.is menolak atau tidak dapat memenuhi permintaan.");
+            throw new LocationLookupException("Server lokasi menolak permintaan. Coba lagi nanti.");
         }
 
         string? timeZone = null;
@@ -151,7 +151,7 @@ internal sealed class LocationDetectionService
         }
         catch (JsonException ex)
         {
-            throw new LocationLookupException($"Penyedia lokasi {provider} mengirim respons yang tidak valid.", ex);
+            throw new LocationLookupException($"Server lokasi mengirim jawaban yang tidak valid.", ex);
         }
     }
 
@@ -192,7 +192,7 @@ internal sealed class LocationDetectionService
     {
         if (!element.TryGetProperty(propertyName, out JsonElement value))
         {
-            throw new LocationLookupException($"Respons dari {provider} tidak berisi koordinat yang valid.");
+            throw new LocationLookupException($"Server lokasi tidak mengirim koordinat yang valid.");
         }
 
         double coordinate = 0;

@@ -247,7 +247,7 @@
                                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Style="{StaticResource FormHelpText}" Name="SettingsScheduleDateLabel" AutomationProperties.AutomationId="SettingsScheduleDateLabel" Text="Perkiraan dari lokasi, zona waktu, metode, dan koreksi form." Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Style="{StaticResource FormHelpText}" Name="SettingsScheduleHijriDateLabel" AutomationProperties.AutomationId="SettingsScheduleHijriDateLabel" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="Koreksi penanggalan hijriyah" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="Koreksi tanggal Hijriyah" Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" />
                                         <StackPanel Grid.Row="1" Grid.Column="4" Name="HijriDateCorrectionHost" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Grid>
                                     <Grid Name="SettingsSchedulePreviewGrid" AutomationProperties.AutomationId="SettingsSchedulePreviewGrid">
@@ -388,16 +388,16 @@
                                         </CheckBox>
                                         <TextBlock Text="Mode widget" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="WidgetModeBox" AutomationProperties.AutomationId="WidgetModeBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetModeBox_SelectionChanged">
-                                            <ComboBoxItem Content="Essential — 5 waktu, satu baris" Tag="essential" />
-                                            <ComboBoxItem Content="Minimalist — sholat berikutnya" Tag="minimalist" />
-                                            <ComboBoxItem Content="Medium detail — jadwal lengkap" Tag="detail" />
+                                            <ComboBoxItem Content="Lengkap — lima waktu, satu baris" Tag="essential" />
+                                            <ComboBoxItem Content="Ringkas — sholat berikutnya" Tag="minimalist" />
+                                            <ComboBoxItem Content="Rinci — jadwal lengkap" Tag="detail" />
                                         </ComboBox>
-                                        <TextBlock Name="WidgetMotionLabel" Text="Gerak mode Essential" Style="{StaticResource FieldLabel}" />
+                                        <TextBlock Name="WidgetMotionLabel" Text="Gerakan tampilan Lengkap" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
-                                            <ComboBoxItem Content="Statis — lima waktu tetap" Tag="static" />
-                                            <ComboBoxItem Content="Marquee — bergerak pelan" Tag="marquee" />
+                                            <ComboBoxItem Content="Diam — lima waktu tetap" Tag="static" />
+                                            <ComboBoxItem Content="Berjalan — bergerak pelan" Tag="marquee" />
                                         </ComboBox>
-                                        <TextBlock Name="WidgetPositionLabel" Text="Posisi widget desktop (semua mode)" Style="{StaticResource FieldLabel}" />
+                                        <TextBlock Name="WidgetPositionLabel" Text="Posisi widget (semua tampilan)" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Tengah atas" Tag="tc" />
                                             <ComboBoxItem Content="Sudut kiri atas" Tag="tl" />
@@ -405,21 +405,21 @@
                                             <ComboBoxItem Content="Sudut kiri bawah" Tag="bl" />
                                             <ComboBoxItem Content="Sudut kanan bawah" Tag="br" />
                                         </ComboBox>
-                                        <TextBlock Style="{StaticResource FormHelpText}" Text="Essential: lima waktu. Minimalist: hitung mundur. Posisi berlaku untuk semua mode." Foreground="{DynamicResource MutedTextBrush}" />
-                                        <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
-                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Text="Lengkap: lima waktu. Ringkas: hitung mundur. Posisi berlaku untuk semua mode." Foreground="{DynamicResource MutedTextBrush}" />
+                                        <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar — Ringkas dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Ringkas dan jadwal Detail" />
                                         </CheckBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Windows 10 versi 2004 (build 19041) atau lebih baru; Windows 11." Foreground="{DynamicResource MutedTextBrush}" Margin="3,0,3,4" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Top">
                                         <TextBlock Text="Opsi widget" Style="{StaticResource FieldLabel}" Margin="3,0,3,2" />
-                                        <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar.">
+                                        <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Lengkap dan Ringkas. Tampilan Rinci tidak selalu di atas karena ukurannya besar.">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />
                                         </CheckBox>
                                         <CheckBox Name="WidgetClickThroughCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Widget tetap terlihat penuh; klik diteruskan ke jendela di bawahnya. Untuk mematikan, buka pengaturan atau menu ikon tray.">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Klik tembus ke jendela di belakang widget" />
                                         </CheckBox>
-                                        <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Essential dan Minimalist. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray.">
+                                        <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Lengkap dan Ringkas. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray.">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Sembunyikan saat kursor mendekat" />
                                         </CheckBox>
                                     </StackPanel>
@@ -461,11 +461,11 @@
                                                 <TextBox Grid.Column="1" Name="LockScreenDurationBox" AutomationProperties.AutomationId="LockScreenDurationBox" AutomationProperties.Name="Lama tampil gambar lock screen dalam menit" TextAlignment="Center" ToolTip="1–120 menit. Berlaku pada perubahan gambar berikutnya." />
                                             </Grid>
                                             <TextBlock Style="{StaticResource FormHelpText}" Text="Pilih 1–120 menit; default 60. Perubahan durasi berlaku pada gambar berikutnya, bukan gambar yang sedang tampil." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
-                                            <TextBlock Style="{StaticResource FormHelpText}" Text="Gambar diganti saat lima waktu sholat. Fitur ini tidak mengunci sesi atau mengubah wallpaper. Setelah durasi pilihan habis, aplikasi mencoba memulihkan mode awal. Picture memakai salinan gambar lama. Jika salinan pemulihan atau verifikasi gagal, gambar tidak diubah. Tanpa hak administrator." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                            <TextBlock Style="{StaticResource FormHelpText}" Text="Gambar diganti sementara saat waktu sholat. Fitur ini tidak mengunci komputer dan tidak mengubah wallpaper. Setelah durasi pilihan habis, tampilan semula dikembalikan. Jika tampilan semula tidak bisa dipastikan atau dicadangkan, gambar tidak diubah. Tanpa hak administrator." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
                                             <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenSafetyText" Text="Memeriksa syarat pemulihan lock screen..." Margin="0,8,0,0" TextWrapping="Wrap" />
                                             <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenStatus" AutomationProperties.AutomationId="LockScreenStatus" Text="Memeriksa profil lock screen Windows..." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
                                             <Button Name="LockScreenRestoreNowButton" Content="Pulihkan lock screen sekarang" AutomationProperties.AutomationId="LockScreenRestoreNowButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Click="LockScreenRestoreNow_Click" ToolTip="Kembalikan gambar/mode lock screen semula sekarang, tanpa menunggu jadwal pemulihan." />
-                                            <Button Name="LockScreenCancelRecoveryButton" Content="Batalkan pemulihan tertunda" AutomationProperties.AutomationId="LockScreenCancelRecoveryButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Visibility="Collapsed" Click="LockScreenCancelRecovery_Click" ToolTip="Hapus jurnal pemulihan dan biarkan gambar lock screen seperti saat ini. Gunakan hanya bila verifikasi tidak dapat dilakukan." />
+                                            <Button Name="LockScreenCancelRecoveryButton" Content="Batalkan pemulihan tertunda" AutomationProperties.AutomationId="LockScreenCancelRecoveryButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Visibility="Collapsed" Click="LockScreenCancelRecovery_Click" ToolTip="Hapus catatan pemulihan dan biarkan gambar lock screen seperti saat ini. Gunakan hanya bila tampilan tidak bisa dipastikan kembali." />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>

@@ -68,7 +68,7 @@ internal static class LockScreenSafetyProbe
             {
                 LockScreenBackgroundMode.Spotlight when canChangeTemporarily => "Mode Spotlight: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke Spotlight. Fitur gambar tidak mengunci komputer.",
                 LockScreenBackgroundMode.Slideshow when canChangeTemporarily => "Mode slideshow: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke slideshow. Fitur gambar tidak mengunci komputer.",
-                LockScreenBackgroundMode.Picture when isAppTemporaryImage => "Gambar sementara milik aplikasi terdeteksi. Tanpa jurnal pemulihan yang valid, gambar tidak akan ditimpa.",
+                LockScreenBackgroundMode.Picture when isAppTemporaryImage => "Gambar sementara milik aplikasi terdeteksi. Tanpa catatan pemulihan yang sah, gambar tidak ditimpa.",
                 LockScreenBackgroundMode.Picture when hasLocalImage => "Mode Picture terdeteksi dan file gambar lokal tersedia untuk salinan pemulihan setelah durasi pilihan habis.",
                 LockScreenBackgroundMode.Picture => "File gambar lock screen lokal untuk pemulihan tidak tersedia. Fitur tetap nonaktif.",
                 LockScreenBackgroundMode.Unknown => "Mode lock screen tidak dapat dipastikan secara aman dari status Windows; fitur tetap nonaktif.",

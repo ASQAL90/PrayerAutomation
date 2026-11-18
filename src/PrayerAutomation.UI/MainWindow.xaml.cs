@@ -263,7 +263,7 @@ public partial class MainWindow : Window
             AppLogger.Write("overview.schedule", ex);
             ResetScheduleGrid(ScheduleOverviewGrid, 1);
             TextBlock message = CreateScheduleErrorText(
-                "Jadwal belum dapat dihitung. Periksa lokasi, zona waktu, metode, dan mesin perhitungan.");
+                "Jadwal belum bisa dihitung. Periksa lokasi, zona waktu, dan metode perhitungan.");
             Grid.SetColumnSpan(message, 1);
             ScheduleOverviewGrid.Children.Add(message);
             FooterStatus.Text = "Jadwal belum tersedia; rincian teknis disimpan di log aplikasi.";
@@ -599,13 +599,13 @@ public partial class MainWindow : Window
             _gregorianObservances.Clear();
             CalendarGrid.Children.Add(new TextBlock
             {
-                Text = "Kalender belum dapat dimuat karena native core tidak tersedia atau tanggal tidak valid.",
+                Text = "Kalender belum bisa dimuat karena mesin perhitungan tidak tersedia atau tanggal tidak valid.",
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = MakeBrush(ThemeManager.Current.ErrorText),
                 Margin = new Thickness(10)
             });
-            SelectedDateDetail.Text = "Periksa berkas prayer_core.dll dan log aplikasi.";
-            FooterStatus.Text = "Kalender Gregorian gagal dimuat; rincian teknis disimpan di log aplikasi.";
+            SelectedDateDetail.Text = "Mesin perhitungan rusak. Instal ulang Ayo Jama’ah! atau periksa log aplikasi.";
+            FooterStatus.Text = "Kalender Masehi gagal dimuat; rincian teknis disimpan di log aplikasi.";
         }
     }
 
@@ -767,7 +767,7 @@ public partial class MainWindow : Window
             AppLogger.Write("calendar.hijri.render", ex);
             HijriCalendarGrid.Children.Clear();
             HijriYearLabel.Text = $"Tahun {year} H dipilih, tetapi data bulan tidak dapat dimuat.";
-            HijriSelectedDateDetail.Text = "Periksa berkas prayer_core.dll dan log aplikasi.";
+            HijriSelectedDateDetail.Text = "Mesin perhitungan rusak. Instal ulang Ayo Jama’ah! atau periksa log aplikasi.";
             FooterStatus.Text = "Kalender Hijriyah gagal dimuat; rincian teknis disimpan di log aplikasi.";
         }
     }
@@ -1254,16 +1254,16 @@ public partial class MainWindow : Window
     {
         if (Application.Current is not App app) return;
         System.Windows.MessageBoxResult answer = System.Windows.MessageBox.Show(this,
-            "Pemulihan lock screen tertunda dan memblokir pemasangan/penghapusan.\r\n\r\n" +
-            "Batalkan pemulihan? Jurnal dihapus, fitur gambar lock screen dinonaktifkan, dan gambar lock screen " +
-            "dibiarkan seperti saat ini. Lanjutkan hanya bila mode/gambar lock screen sudah sesuai dan verifikasi " +
-            "tidak dapat dilakukan.",
+            "Lock screen masih menampilkan gambar sholat dan menghalangi pemasangan/penghapusan.\r\n\r\n" +
+            "Batalkan pemulihan? Catatan pemulihan dihapus, fitur gambar lock screen dimatikan, dan gambar lock screen " +
+            "dibiarkan seperti saat ini. Lanjutkan hanya bila gambar lock screen Anda sudah sesuai tampilan semula dan " +
+            "tidak bisa dipastikan kembali.",
             "Batalkan pemulihan lock screen", System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Warning, System.Windows.MessageBoxResult.No);
         if (answer != System.Windows.MessageBoxResult.Yes) return;
         app.CancelLockScreenRecovery();
         LockScreenCheckBox.IsChecked = false;
-        RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; jurnal dihapus dan fitur gambar dinonaktifkan.");
+        RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; catatan pemulihan dihapus dan fitur gambar dimatikan.");
     }
 
     /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>
@@ -1342,7 +1342,7 @@ public partial class MainWindow : Window
                         LocationNameBox.Text = place?.DisplayName ?? "Lokasi manual";
                         OfflineReverseGeocodeStatus.Text = place is null
                             ? "Tidak ada permukiman dalam radius 75 km. Isi nama sendiri; koordinat tetap lokal dan belum disimpan."
-                            : $"Nama otomatis dari GeoNames lokal: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+                            : $"Nama otomatis dari daftar kota lokal: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
                     }
                     catch (Exception)
                     {
@@ -1413,7 +1413,7 @@ public partial class MainWindow : Window
         LocationSuggestionsList.SelectedIndex = -1;
         LocationSuggestionsPopup.IsOpen = results.Count > 0 && LocationNameBox.IsKeyboardFocusWithin;
         OfflineReverseGeocodeStatus.Text = results.Count > 0
-            ? "Pilihan nama dari GeoNames lokal. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan."
+            ? "Pilihan nama dari daftar kota lokal. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan."
             : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
     }
 
@@ -1444,7 +1444,7 @@ public partial class MainWindow : Window
             TimeZoneBox.Text = timezone;
         }
         finally { _loadingSettings = false; }
-        OfflineReverseGeocodeStatus.Text = $"Dipilih dari GeoNames lokal: {suggestion.DisplayName}. Koordinat mewakili permukiman, bukan alamat persis; zona waktu dicocokkan lokal. Belum disimpan.";
+        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar kota lokal: {suggestion.DisplayName}. Koordinat mewakili permukiman, bukan alamat persis; zona waktu dicocokkan lokal. Belum disimpan.";
         RefreshSettingsSchedulePreview();
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
@@ -1529,7 +1529,7 @@ public partial class MainWindow : Window
         if (!TryReadSchedulePreviewSettings(out AppSettings? preview, out string error))
         {
             ResetScheduleGrid(SettingsSchedulePreviewGrid, 7);
-            SettingsScheduleDateLabel.Text = "Estimasi belum tersedia.";
+            SettingsScheduleDateLabel.Text = "Perkiraan belum tersedia.";
             SettingsScheduleHijriDateLabel.Text = string.Empty;
             SettingsSchedulePreviewStatus.Text = error;
             return;
@@ -1558,7 +1558,7 @@ public partial class MainWindow : Window
                 "Perkiraan belum dapat dihitung. Periksa lokasi, zona waktu, metode, dan mesin perhitungan.");
             Grid.SetColumnSpan(message, 7);
             SettingsSchedulePreviewGrid.Children.Add(message);
-            SettingsScheduleDateLabel.Text = "Estimasi belum tersedia.";
+            SettingsScheduleDateLabel.Text = "Perkiraan belum tersedia.";
             SettingsScheduleHijriDateLabel.Text = string.Empty;
             SettingsSchedulePreviewStatus.Text = "Rincian teknis disimpan di log aplikasi.";
         }
@@ -1748,16 +1748,16 @@ public partial class MainWindow : Window
             {
                 LocationNameBox.Text = offlinePlace.DisplayName;
                 GpsLocationStatus.Text += $" Nama terdekat: {offlinePlace.DisplayName}.";
-                OfflineReverseGeocodeStatus.Text = $"Nama lokasi perangkat dicocokkan secara lokal dengan GeoNames: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
+                OfflineReverseGeocodeStatus.Text = $"Nama lokasi perangkat dicocokkan secara lokal dengan data lokasi lokal: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
             }
             else if (offlineLookupFailed)
             {
-                OfflineReverseGeocodeStatus.Text = "Dataset GeoNames offline tidak dapat dibaca; koordinat GPS tetap di form dan tidak dikirim ke internet.";
+                OfflineReverseGeocodeStatus.Text = "Data lokasi lokal tidak bisa dibaca; koordinat tetap di form dan tidak dikirim ke internet.";
             }
             else
             {
                 GpsLocationStatus.Text += " Nama lokal dipertahankan.";
-                OfflineReverseGeocodeStatus.Text = "Tidak ada permukiman GeoNames dalam radius 75 km; label lokal awal dipertahankan. Tidak ada permintaan internet.";
+                OfflineReverseGeocodeStatus.Text = "Tidak ada permukiman dalam radius 75 km; label lokal awal dipertahankan. Tidak ada permintaan internet.";
             }
             RefreshSettingsSchedulePreview();
         }
@@ -1838,13 +1838,13 @@ public partial class MainWindow : Window
                     _setStartupEnabled(_settings.StartupEnabled, _settings.StartHidden);
                     bool actualStartup = _isStartupEnabled();
                     startupStatus = actualStartup == _settings.StartupEnabled
-                        ? "Startup Windows terverifikasi."
-                        : "Status startup Windows belum dapat diverifikasi.";
+                        ? "Dijalankan saat masuk Windows aktif."
+                        : "Status dijalankan saat masuk Windows belum bisa dipastikan.";
                 }
                 catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
                 {
                     _logSettingsError("settings.startup", ex);
-                    startupStatus = "Pengaturan tersimpan, tetapi registrasi startup Windows gagal.";
+                    startupStatus = "Pengaturan tersimpan, tetapi memasang aplikasi saat masuk Windows gagal.";
                 }
                 _refreshDependentViews();
                 PopulateSettingsForm();
@@ -1936,7 +1936,7 @@ public partial class MainWindow : Window
         if (lockScreenOptIn && !_inspectLockScreenSafety().CanChangeTemporarily &&
             !(_settings.LockScreenEnabled && _settings.LockScreenOptIn))
         {
-            error = "Lock screen belum dapat disnapshot dan dipulihkan dengan aman. Pengaturan tidak diaktifkan.";
+            error = "Lock screen tidak bisa dicadangkan dan dikembalikan dengan aman. Pengaturan tidak diaktifkan.";
             return false;
         }
 
@@ -1967,19 +1967,19 @@ public partial class MainWindow : Window
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
             widgetModeItem.Tag is not string widgetMode || widgetMode is not ("essential" or "minimalist" or "detail"))
         {
-            error = "Pilih mode Essential, Minimalist, atau Medium detail.";
+            error = "Pilih tampilan Lengkap, Ringkas, atau Rinci.";
             return false;
         }
         if (WidgetMotionBox.SelectedItem is not ComboBoxItem widgetMotionItem ||
             widgetMotionItem.Tag is not string widgetMotion || widgetMotion is not ("static" or "marquee"))
         {
-            error = "Pilih gerak statis atau marquee untuk widget Essential.";
+            error = "Pilih gerakan Diam atau Berjalan untuk tampilan Lengkap.";
             return false;
         }
         if (WidgetPositionBox.SelectedItem is not ComboBoxItem widgetPositionItem ||
             widgetPositionItem.Tag is not string widgetPosition || widgetPosition is not ("tc" or "tl" or "tr" or "bl" or "br"))
         {
-            error = "Pilih posisi tengah atas atau salah satu sudut untuk widget Medium detail.";
+            error = "Pilih posisi tengah atas atau salah satu sudut untuk tampilan Rinci.";
             return false;
         }
         if (ThemeBox.SelectedItem is not ComboBoxItem themeItem ||

@@ -939,7 +939,7 @@ internal sealed class ScheduleWidgetWindow : Window
     {
         if (IsMinimalistMode)
             _nextPrayer.Text = "Jadwal sholat belum tersedia";
-        _countdown.Text = "Countdown belum tersedia. Periksa lokasi dan native core.";
+        _countdown.Text = "Hitung mundur belum tersedia. Periksa lokasi dan perhitungan inti.";
         _countdown.Foreground = ThemeManager.ToBrush(ThemeManager.Current.ErrorText);
     }
 
@@ -948,7 +948,7 @@ internal sealed class ScheduleWidgetWindow : Window
     {
         var error = new TextBlock
         {
-            Text = "Jadwal sholat belum dapat dihitung. Periksa lokasi, timezone, dan native core.",
+            Text = "Jadwal sholat belum bisa dihitung. Periksa lokasi, zona waktu, dan perhitungan inti.",
             FontSize = 12,
             Foreground = ThemeManager.ToBrush(ThemeManager.Current.ErrorText),
             TextWrapping = TextWrapping.Wrap,
