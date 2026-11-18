@@ -47,7 +47,7 @@ public partial class MainWindow : Window
     private readonly Action<string> _applyThemePreview;
     private readonly Action _refreshDependentViews;
     private readonly Action _restoreWidgetAppearancePreview;
-    private readonly Action<bool, string, string, string> _applyWidgetAppearancePreview;
+    private readonly Action<bool, string, string, string, bool> _applyWidgetAppearancePreview;
     private readonly Action<bool, string> _applyTaskbarAppearancePreview;
     private readonly Action _restoreTaskbarAppearancePreview;
     private readonly LocationDetectionService _locationDetectionService = new();
@@ -127,8 +127,8 @@ public partial class MainWindow : Window
         _applyThemePreview = id => ((App)Application.Current).ApplyThemePreview(id);
         _refreshDependentViews = () => ((App)Application.Current).RefreshDependentViews();
         _restoreWidgetAppearancePreview = () => ((App)Application.Current).RestoreWidgetAppearancePreview();
-        _applyWidgetAppearancePreview = (enabled, mode, motion, position) =>
-            ((App)Application.Current).ApplyWidgetAppearancePreview(enabled, mode, motion, position);
+        _applyWidgetAppearancePreview = (enabled, mode, motion, position, alwaysOnTop) =>
+            ((App)Application.Current).ApplyWidgetAppearancePreview(enabled, mode, motion, position, alwaysOnTop);
         _applyTaskbarAppearancePreview = (enabled, mode) =>
             ((App)Application.Current).ApplyTaskbarAppearancePreview(enabled, mode);
         _restoreTaskbarAppearancePreview = () =>
@@ -1055,6 +1055,7 @@ public partial class MainWindow : Window
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WidgetMotion, StringComparison.OrdinalIgnoreCase));
             WidgetPositionBox.SelectedItem = WidgetPositionBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WidgetPosition, StringComparison.OrdinalIgnoreCase));
+            WidgetAlwaysOnTopCheckBox.IsChecked = _settings.WidgetAlwaysOnTop;
             ThemeBox.SelectedItem = ThemeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.ThemeId, StringComparison.OrdinalIgnoreCase));
             DhuhaAfterSunriseBox.Text = _settings.DhuhaAfterSunriseMinutes.ToString(CultureInfo.InvariantCulture);
@@ -1129,7 +1130,8 @@ public partial class MainWindow : Window
         string motion = (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag as string ?? _settings.WidgetMotion;
         string position = (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag as string ?? _settings.WidgetPosition;
         _applyWidgetAppearancePreview(
-            WidgetEnabledCheckBox.IsChecked == true, mode, motion, position);
+            WidgetEnabledCheckBox.IsChecked == true, mode, motion, position,
+            WidgetAlwaysOnTopCheckBox.IsChecked == true);
     }
 
     /// <summary>Applies the startup registration when the startup checkbox changes.</summary>
@@ -1247,17 +1249,23 @@ public partial class MainWindow : Window
     private void UpdateWidgetOptionStates()
     {
         if (WidgetMotionBox is null || WidgetPositionBox is null ||
-            WidgetMotionLabel is null || WidgetPositionLabel is null)
+            WidgetMotionLabel is null || WidgetPositionLabel is null ||
+            WidgetAlwaysOnTopCheckBox is null || WidgetAlwaysOnTopHint is null)
             return;
 
         string selectedMode = (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "essential";
         string mode = WidgetSettingsLogic.NormalizeMode(selectedMode);
         bool isEssential = mode == "essential";
+        bool isDetailMode = mode == "detail";
 
         WidgetMotionBox.IsEnabled = isEssential;
         WidgetMotionLabel.IsEnabled = isEssential;
         WidgetPositionBox.IsEnabled = true;
         WidgetPositionLabel.IsEnabled = true;
+        // Medium Detail never stays above other windows, so the option only
+        // applies to the thin Essential/Minimalist bars.
+        WidgetAlwaysOnTopCheckBox.IsEnabled = !isDetailMode;
+        WidgetAlwaysOnTopHint.IsEnabled = !isDetailMode;
     }
 
     /// <summary>Schedules a save-free schedule preview refresh when a settings input changes.</summary>
@@ -1904,6 +1912,7 @@ public partial class MainWindow : Window
             ? AppSettings.DefaultReminderMessage
             : reminderMessage;
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
+        candidate.WidgetAlwaysOnTop = WidgetAlwaysOnTopCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         candidate.TaskbarWidgetMode = "popup";
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
@@ -2023,6 +2032,7 @@ public partial class MainWindow : Window
         destination.WidgetMode = source.WidgetMode;
         destination.WidgetMotion = source.WidgetMotion;
         destination.WidgetPosition = source.WidgetPosition;
+        destination.WidgetAlwaysOnTop = source.WidgetAlwaysOnTop;
         destination.ThemeId = source.ThemeId;
         destination.ReminderMinutes = source.ReminderMinutes;
         destination.ReminderMessage = source.ReminderMessage;
@@ -2083,6 +2093,7 @@ public partial class MainWindow : Window
         ReminderEnabledCheckBox.IsChecked, ReminderMinutesBox.Text, ReminderMessageBox.Text,
         WidgetEnabledCheckBox.IsChecked, (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
         (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag, (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag,
+        WidgetAlwaysOnTopCheckBox.IsChecked,
         TaskbarWidgetEnabledCheckBox.IsChecked,
         (ThemeBox.SelectedItem as ComboBoxItem)?.Tag,
         StartupEnabledCheckBox.IsChecked, StartHiddenCheckBox.IsChecked, AutoLockEnabledCheckBox.IsChecked,

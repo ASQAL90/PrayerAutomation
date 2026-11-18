@@ -404,6 +404,10 @@
                                             <ComboBoxItem Content="Sudut kanan bawah" Tag="br" />
                                         </ComboBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Essential: lima waktu. Minimalist: hitung mundur. Posisi berlaku untuk semua mode." Foreground="{DynamicResource MutedTextBrush}" />
+                                        <CheckBox Name="WidgetAlwaysOnTopCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Selalu di atas jendela lain" />
+                                        </CheckBox>
+                                        <TextBlock Name="WidgetAlwaysOnTopHint" Style="{StaticResource FormHelpText}" Text="Berlaku untuk Essential dan Minimalist. Medium detail tidak selalu di atas karena ukurannya besar." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                         <CheckBox Name="TaskbarWidgetEnabledCheckBox" Checked="TaskbarPreviewOptions_Changed" Unchecked="TaskbarPreviewOptions_Changed" AutomationProperties.AutomationId="TaskbarWidgetEnabledCheckBox" AutomationProperties.Name="Panel taskbar Minimalist dan jadwal Detail Ayo Jama'ah!" IsChecked="False" Margin="3,8,3,3">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Panel taskbar — Minimalist dan jadwal Detail" />
                                         </CheckBox>

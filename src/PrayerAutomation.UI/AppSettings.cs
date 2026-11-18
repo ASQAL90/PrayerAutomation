@@ -58,6 +58,8 @@ internal sealed class AppSettings
     [JsonPropertyName("widget_motion")] public string WidgetMotion { get; set; } = "";
     /// <summary>Schedule widget screen position code.</summary>
     [JsonPropertyName("widget_position")] public string WidgetPosition { get; set; } = "tc";
+    /// <summary>Whether the Essential/Minimalist desktop widget stays above other windows.</summary>
+    [JsonPropertyName("widget_always_on_top")] public bool WidgetAlwaysOnTop { get; set; } = true;
     /// <summary>Theme identifier applied at startup.</summary>
     [JsonPropertyName("theme")] public string ThemeId { get; set; } = "light";
     /// <summary>Minutes before a prayer time at which to remind.</summary>

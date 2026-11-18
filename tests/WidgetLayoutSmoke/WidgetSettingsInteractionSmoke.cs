@@ -63,6 +63,8 @@ internal static class WidgetSettingsInteractionSmoke
         Window widget = fixture.Widget;
         Assert(fixture.WidgetMode == "detail" && widget.ResizeMode == ResizeMode.NoResize,
             "Medium Detail must be a fixed-size window without a resize grip.");
+        Assert(!fixture.Field<CheckBox>("WidgetAlwaysOnTopCheckBox").IsEnabled,
+            "The always-on-top option must be disabled for Medium Detail.");
         double width = widget.Width;
         double height = widget.Height;
         widget.WindowState = WindowState.Maximized;

@@ -144,6 +144,8 @@ using (JsonDocument defaults = NormalizeSettings("{}"))
            IsJsonString(defaults.RootElement, "theme", "light") &&
            defaults.RootElement.TryGetProperty("auto_lock_enabled", out JsonElement autoLockEnabled) &&
            autoLockEnabled.ValueKind == JsonValueKind.False &&
+           defaults.RootElement.TryGetProperty("widget_always_on_top", out JsonElement widgetAlwaysOnTop) &&
+           widgetAlwaysOnTop.ValueKind == JsonValueKind.True &&
            defaults.RootElement.TryGetProperty("lock_enabled", out JsonElement lockEnabled) &&
            lockEnabled.ValueKind == JsonValueKind.False &&
            defaults.RootElement.TryGetProperty("lock_screen_opt_in", out JsonElement lockScreenOptIn) &&

@@ -24,6 +24,7 @@ internal sealed class ScheduleWidgetWindow : Window
     private string? _taskbarIconKey;
     private System.Windows.Controls.Image _nextPrayerIcon = null!;
     private (string Mode, string Motion, string Position)? _appearancePreview;
+    private bool? _previewAlwaysOnTop;
     private readonly Dictionary<DateTime, IReadOnlyList<PrayerEntry>> _scheduleCache = new();
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _marqueeTimer;
@@ -77,7 +78,7 @@ internal sealed class ScheduleWidgetWindow : Window
             WindowState = WindowState.Normal;
         }
         WindowStartupLocation = WindowStartupLocation.Manual;
-        StateChanged += (_, _) => RestoreDesktopPlacementAfterStateChange();
+        StateChanged += (_, _) => RestoreFixedPlacementAfterStateChange();
         Closing += (_, e) =>
         {
             if (_taskbarDashboard && !_allowClose)
@@ -135,11 +136,13 @@ internal sealed class ScheduleWidgetWindow : Window
     /// <param name="mode">Mode to preview.</param>
     /// <param name="motion">Motion to preview.</param>
     /// <param name="position">Position to preview.</param>
-    internal void ApplyAppearancePreview(string mode, string motion, string position)
+    /// <param name="alwaysOnTop">Whether the previewed widget should stay above other windows.</param>
+    internal void ApplyAppearancePreview(string mode, string motion, string position, bool alwaysOnTop)
     {
         _appearancePreview = (WidgetSettingsLogic.NormalizeMode(mode),
             WidgetSettingsLogic.NormalizeMotion(motion, legacyMinimalMode: false),
             WidgetSettingsLogic.NormalizePosition(position));
+        _previewAlwaysOnTop = alwaysOnTop;
         RefreshSchedule();
     }
 
@@ -148,6 +151,7 @@ internal sealed class ScheduleWidgetWindow : Window
     {
         if (_appearancePreview is null) return;
         _appearancePreview = null;
+        _previewAlwaysOnTop = null;
         RefreshSchedule();
     }
 
@@ -205,18 +209,20 @@ internal sealed class ScheduleWidgetWindow : Window
             requestedWidth = _dashboardPlaced ? Width : 440;
             requestedHeight = _dashboardPlaced ? Height : 300;
         }
-        // The desktop widget is a fixed-size panel in every mode. A window that was
-        // snapped or maximized by Windows must return to Normal before its size is
-        // assigned, otherwise Width/Height are ignored and the panel stays full-screen.
+        // Every widget window is a fixed-size panel. A window that was snapped or
+        // maximized by Windows must return to Normal before its size is assigned,
+        // otherwise Width/Height are ignored and the panel stays full-screen.
         MinWidth = 0;
         MinHeight = 0;
-        if (!_taskbarDashboard && WindowState != WindowState.Normal)
+        if (WindowState == WindowState.Maximized)
             WindowState = WindowState.Normal;
-        ResizeMode = _taskbarDashboard ? ResizeMode.CanResizeWithGrip : ResizeMode.NoResize;
+        ResizeMode = ResizeMode.NoResize;
         // Medium Detail is large enough to get in the way, so it stays in the normal
-        // z-order. The thin Essential/Minimalist bars remain always on top. During a
-        // settings preview Detail is raised briefly so the user can actually see it.
-        Topmost = !_taskbarDashboard && (!IsDetailMode || _appearancePreview is not null);
+        // z-order. Essential/Minimalist follow the user's "always on top" option.
+        // During a settings preview Detail is raised briefly so it can be seen.
+        bool alwaysOnTop = _previewAlwaysOnTop ?? _settings.WidgetAlwaysOnTop;
+        Topmost = !_taskbarDashboard &&
+            (IsDetailMode ? _appearancePreview is not null : alwaysOnTop);
         Width = requestedWidth;
         Height = requestedHeight;
         Background = System.Windows.Media.Brushes.Transparent;
@@ -424,8 +430,6 @@ internal sealed class ScheduleWidgetWindow : Window
                 Top = workArea.Top + (workArea.Height - Height) / 2;
                 _dashboardPlaced = true;
             }
-            MinWidth = Math.Min(360, Width);
-            MinHeight = Math.Min(300, Height);
             return;
         }
         WidgetPlacement placement = WidgetSettingsLogic.PlaceWidget(
@@ -465,22 +469,27 @@ internal sealed class ScheduleWidgetWindow : Window
     };
 
     /// <summary>Restores the fixed widget size and configured position; used when the window is shown again.</summary>
-    internal void RestoreDesktopPlacement()
+    internal void RestoreFixedPlacement()
     {
-        if (_taskbarDashboard) return;
+        if (_taskbarDashboard)
+        {
+            if (WindowState != WindowState.Normal)
+                WindowState = WindowState.Normal;
+            return;
+        }
         if (WindowState != WindowState.Normal)
             WindowState = WindowState.Normal;
         ApplyPlacement(RequestedWidth(Mode), RequestedHeight(Mode));
     }
 
-    /// <summary>Undoes a Windows snap/maximize so the desktop widget stays fixed-size.</summary>
-    private void RestoreDesktopPlacementAfterStateChange()
+    /// <summary>Undoes a Windows snap/maximize so the widget stays fixed-size.</summary>
+    private void RestoreFixedPlacementAfterStateChange()
     {
-        if (_taskbarDashboard || _restoringWindowState || WindowState == WindowState.Normal) return;
+        if (_restoringWindowState || WindowState != WindowState.Maximized) return;
         _restoringWindowState = true;
         try
         {
-            RestoreDesktopPlacement();
+            RestoreFixedPlacement();
         }
         finally
         {

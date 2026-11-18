@@ -175,7 +175,7 @@ public partial class App : Application
     private void ShowWidget()
     {
         ScheduleWidgetWindow widget = EnsureWidget();
-        widget.RestoreDesktopPlacement();
+        widget.RestoreFixedPlacement();
         if (!widget.IsVisible) widget.Show();
         widget.Activate();
     }
@@ -185,7 +185,8 @@ public partial class App : Application
     /// <param name="mode">Widget mode to preview.</param>
     /// <param name="motion">Widget motion to preview.</param>
     /// <param name="position">Widget position to preview.</param>
-    internal void ApplyWidgetAppearancePreview(bool enabled, string mode, string motion, string position)
+    /// <param name="alwaysOnTop">Whether the previewed widget stays above other windows.</param>
+    internal void ApplyWidgetAppearancePreview(bool enabled, string mode, string motion, string position, bool alwaysOnTop)
     {
         if (!_widgetAppearancePreviewActive)
         {
@@ -201,7 +202,7 @@ public partial class App : Application
         }
 
         ScheduleWidgetWindow widget = EnsureWidget();
-        widget.ApplyAppearancePreview(mode, motion, position);
+        widget.ApplyAppearancePreview(mode, motion, position, alwaysOnTop);
         if (!widget.IsVisible)
         {
             bool showActivated = widget.ShowActivated;
