@@ -45,7 +45,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 | ![Kalender Hijriyah](site/screenshot-calendar-hijriyah.png) | ![Desktop: widget & pengaturan](site/screenshot-desktop.png) |
 | Kalender Hijriyah tahunan | Pengaturan, widget & jadwal di desktop (tema gelap) |
 
-Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara, dan hilang sendiri setelah 12 detik. Jumlah menit serta isi pesannya bisa diatur. Gambar di bawah ilustrasi tampilannya, bukan tangkapan layar asli.
+Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara, dan hilang sendiri setelah 12 detik. Gambar di bawah adalah **mock desain, bukan tangkapan layar asli**; jam, nama sholat, dan isi pesannya hanya contoh. Jumlah menit serta isi pesan sebenarnya bisa diatur sendiri.
 
 ![Pengingat sebelum waktu sholat](site/screenshot-reminder.png)
 
