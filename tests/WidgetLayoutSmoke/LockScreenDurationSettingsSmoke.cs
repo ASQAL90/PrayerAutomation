@@ -20,7 +20,7 @@ internal static class LockScreenDurationSettingsSmoke
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(fixture.MainWindow) as TextBox;
         Require(editor is not null,
             "Settings must expose a separate image-hold duration field, not reuse the minutes-before-prayer reminder field.");
-        Require(editor!.Text == "60", "Existing profiles must keep the previous sixty-minute default.");
+        Require(editor!.Text == "15", "New profiles must keep the fifteen-minute default.");
         editor.BringIntoView();
         Pump();
         Require(editor.IsVisible && editor.ActualHeight >= 28,
@@ -32,7 +32,7 @@ internal static class LockScreenDurationSettingsSmoke
             fixture.Field<Button>("SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Pump();
             Require(!File.Exists(fixture.SavePath!) && fixture.StartupWrites == 0 &&
-                    fixture.Field<TextBlock>("SettingsStatusLabel").Text.Contains("1–120", StringComparison.Ordinal),
+                    fixture.Field<TextBlock>("SettingsStatusLabel").Text.Contains("1–60", StringComparison.Ordinal),
                 "Invalid hold duration must refuse Save before persistence or startup actions: " + invalid + ".");
             checks++;
         }
@@ -40,7 +40,7 @@ internal static class LockScreenDurationSettingsSmoke
         fixture.Field<TextBox>("ReminderMinutesBox").Text = "3";
         fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
         Pump();
-        Require(editor.Text == "60" && !File.Exists(fixture.SavePath!),
+        Require(editor.Text == "15" && !File.Exists(fixture.SavePath!),
             "Cancel must discard an unsaved image duration without persisting it.");
         checks++;
         editor.Text = "7";

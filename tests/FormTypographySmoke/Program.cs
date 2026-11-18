@@ -197,8 +197,8 @@ internal static class Program
                 Check(allText.Contains("seluruh pengguna", StringComparison.OrdinalIgnoreCase), "Do not misrepresent the public-service quota as per PC.");
                 Check(allText.Contains("server sendiri", StringComparison.OrdinalIgnoreCase), "Keep the many-PC deployment guidance.");
                 Check(allText.Contains("https://operations.osmfoundation.org/policies/nominatim/", StringComparison.Ordinal) && allText.Contains("https://osmfoundation.org/wiki/Privacy_Policy", StringComparison.Ordinal), "Keep both policy references.");
-                Check(allText.Contains("1–120 menit", StringComparison.OrdinalIgnoreCase) &&
-                      allText.Contains("default 60", StringComparison.OrdinalIgnoreCase) &&
+                Check(allText.Contains("1–60 menit", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("default 15", StringComparison.OrdinalIgnoreCase) &&
                       allText.Contains("durasi pilihan habis", StringComparison.OrdinalIgnoreCase) &&
                       allText.Contains("Picture", StringComparison.OrdinalIgnoreCase),
                     "Keep the selectable restoration interval, previous default, and Picture-image limitation.");

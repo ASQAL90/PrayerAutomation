@@ -807,7 +807,7 @@ internal static class CopyHumanizeSmoke
             MainWindow.Show();
             Field<TabControl>("MainTabs").SelectedIndex = 2;
             Pump(application, this);
-            Assert(Field<TextBox>("LockScreenDurationBox").Text == "60" &&
+            Assert(Field<TextBox>("LockScreenDurationBox").Text == "15" &&
                 !Field<CheckBox>("OnlineReverseGeocodeConsentCheckBox").IsChecked.GetValueOrDefault() &&
                 !Field<Button>("OnlineReverseGeocodeButton").IsEnabled,
                 "Fail closed: actual duration default/online consent and action must remain safe.");
