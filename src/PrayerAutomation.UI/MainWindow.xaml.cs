@@ -649,12 +649,12 @@ public partial class MainWindow : Window
         {
             var marker = new Ellipse
             {
-                Width = 5,
-                Height = 5,
+                Width = 4,
+                Height = 4,
                 Fill = MakeBrush(themeColors.Marker),
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 2, 0)
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 2, 2)
             };
             AutomationProperties.SetAutomationId(marker, $"CalendarMarker-{date:yyyy-MM-dd}");
             AutomationProperties.SetName(marker, string.Join("; ", names));
@@ -815,12 +815,12 @@ public partial class MainWindow : Window
         {
             var marker = new Ellipse
             {
-                Width = 5,
-                Height = 5,
+                Width = 4,
+                Height = 4,
                 Fill = MakeBrush(themeColors.Marker),
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 2, 2, 0)
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 2, 2)
             };
             AutomationProperties.SetAutomationId(marker, $"HijriCalendarMarker-{year}-{month:00}-{day:00}");
             AutomationProperties.SetName(marker, string.Join("; ", names));
@@ -1224,9 +1224,11 @@ public partial class MainWindow : Window
         LockScreenStatus.Text = status ?? safety.Message;
         LockScreenStatus.Visibility = status is null ? Visibility.Collapsed : Visibility.Visible;
         if (LockScreenCancelRecoveryButton is not null)
-            LockScreenCancelRecoveryButton.Visibility =
-                Application.Current is App app && app.HasPendingLockScreenRecovery
-                    ? Visibility.Visible : Visibility.Collapsed;
+        {
+            LockScreenCancelRecoveryButton.Visibility = Visibility.Visible;
+            LockScreenCancelRecoveryButton.IsEnabled =
+                Application.Current is App app && app.HasPendingLockScreenRecovery;
+        }
     }
 
     /// <summary>Restores the lock-screen image immediately, without waiting for the scheduled restore.</summary>
@@ -1906,9 +1908,9 @@ public partial class MainWindow : Window
             error = $"Pesan pengingat maksimal {AppSettings.MaxReminderMessageLength} karakter.";
             return false;
         }
-        if (!TryInt(LockScreenDurationBox.Text, 1, 120, out int lockScreenDurationMinutes))
+        if (!TryInt(LockScreenDurationBox.Text, 1, 60, out int lockScreenDurationMinutes))
         {
-            error = "Lama tampil gambar lock screen harus berupa bilangan bulat 1–120 menit.";
+            error = "Lama tampil gambar lock screen harus berupa bilangan bulat 1–60 menit.";
             return false;
         }
         if (!TryInt(DhuhaAfterSunriseBox.Text, 0, 180, out int dhuhaAfterSunrise))

@@ -186,7 +186,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
 
                 try
                 {
-                    TimeSpan duration = TimeSpan.FromMinutes(Math.Clamp(_durationMinutes(), 1, 120));
+                    TimeSpan duration = TimeSpan.FromMinutes(
+                        Math.Min(Math.Clamp(_durationMinutes(), 1, 60),
+                                 Math.Max(1, (int)Math.Floor(DurationUntilNextPrayer(localDate, localNow).TotalMinutes))));
                     Trace("trigger", nowUtc, $"triggerUtc={nowUtc.Add(triggerTime - localNow):O} deadlineUtc={nowUtc.Add(duration):O}");
                     RequestExecutionUntil(nowUtc.Add(duration), acquireOnly: true);
                     string imagePath = _imagePathProvider?.Invoke(trigger.Key) ?? _imagePath;
@@ -281,6 +283,34 @@ internal sealed class LockScreenImageScheduler : IDisposable
         {
             _nextRecoveryCheckAtUtc = DateTimeOffset.UtcNow.Add(RecoveryPollInterval);
         }
+    }
+
+    /// <summary>Gap to the next prayer trigger today or (as fallback) tomorrow.</summary>
+    /// <param name="localDate">Today's local date.</param>
+    /// <param name="localNow">Current local time.</param>
+    /// <returns>Gap to the next trigger; falls back to 60 minutes when no trigger is known.</returns>
+    private TimeSpan DurationUntilNextPrayer(DateTime localDate, DateTime localNow)
+    {
+        DateTime next = DateTime.MaxValue;
+        IReadOnlyList<LockScreenPrayerTrigger> today = _cachedTriggers ?? Array.Empty<LockScreenPrayerTrigger>();
+        foreach (LockScreenPrayerTrigger trigger in today)
+        {
+            if (!EssentialPrayerKeys.Contains(trigger.Key)) continue;
+            DateTime candidate = localDate.Add(trigger.Time);
+            if (candidate > localNow && candidate < next) next = candidate;
+        }
+        if (next == DateTime.MaxValue)
+        {
+            IReadOnlyList<LockScreenPrayerTrigger> tomorrow =
+                _scheduleForDate(localDate.AddDays(1)) ?? Array.Empty<LockScreenPrayerTrigger>();
+            foreach (LockScreenPrayerTrigger trigger in tomorrow)
+            {
+                if (!EssentialPrayerKeys.Contains(trigger.Key)) continue;
+                DateTime candidate = localDate.AddDays(1).Add(trigger.Time);
+                if (candidate < next) next = candidate;
+            }
+        }
+        return next == DateTime.MaxValue ? TimeSpan.FromMinutes(60) : next - localNow;
     }
 
     /// <summary>Disposes the scheduler and its power request; the timer is stopped.</summary>

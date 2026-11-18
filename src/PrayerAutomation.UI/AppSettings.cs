@@ -37,7 +37,7 @@ internal sealed class AppSettings
     /// <summary>Explicit opt-in required before the lock-screen image feature can run.</summary>
     [JsonPropertyName("lock_screen_opt_in")] public bool LockScreenOptIn { get; set; }
     /// <summary>Minutes the temporary lock-screen image stays applied.</summary>
-    [JsonPropertyName("lock_screen_duration_minutes")] public int LockScreenDurationMinutes { get; set; } = 60;
+    [JsonPropertyName("lock_screen_duration_minutes")] public int LockScreenDurationMinutes { get; set; } = 15;
     /// <summary>Whether the auto-lock scheduler is enabled.</summary>
     [JsonPropertyName("auto_lock_enabled")] public bool AutoLockEnabled { get; set; }
     /// <summary>Whether the app registers itself to run at Windows sign-in.</summary>
@@ -92,7 +92,7 @@ internal sealed class AppSettings
         if (ReminderMessage.Length > MaxReminderMessageLength)
             ReminderMessage = ReminderMessage[..MaxReminderMessageLength].TrimEnd();
         ReminderMinutes = Math.Clamp(ReminderMinutes, 0, 120);
-        LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 120);
+        LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 60);
         DhuhaAfterSunriseMinutes = Math.Clamp(DhuhaAfterSunriseMinutes, 0, 180);
         HijriDateCorrectionDays = Math.Clamp(HijriDateCorrectionDays, -7, 7);
         // The Gregorian date follows the computer clock; drop the retired correction key.

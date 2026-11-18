@@ -1,7 +1,8 @@
-// Auto-hide behavior for overlay scrollbars: shows the thumb while it is in use or hovered, fades it out when idle.
+// Auto-hide behavior for overlay scrollbars: keeps the thumb always faintly visible, brightens it while in use, fades back when idle.
 using System;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ScrollBar = System.Windows.Controls.Primitives.ScrollBar;
@@ -9,10 +10,12 @@ using Thumb = System.Windows.Controls.Primitives.Thumb;
 
 namespace PrayerAutomation.UI;
 
-/// <summary>Shows a scrollbar thumb while it is in use or hovered and fades it out when idle, like macOS overlay scrollbars.</summary>
+/// <summary>Keeps the overlay scrollbar thumb faintly visible and brightens it while it is used or hovered.</summary>
 internal static class AutoHideScrollBar
 {
-    private static readonly TimeSpan HideDelay = TimeSpan.FromMilliseconds(700);
+    private const double RestOpacity = 0.55;
+    private const double ActiveOpacity = 0.92;
+    private static readonly TimeSpan IdleDelay = TimeSpan.FromMilliseconds(600);
     private static readonly Duration FadeDuration = new(TimeSpan.FromMilliseconds(180));
     private static readonly ConditionalWeakTable<ScrollBar, ScrollBarAutoHide> Bars = new();
 
@@ -24,7 +27,7 @@ internal static class AutoHideScrollBar
         Bars.Add(scrollBar, new ScrollBarAutoHide(scrollBar));
     }
 
-    /// <summary>Holds the per-scrollbar state for auto-hiding.</summary>
+    /// <summary>Holds the per-scrollbar state for the overlay thumb.</summary>
     private sealed class ScrollBarAutoHide
     {
         private readonly ScrollBar _scrollBar;
@@ -35,8 +38,8 @@ internal static class AutoHideScrollBar
         internal ScrollBarAutoHide(ScrollBar scrollBar)
         {
             _scrollBar = scrollBar;
-            _hideTimer = new DispatcherTimer { Interval = HideDelay };
-            _hideTimer.Tick += (_, _) => { _hideTimer.Stop(); FadeThumb(0); };
+            _hideTimer = new DispatcherTimer { Interval = IdleDelay };
+            _hideTimer.Tick += (_, _) => { _hideTimer.Stop(); FadeThumb(RestOpacity); };
             _scrollBar.Loaded += (_, _) => AttachTemplate();
             _scrollBar.Unloaded += (_, _) => _hideTimer.Stop();
             _scrollBar.Scroll += (_, _) => Reveal();
@@ -44,7 +47,7 @@ internal static class AutoHideScrollBar
             _scrollBar.MouseLeave += (_, _) => ScheduleHide();
         }
 
-        /// <summary>Finds the PART_Thumb part of the template and hides it until the scrollbar is used.</summary>
+        /// <summary>Finds the PART_Thumb part of the template and sets the resting opacity.</summary>
         private void AttachTemplate()
         {
             if (_attached) return;
@@ -54,17 +57,17 @@ internal static class AutoHideScrollBar
             if (_thumb is null) return;
             _thumb.DragStarted += (_, _) => Reveal();
             _thumb.DragCompleted += (_, _) => ScheduleHide();
-            _thumb.Opacity = 0;
+            _thumb.Opacity = RestOpacity;
         }
 
-        /// <summary>Shows the thumb and cancels the pending hide.</summary>
+        /// <summary>Shows the thumb at full opacity and cancels the pending fade.</summary>
         private void Reveal()
         {
             _hideTimer.Stop();
-            FadeThumb(0.75);
+            FadeThumb(ActiveOpacity);
         }
 
-        /// <summary>Schedules fading the thumb out after the idle delay.</summary>
+        /// <summary>Returns the thumb to its resting opacity after the idle delay.</summary>
         private void ScheduleHide()
         {
             _hideTimer.Stop();
@@ -72,12 +75,13 @@ internal static class AutoHideScrollBar
         }
 
         /// <summary>Fades the thumb to the given opacity.</summary>
-        /// <param name="opacity">Target opacity, 0 to hide.</param>
+        /// <param name="opacity">Target opacity.</param>
         private void FadeThumb(double opacity)
         {
             if (_thumb is null) return;
             _thumb.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(opacity, FadeDuration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
+                new DoubleAnimation(opacity, FadeDuration)
+                { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
         }
     }
 }
