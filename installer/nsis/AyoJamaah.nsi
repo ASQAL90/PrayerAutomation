@@ -85,6 +85,9 @@ VIAddVersionKey /LANG=1033 "FileDescription" "Pemasang ${APP_NAME} ${APP_VERSION
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
 !define MUI_FINISHPAGE_RUN_TEXT "Jalankan ${APP_NAME} sekarang"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
+; Plain welcome text: the default Indonesian MUI text asks users to close every
+; program; only this application needs to be closed so its files can be replaced.
+!define MUI_TEXT_WELCOME_INFO_TEXT "Program ini memasang ${APP_NAME} di komputer Anda. Pengaturan, jadwal, dan data yang sudah ada tetap disimpan.$\r$\n$\r$\nCukup tutup aplikasi ${APP_NAME} yang sedang berjalan (ikon di area notifikasi → Keluar). Program lain tidak perlu ditutup.$\r$\n$\r$\nTekan Lanjut untuk melanjutkan."
 
 !insertmacro MUI_PAGE_WELCOME
 Page custom InfoPageCreate InfoPageLeave

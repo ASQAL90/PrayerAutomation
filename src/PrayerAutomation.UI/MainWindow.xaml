@@ -93,7 +93,7 @@
         <Style x:Key="CalendarDayButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Margin" Value="1" />
             <Setter Property="Padding" Value="1" />
-            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="MinHeight" Value="32" />
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
@@ -175,8 +175,10 @@
                                         <Button AutomationProperties.AutomationId="NextGregorianYearButton" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" AutomationProperties.Name="Tahun Masehi berikutnya" Content="›" Width="34" Click="NextGregorianYear_Click" />
                                     </StackPanel>
                                 </Grid>
-                                <Border Grid.Row="1" Name="SelectedDatePanel" AutomationProperties.AutomationId="SelectedDatePanel" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="10" Margin="0,0,0,6">
-                                    <TextBlock Style="{StaticResource FormHelpText}" Name="SelectedDateDetail" AutomationProperties.AutomationId="SelectedDateDetail" Text="Pilih tanggal untuk melihat detail." />
+                                <Border Grid.Row="1" Name="SelectedDatePanel" AutomationProperties.AutomationId="SelectedDatePanel" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="10" Margin="0,0,0,6" Height="92">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="SelectedDateDetail" AutomationProperties.AutomationId="SelectedDateDetail" Text="Pilih tanggal untuk melihat detail." Margin="0,0,10,0" />
+                                    </ScrollViewer>
                                 </Border>
                                 <StackPanel Grid.Row="2" Margin="2,0,2,6">
                                     <WrapPanel Name="GregorianCalendarLegend" AutomationProperties.AutomationId="GregorianCalendarLegend">
@@ -220,8 +222,10 @@
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Perkiraan kalender sipil; dapat berbeda dari rukyat atau otoritas setempat." Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
                                 </Border>
-                                <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="8" Margin="0,0,0,6">
-                                    <TextBlock Style="{StaticResource FormHelpText}" Name="HijriSelectedDateDetail" AutomationProperties.AutomationId="HijriSelectedDateDetail" Text="Pilih tanggal Hijriyah untuk melihat padanan Masehi." />
+                                <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="8" Margin="0,0,0,6" Height="72">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="HijriSelectedDateDetail" AutomationProperties.AutomationId="HijriSelectedDateDetail" Text="Pilih tanggal Hijriyah untuk melihat padanan Masehi." Margin="0,0,10,0" />
+                                    </ScrollViewer>
                                 </Border>
                                 <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                     <UniformGrid Name="HijriCalendarGrid" AutomationProperties.AutomationId="HijriCalendarGrid" Columns="3" />
@@ -253,7 +257,7 @@
                                     <Grid Name="SettingsSchedulePreviewGrid" AutomationProperties.AutomationId="SettingsSchedulePreviewGrid">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     </Grid>
-                                    <TextBlock Style="{StaticResource FormHelpText}" Name="SettingsSchedulePreviewStatus" AutomationProperties.AutomationId="SettingsSchedulePreviewStatus" Margin="3,12,3,8" Text="Perkiraan aplikasi, bukan jadwal resmi." Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock Style="{StaticResource FormHelpText}" Name="SettingsSchedulePreviewStatus" AutomationProperties.AutomationId="SettingsSchedulePreviewStatus" Margin="3,12,3,8" Height="40" ClipToBounds="True" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Text="Perkiraan aplikasi, bukan jadwal resmi." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Lokasi dan standar perhitungan" Style="{StaticResource CardGroup}" Margin="0,0,0,12">
@@ -316,10 +320,10 @@
                                     </Grid>
                                     <StackPanel Grid.Column="1" Margin="8,3,0,0" VerticalAlignment="Top">
                                         <Button Name="DetectNetworkLocationButton" AutomationProperties.AutomationId="DetectNetworkLocationButton" Content="Perkiraan dari jaringan" Click="DetectNetworkLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-                                        <TextBlock Style="{StaticResource FormHelpText}" Name="NetworkLocationStatus" AutomationProperties.AutomationId="NetworkLocationStatus" Text="Perkiraan dari IP publik. VPN/gateway dapat meleset. Bukan GPS." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="NetworkLocationStatus" AutomationProperties.AutomationId="NetworkLocationStatus" Text="Perkiraan dari IP publik. VPN/gateway dapat meleset. Bukan GPS." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,8" Height="40" ClipToBounds="True" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                                         <Button Name="DetectGpsLocationButton" AutomationProperties.AutomationId="DetectGpsLocationButton" Content="Lokasi perangkat / GPS" Click="DetectGpsLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-                                        <TextBlock Style="{StaticResource FormHelpText}" Name="GpsLocationStatus" AutomationProperties.AutomationId="GpsLocationStatus" Text="Windows memakai GPS, Wi-Fi, seluler, atau lokasi sistem." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
-                                        <TextBlock Style="{StaticResource FormHelpText}" Name="OfflineReverseGeocodeStatus" AutomationProperties.AutomationId="OfflineReverseGeocodeStatus" Text="Pencarian offline memakai koordinat form. Tidak ada data dikirim." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="GpsLocationStatus" AutomationProperties.AutomationId="GpsLocationStatus" Text="Windows memakai GPS, Wi-Fi, seluler, atau lokasi sistem." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Height="40" ClipToBounds="True" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="OfflineReverseGeocodeStatus" AutomationProperties.AutomationId="OfflineReverseGeocodeStatus" Text="Pencarian offline memakai koordinat form. Tidak ada data dikirim." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0" Height="40" ClipToBounds="True" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                                     </StackPanel>
                                 </Grid>
                             </GroupBox>
@@ -447,6 +451,11 @@
                                         <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Periksa pembaruan otomatis" />
                                     </CheckBox>
                                     <TextBlock Style="{StaticResource FormHelpText}" Text="Saat aplikasi dibuka, pembaruan baru diperiksa dari GitHub (tanpa mengirim data). Anda tetap bisa mematikannya dan memeriksa secara manual dari menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" Margin="3,4,3,2">
+                                        <TextBlock Style="{StaticResource FormHelpText}" Text="Versi terpasang:" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Name="InstalledVersionText" AutomationProperties.AutomationId="InstalledVersionText" Margin="5,0,0,0" VerticalAlignment="Center" />
+                                        <Button Name="CheckUpdatesNowButton" AutomationProperties.AutomationId="CheckUpdatesNowButton" Content="Periksa sekarang" Margin="14,0,0,0" Padding="10,3" Click="CheckUpdatesNow_Click" ToolTip="Memeriksa pembaruan dan menampilkan hasilnya di jendela Pembaruan." />
+                                    </StackPanel>
                                     <CheckBox Name="AutoLockEnabledCheckBox" AutomationProperties.AutomationId="AutoLockEnabledCheckBox" >
                                         <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Kunci Windows saat lima waktu sholat" />
                                     </CheckBox>
@@ -472,8 +481,12 @@
                                             </Grid>
                                             <TextBlock Style="{StaticResource FormHelpText}" Text="Pilih 1–60 menit; default 15. Durasi efektif dibatasi sisa waktu menuju sholat berikutnya. Perubahan berlaku pada gambar berikutnya." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                             <TextBlock Style="{StaticResource FormHelpText}" Text="Gambar diganti sementara saat waktu sholat. Fitur ini tidak mengunci komputer dan tidak mengubah wallpaper. Setelah durasi pilihan habis, tampilan semula dikembalikan. Jika tampilan semula tidak bisa dipastikan atau dicadangkan, gambar tidak diubah. Tanpa hak administrator." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                                            <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenSafetyText" Text="Memeriksa syarat pemulihan lock screen..." Margin="0,8,0,0" TextWrapping="Wrap" />
-                                            <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenStatus" AutomationProperties.AutomationId="LockScreenStatus" Text="Memeriksa profil lock screen Windows..." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                            <ScrollViewer Height="76" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                <StackPanel Margin="0,0,10,0">
+                                                    <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenSafetyText" Text="Memeriksa syarat pemulihan lock screen..." TextWrapping="Wrap" />
+                                                    <TextBlock Style="{StaticResource FormHelpText}" Name="LockScreenStatus" AutomationProperties.AutomationId="LockScreenStatus" Text="Memeriksa profil lock screen Windows..." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </ScrollViewer>
                                             <Button Name="LockScreenRestoreNowButton" Content="Pulihkan lock screen sekarang" AutomationProperties.AutomationId="LockScreenRestoreNowButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Click="LockScreenRestoreNow_Click" ToolTip="Kembalikan gambar/mode lock screen semula sekarang, tanpa menunggu jadwal pemulihan." />
                                             <Button Name="LockScreenCancelRecoveryButton" Content="Batalkan pemulihan tertunda" AutomationProperties.AutomationId="LockScreenCancelRecoveryButton" HorizontalAlignment="Left" Margin="0,6,0,0" Padding="8,4" Click="LockScreenCancelRecovery_Click" ToolTip="Hapus catatan pemulihan dan biarkan gambar lock screen seperti saat ini. Gunakan hanya bila tampilan tidak bisa dipastikan kembali." />
                                             <TextBlock Style="{StaticResource FormHelpText}" Text="Catatan: gambar lock screen tampil penuh setelah layar dikunci ulang; Windows Lock App membaca ulang tampilan dengan jeda." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />

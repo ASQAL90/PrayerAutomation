@@ -102,7 +102,7 @@ public partial class App : Application
         }
         CompleteWidgetStartup();
         if (Settings.UpdateAutoCheck)
-            _ = RefreshUpdateAsync(manual: false);
+            _ = AutoCheckForUpdatesAsync();
     }
 
     /// <summary>Completes widget startup after the main window is shown, respecting any active appearance preview.</summary>
@@ -430,102 +430,65 @@ public partial class App : Application
             "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; catatan pemulihan dihapus.");
     }
 
-    /// <summary>Checks GitHub for a newer release and prompts the user to install it.</summary>
-    /// <param name="manual">True when the user requested the check; false for the automatic background check.</param>
-    internal async Task RefreshUpdateAsync(bool manual)
+    private UpdateWindow? _updateWindow;
+
+    /// <summary>Checks GitHub quietly at startup and opens the update window only when something new exists.</summary>
+    internal async Task AutoCheckForUpdatesAsync()
     {
         if (_isShuttingDown) return;
         try
         {
             UpdateInfo? info = await new UpdateService().CheckAsync(AppBranding.Version, CancellationToken.None);
-            if (info is null)
-            {
-                if (manual) NotifyTray("Anda menjalankan versi terbaru.");
-                return;
-            }
-            if (info.Tag == Settings.IgnoredUpdateVersion)
-            {
-                if (manual)
-                    NotifyTray($"Versi {info.Tag} sebelumnya Anda abaikan. Pasang manual dari halaman rilis bila diperlukan.");
-                return;
-            }
-            await Dispatcher.InvokeAsync(() => _ = AskInstallUpdateAsync(info)).Task;
+            if (info is null || info.Tag == Settings.IgnoredUpdateVersion || _isShuttingDown) return;
+            _ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(info));
         }
         catch (Exception ex)
         {
+            // Automatic checks stay silent; the window is reserved for explicit checks.
             AppLogger.Write("update.check", ex);
-            if (manual) NotifyTray("Pemeriksaan pembaruan gagal; periksa koneksi internet.");
         }
     }
 
-    /// <summary>Shows the update prompt and installs the downloaded asset if the user agrees.</summary>
-    /// <param name="info">Release to offer.</param>
-    private async Task AskInstallUpdateAsync(UpdateInfo info)
+    /// <summary>Opens (or focuses) the update window.</summary>
+    /// <param name="info">Known release to display, or null to check first.</param>
+    internal void ShowUpdateWindow(UpdateInfo? info = null)
     {
-        long megabytes = info.SizeBytes / (1024 * 1024);
-        string size = megabytes > 0 ? $"kira-kira {megabytes} MB" : "ukurannya tidak diketahui";
-        MessageBoxResult choice = System.Windows.MessageBox.Show(_mainWindow,
-            $"Versi {info.Tag} sudah tersedia (Anda memakai v{AppBranding.Version}). Unduhan {size}.\r\n\r\n" +
-            "Ya: unduh dan pasang sekarang.\r\nTidak: nanti saja.\r\nBatal: jangan tawarkan versi ini lagi.",
-            "Pembaruan tersedia", MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
-        if (choice == MessageBoxResult.Yes)
+        if (_isShuttingDown) return;
+        if (_updateWindow is not null)
         {
-            await InstallUpdateAsync(info);
+            _updateWindow.Activate();
             return;
         }
-        if (choice == MessageBoxResult.No)
-        {
-            NotifyTray("Ditunda. Buka ikon tray → Periksa pembaruan kapan pun.");
-            return;
-        }
-        Settings.IgnoredUpdateVersion = info.Tag;
+        _updateWindow = new UpdateWindow(this, info);
+        _updateWindow.Closed += (_, _) => _updateWindow = null;
+        _updateWindow.Show();
+    }
+
+    /// <summary>Remembers a release the user chose not to be offered again.</summary>
+    /// <param name="tag">Release tag, e.g. v2.2.0.</param>
+    internal void IgnoreUpdate(string tag)
+    {
+        Settings.IgnoredUpdateVersion = tag;
         SettingsStore.Save(Settings);
-        NotifyTray($"Pembaruan {info.Tag} diabaikan; tidak akan ditawarkan lagi.");
     }
 
-    /// <summary>Downloads the update asset and launches the installer.</summary>
-    /// <param name="info">Release to install.</param>
-    private async Task InstallUpdateAsync(UpdateInfo info)
+    /// <summary>Launches the downloaded installer after this process exits so files are not locked.</summary>
+    /// <param name="installerPath">Downloaded installer executable.</param>
+    internal void LaunchInstallerAndExit(string installerPath)
     {
-        try
-        {
-            NotifyTray($"Mengunduh pembaruan {info.Tag}…");
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PrayerAutomation", "Update");
-            string? path = await new UpdateService().DownloadAsync(info, folder, CancellationToken.None);
-            if (path is null)
-            {
-                NotifyTray("Pembaruan gagal diverifikasi; coba lagi nanti.");
-                return;
-            }
-            var launcher = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true };
-            launcher.ArgumentList.Add("-NoProfile");
-            launcher.ArgumentList.Add("-WindowStyle");
-            launcher.ArgumentList.Add("Hidden");
-            launcher.ArgumentList.Add("-Command");
-            launcher.ArgumentList.Add("Wait-Process -Id " + Environment.ProcessId +
-                " -ErrorAction SilentlyContinue; Start-Process -FilePath '" + path.Replace("'", "''") + "'");
-            Process.Start(launcher);
-            NotifyTray("Aplikasi ditutup sebentar, lalu pemasang dijalankan.");
-            ShutdownApplication();
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Write("update.install", ex);
-            NotifyTray("Gagal memasang pembaruan; buka ikon tray → Periksa pembaruan.");
-        }
-    }
-
-    /// <summary>Shows a tray notification, marshaling to the UI thread when needed.</summary>
-    /// <param name="message">Notification message.</param>
-    private void NotifyTray(string message)
-    {
-        if (Dispatcher.CheckAccess()) _tray?.Notify(message);
-        else Dispatcher.BeginInvoke(() => _tray?.Notify(message));
+        var launcher = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true };
+        launcher.ArgumentList.Add("-NoProfile");
+        launcher.ArgumentList.Add("-WindowStyle");
+        launcher.ArgumentList.Add("Hidden");
+        launcher.ArgumentList.Add("-Command");
+        launcher.ArgumentList.Add("Wait-Process -Id " + Environment.ProcessId +
+            " -ErrorAction SilentlyContinue; Start-Process -FilePath '" + installerPath.Replace("'", "''") + "'");
+        Process.Start(launcher);
+        ShutdownApplication();
     }
 
     /// <summary>Triggers an update check requested by the user.</summary>
-    internal void CheckForUpdatesNow() => _ = RefreshUpdateAsync(manual: true);
+    internal void CheckForUpdatesNow() => ShowUpdateWindow();
 
     /// <summary>Loads the application icon from the base directory, or null if it is missing.</summary>
     /// <returns>The decoded icon frame, or null when the icon file does not exist.</returns>

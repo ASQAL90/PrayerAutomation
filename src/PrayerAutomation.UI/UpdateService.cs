@@ -73,18 +73,32 @@ internal sealed class UpdateService
     /// <summary>Downloads the asset and verifies its SHA-256 when a digest is available.</summary>
     /// <param name="info">The release to download.</param>
     /// <param name="destinationFolder">Folder to download into.</param>
+    /// <param name="progress">Optional progress in the range 0–1.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
     /// <returns>The downloaded file path, or null when verification failed.</returns>
-    internal async Task<string?> DownloadAsync(UpdateInfo info, string destinationFolder, CancellationToken cancellationToken)
+    internal async Task<string?> DownloadAsync(UpdateInfo info, string destinationFolder,
+        IProgress<double>? progress, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(destinationFolder);
         string path = Path.Combine(destinationFolder, info.AssetName);
-        using HttpResponseMessage response = await Http.GetAsync(info.DownloadUrl, cancellationToken).ConfigureAwait(false);
+        using HttpResponseMessage response = await Http.GetAsync(info.DownloadUrl,
+            HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
+        long total = info.SizeBytes > 0 ? info.SizeBytes : response.Content.Headers.ContentLength ?? 0;
         await using (FileStream target = new(path, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await response.Content.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            await using Stream source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            byte[] buffer = new byte[81920];
+            long received = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                received += read;
+                if (total > 0) progress?.Report(Math.Min(1d, (double)received / total));
+            }
         }
+        progress?.Report(1d);
         if (info.Sha256 is not null)
         {
             await using FileStream stream = File.OpenRead(path);

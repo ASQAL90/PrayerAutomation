@@ -258,14 +258,18 @@
             <Setter Property="Width" Value="10" />
             <Setter Property="Template" Value="{StaticResource OverlayScrollThumbTemplate}" />
         </Style>
+        <!-- Page buttons keep the track clickable without the system hover chrome. -->
+        <ControlTemplate x:Key="ScrollBarPageButtonTemplate" TargetType="{x:Type RepeatButton}">
+            <Border Background="Transparent" />
+        </ControlTemplate>
         <ControlTemplate x:Key="OverlayScrollBarTemplate" TargetType="{x:Type ScrollBar}">
             <Border Background="Transparent" Padding="1,0">
                 <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="False" SnapsToDevicePixels="True">
                     <Track.DecreaseRepeatButton>
-                        <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" />
+                        <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" Template="{StaticResource ScrollBarPageButtonTemplate}" />
                     </Track.DecreaseRepeatButton>
                     <Track.IncreaseRepeatButton>
-                        <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" />
+                        <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Background="Transparent" BorderThickness="0" Padding="0" Template="{StaticResource ScrollBarPageButtonTemplate}" />
                     </Track.IncreaseRepeatButton>
                     <Track.Thumb>
                         <Thumb x:Name="PART_Thumb" Style="{StaticResource OverlayScrollThumb}" Focusable="False" />

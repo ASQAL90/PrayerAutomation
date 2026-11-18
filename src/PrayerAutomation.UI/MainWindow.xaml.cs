@@ -12,6 +12,7 @@ using Button = System.Windows.Controls.Button;
 using ComboBox = System.Windows.Controls.ComboBox;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using Image = System.Windows.Controls.Image;
+using Rectangle = System.Windows.Shapes.Rectangle;
 using TextBox = System.Windows.Controls.TextBox;
 using UniformGrid = System.Windows.Controls.Primitives.UniformGrid;
 using Key = System.Windows.Input.Key;
@@ -574,7 +575,7 @@ public partial class MainWindow : Window
                     int day = slot - firstWeekday + 1;
                     if (day < 1 || day > monthLength)
                     {
-                        daysGrid.Children.Add(new Border { Margin = new Thickness(1), MinHeight = 28 });
+                        daysGrid.Children.Add(new Border { Margin = new Thickness(1), MinHeight = 32 });
                         continue;
                     }
                     DateTime date = new(year, month, day);
@@ -628,7 +629,8 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 11,
             FontWeight = markerStyle.IsToday ? FontWeights.Bold : FontWeights.Normal,
-            Foreground = MakeBrush(themeColors.Foreground)
+            Foreground = MakeBrush(themeColors.Foreground),
+            Margin = new Thickness(0, 0, 0, 6)
         };
         content.Children.Add(dayText);
         var todayRing = new Ellipse
@@ -647,14 +649,16 @@ public partial class MainWindow : Window
         content.Children.Add(todayRing);
         if (observances.Count > 0)
         {
-            var marker = new Ellipse
+            var marker = new Rectangle
             {
-                Width = 4,
-                Height = 4,
+                Width = 11,
+                Height = 3,
+                RadiusX = 1.5,
+                RadiusY = 1.5,
                 Fill = MakeBrush(themeColors.Marker),
-                HorizontalAlignment = HorizontalAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 2, 2)
+                Margin = new Thickness(0, 0, 0, 4)
             };
             AutomationProperties.SetAutomationId(marker, $"CalendarMarker-{date:yyyy-MM-dd}");
             AutomationProperties.SetName(marker, string.Join("; ", names));
@@ -667,7 +671,7 @@ public partial class MainWindow : Window
             Background = MakeBrush(themeColors.Background),
             BorderBrush = MakeBrush(themeColors.Border),
             BorderThickness = new Thickness(themeColors.BorderThickness),
-            MinHeight = 28,
+            MinHeight = 32,
             Padding = new Thickness(1),
             Tag = date
         };
@@ -748,7 +752,7 @@ public partial class MainWindow : Window
                     int day = slot - firstWeekday + 1;
                     if (day < 1 || day > nativeMonth.DaysInMonth)
                     {
-                        datesGrid.Children.Add(new Border { Margin = new Thickness(1), MinHeight = 28 });
+                        datesGrid.Children.Add(new Border { Margin = new Thickness(1), MinHeight = 32 });
                         continue;
                     }
                     DateTime gregorian = displayStart.AddDays(day - 1);
@@ -794,7 +798,8 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 11,
             FontWeight = markerStyle.IsToday ? FontWeights.Bold : FontWeights.Normal,
-            Foreground = MakeBrush(themeColors.Foreground)
+            Foreground = MakeBrush(themeColors.Foreground),
+            Margin = new Thickness(0, 0, 0, 6)
         };
         content.Children.Add(dayText);
         var todayRing = new Ellipse
@@ -813,14 +818,16 @@ public partial class MainWindow : Window
         content.Children.Add(todayRing);
         if (observances.Count > 0)
         {
-            var marker = new Ellipse
+            var marker = new Rectangle
             {
-                Width = 4,
-                Height = 4,
+                Width = 11,
+                Height = 3,
+                RadiusX = 1.5,
+                RadiusY = 1.5,
                 Fill = MakeBrush(themeColors.Marker),
-                HorizontalAlignment = HorizontalAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 2, 2)
+                Margin = new Thickness(0, 0, 0, 4)
             };
             AutomationProperties.SetAutomationId(marker, $"HijriCalendarMarker-{year}-{month:00}-{day:00}");
             AutomationProperties.SetName(marker, string.Join("; ", names));
@@ -833,7 +840,7 @@ public partial class MainWindow : Window
             Background = MakeBrush(themeColors.Background),
             BorderBrush = MakeBrush(themeColors.Border),
             BorderThickness = new Thickness(themeColors.BorderThickness),
-            MinHeight = 28,
+            MinHeight = 32,
             Padding = new Thickness(1),
             Tag = gregorianDate
         };
@@ -881,18 +888,18 @@ public partial class MainWindow : Window
                 dayText.FontWeight = markerStyle.IsToday ? FontWeights.Bold : FontWeights.Normal;
                 dayText.Foreground = MakeBrush(themeColors.Foreground);
             }
-            foreach (Ellipse ellipse in content.Children.OfType<Ellipse>())
+            foreach (Shape shape in content.Children.OfType<Shape>())
             {
-                string automationId = AutomationProperties.GetAutomationId(ellipse);
+                string automationId = AutomationProperties.GetAutomationId(shape);
                 if (automationId.StartsWith("TodayRing-", StringComparison.Ordinal))
                 {
-                    ellipse.Stroke = MakeBrush(themeColors.Border);
-                    ellipse.StrokeThickness = themeColors.BorderThickness;
-                    ellipse.Visibility = markerStyle.IsToday ? Visibility.Visible : Visibility.Collapsed;
+                    shape.Stroke = MakeBrush(themeColors.Border);
+                    shape.StrokeThickness = themeColors.BorderThickness;
+                    shape.Visibility = markerStyle.IsToday ? Visibility.Visible : Visibility.Collapsed;
                 }
                 else if (automationId.StartsWith("CalendarMarker-", StringComparison.Ordinal))
                 {
-                    ellipse.Fill = MakeBrush(themeColors.Marker);
+                    shape.Fill = MakeBrush(themeColors.Marker);
                 }
             }
         }
@@ -1070,6 +1077,7 @@ public partial class MainWindow : Window
             LockScreenCheckBox.IsChecked = _settings.LockScreenEnabled && _settings.LockScreenOptIn;
             LockScreenDurationBox.Text = _settings.LockScreenDurationMinutes.ToString(CultureInfo.InvariantCulture);
             UpdateAutoCheckCheckBox.IsChecked = _settings.UpdateAutoCheck;
+            InstalledVersionText.Text = AppBranding.VersionLabel;
             RefreshLockScreenSafety();
             UpdateTaskbarWidgetAvailability();
         }
@@ -1222,8 +1230,8 @@ public partial class MainWindow : Window
         bool alreadyEnabled = _settings.LockScreenOptIn && _settings.LockScreenEnabled;
         LockScreenCheckBox.IsEnabled = safety.CanChangeTemporarily || alreadyEnabled;
         LockScreenSafetyText.Text = safety.Message;
-        LockScreenStatus.Text = status ?? safety.Message;
-        LockScreenStatus.Visibility = status is null ? Visibility.Collapsed : Visibility.Visible;
+        LockScreenStatus.Text = status ?? string.Empty;
+        LockScreenStatus.Visibility = Visibility.Visible;
         if (LockScreenCancelRecoveryButton is not null)
         {
             LockScreenCancelRecoveryButton.Visibility = Visibility.Visible;
@@ -1267,6 +1275,14 @@ public partial class MainWindow : Window
         app.CancelLockScreenRecovery();
         LockScreenCheckBox.IsChecked = false;
         RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; catatan pemulihan dihapus dan fitur gambar dimatikan.");
+    }
+
+    /// <summary>Opens the update window for an explicit check.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void CheckUpdatesNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app) app.ShowUpdateWindow();
     }
 
     /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>

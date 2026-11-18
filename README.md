@@ -25,6 +25,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 - Ada kalender Masehi & Hijriyah, widget desktop, dan pengingat.
 - Lokasi bisa diisi manual, diperkirakan dari jaringan, atau dari Windows Location Services.
 - Cari nama tempat offline pakai data GeoNames.
+- Pembaruan bisa diperiksa sendiri dari GitHub: tombol "Periksa sekarang" di Pengaturan tambahan atau menu ikon tray.
 - Jadwal yang muncul adalah hasil hitung aplikasi, bukan pengumuman resmi.
 
 ## Cara pakai
