@@ -2,17 +2,18 @@
 ; Every path below comes from the reviewed x64/x86 receipts and was
 ; re-hashed before this file was written. Re-run the generator instead.
 ; Shared files are installed once; architecture files are gated at runtime.
-; x64 files=482 x86 files=481 unique=484 shared=9
-; ui_sha256_x64=4c6b5e2c3c270d4d6edb5dd6c64571699c331b6611be4ce11c3ab3bd294083cd
-; ui_sha256_x86=37931a92d791a9dd1947e780a41e4258f2de6bbbc4b425541b1b905d05369e79
+; x64 files=483 x86 files=482 unique=485 shared=10
+; ui_sha256_x64=471105c3bbf8345624b8c0e47272ebf28ab76fc0019265ca317d5b69944de79e
+; ui_sha256_x86=8235e52909e9dc8f1872fed41634e17dee5ab1ee24aa2e45d598cd5eba3c4103
 
-!define NSIS_PAYLOAD_COUNT_X64 482
-!define NSIS_PAYLOAD_COUNT_X86 481
-!define NSIS_PAYLOAD_COUNT_UNIQUE 484
-!define NSIS_PAYLOAD_COUNT_SHARED 9
+!define NSIS_PAYLOAD_COUNT_X64 483
+!define NSIS_PAYLOAD_COUNT_X86 482
+!define NSIS_PAYLOAD_COUNT_UNIQUE 485
+!define NSIS_PAYLOAD_COUNT_SHARED 10
 
 Section "Berkas aplikasi (bersama)" SEC_PAYLOAD_SHARED
   SetOutPath "$INSTDIR"
+  File "${PAYLOAD_X64}/AyoJamaah-logo-white.png"
   File "${PAYLOAD_X64}/AyoJamaah.ico"
   File "${PAYLOAD_X64}/AyoJamaah.runtimeconfig.json"
   File "${PAYLOAD_X64}/GeoTimeZone.dll"
@@ -1007,6 +1008,7 @@ SectionEnd
 !macro NSIS_WRITE_MANIFEST_X64
   FileOpen $0 "$LOCALAPPDATA\PrayerAutomation\install-manifest.txt" w
   FileWrite $0 "Accessibility.dll$\r$\n"
+  FileWrite $0 "AyoJamaah-logo-white.png$\r$\n"
   FileWrite $0 "AyoJamaah.deps.json$\r$\n"
   FileWrite $0 "AyoJamaah.dll$\r$\n"
   FileWrite $0 "AyoJamaah.exe$\r$\n"
@@ -1494,6 +1496,7 @@ SectionEnd
 !macro NSIS_WRITE_MANIFEST_X86
   FileOpen $0 "$LOCALAPPDATA\PrayerAutomation\install-manifest.txt" w
   FileWrite $0 "Accessibility.dll$\r$\n"
+  FileWrite $0 "AyoJamaah-logo-white.png$\r$\n"
   FileWrite $0 "AyoJamaah.deps.json$\r$\n"
   FileWrite $0 "AyoJamaah.dll$\r$\n"
   FileWrite $0 "AyoJamaah.exe$\r$\n"
@@ -1979,6 +1982,7 @@ SectionEnd
 
 !macro NSIS_DELETE_PAYLOAD
   Delete "$INSTDIR\Accessibility.dll"
+  Delete "$INSTDIR\AyoJamaah-logo-white.png"
   Delete "$INSTDIR\AyoJamaah.deps.json"
   Delete "$INSTDIR\AyoJamaah.dll"
   Delete "$INSTDIR\AyoJamaah.exe"
