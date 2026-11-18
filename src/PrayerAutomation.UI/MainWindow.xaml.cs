@@ -143,6 +143,7 @@ public partial class MainWindow : Window
         AttachCorrectionEditors();
         Icon = App.LoadApplicationIcon();
         Closing += OnClosing;
+        SourceInitialized += (_, _) => StripMaximizeButton();
         StateChanged += (_, _) =>
         {
             if (WindowState != WindowState.Minimized)
@@ -2259,6 +2260,49 @@ public partial class MainWindow : Window
         Hide();
         FooterStatus.Text = "Aplikasi tetap aktif di area notifikasi sistem.";
     }
+
+    private const int GwlExStyle = -20;
+    private const long WsMaximizeBox = 0x00010000L;
+
+    /// <summary>Clears WS_MAXIMIZEBOX so the title bar only offers minimize and close.</summary>
+    private void StripMaximizeButton()
+    {
+        IntPtr handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        long style = GetWindowLongPtr(handle, GwlExStyle).ToInt64();
+        SetWindowLongPtr(handle, GwlExStyle, new IntPtr(style & ~WsMaximizeBox));
+    }
+
+    /// <summary>Reads a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+    /// <param name="window">Target window handle.</param>
+    /// <param name="index">GWL_* index.</param>
+    /// <returns>The attribute value.</returns>
+    private static IntPtr GetWindowLongPtr(IntPtr window, int index) => IntPtr.Size == 8
+        ? GetWindowLongPtr64(window, index) : new IntPtr(GetWindowLong32(window, index));
+
+    /// <summary>Writes a window-long attribute, using the 64-bit or 32-bit entry point as appropriate.</summary>
+    /// <param name="window">Target window handle.</param>
+    /// <param name="index">GWL_* index.</param>
+    /// <param name="value">The new attribute value.</param>
+    /// <returns>The previous attribute value.</returns>
+    private static IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value) => IntPtr.Size == 8
+        ? SetWindowLongPtr64(window, index, value) : new IntPtr(SetWindowLong32(window, index, value.ToInt32()));
+
+    /// <summary>Reads a 64-bit window-long attribute.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr window, int index);
+
+    /// <summary>Reads a 32-bit window-long attribute.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr window, int index);
+
+    /// <summary>Writes a 64-bit window-long attribute.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr window, int index, IntPtr value);
+
+    /// <summary>Writes a 32-bit window-long attribute.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr window, int index, int value);
 
     /// <summary>Returns true for exceptions that indicate the native core failed to load.</summary>
     /// <param name="ex">The exception to classify.</param>
