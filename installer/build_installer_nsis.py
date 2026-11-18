@@ -23,8 +23,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from payload_receipt import validated_payload  # noqa: E402
 from generate_nsis_payload import render, render_files_list, write_output  # noqa: E402
 
-APP_VERSION = "2.1.2"
-DEFAULT_OUTPUT = f"AyoJamaah.Setup-{APP_VERSION}.exe"
+def app_version(nsis_dir: Path) -> str:
+    """Reads APP_VERSION from the NSIS script so the output name never drifts."""
+    for line in (nsis_dir / "AyoJamaah.nsi").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("!define APP_VERSION "):
+            return stripped.split('"')[1]
+    raise ValueError("APP_VERSION tidak ditemukan di AyoJamaah.nsi")
 
 
 def receipt_architecture(receipt: Path, expected: str) -> None:
@@ -84,7 +89,8 @@ def main() -> None:
     parser.add_argument("--portable-x86", type=Path, default=build_root / "portable-x86")
     parser.add_argument("--receipt-x64", type=Path, default=build_root / "receipt-x64.json")
     parser.add_argument("--receipt-x86", type=Path, default=build_root / "receipt-x86.json")
-    parser.add_argument("--output", type=Path, default=build_root / "installer" / DEFAULT_OUTPUT)
+    parser.add_argument("--output", type=Path,
+                        default=build_root / "installer" / f"AyoJamaah.Setup-{app_version(nsis_dir)}.exe")
     parser.add_argument("--makensis", help="Path to makensis (skips the Termux proot wrapper)")
     parser.add_argument("--check-only", action="store_true", help="Validate and regenerate the include, but do not compile")
     args = parser.parse_args()
