@@ -23,6 +23,7 @@ internal static class WidgetSettingsInteractionSmoke
         using (var fixture = new Fixture(application))
         {
             VerifyAppearanceChangesOnActualWidget(fixture);
+            VerifyDetailWidgetStaysFixedSize(fixture);
             VerifyCancelRestoresSavedAppearance(fixture);
             VerifyCloseToTrayRestoresSavedAppearance(fixture);
             VerifyTemporaryVisibilityRestoresPriorVisibility(fixture);
@@ -53,6 +54,28 @@ internal static class WidgetSettingsInteractionSmoke
         Assert(JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == savedSettings,
             "Live appearance must not mutate saved settings or scheduler inputs.");
         Console.WriteLine("WIDGET_LIVE_APPEARANCE PASS: actual window, mode, placement, saved-state isolation.");
+    }
+
+    /// <summary>Verifies Medium Detail is a fixed-size window and that a Windows snap/maximize is undone.</summary>
+    /// <param name="fixture">Fixture under test.</param>
+    private static void VerifyDetailWidgetStaysFixedSize(Fixture fixture)
+    {
+        Window widget = fixture.Widget;
+        Assert(fixture.WidgetMode == "detail" && widget.ResizeMode == ResizeMode.NoResize,
+            "Medium Detail must be a fixed-size window without a resize grip.");
+        double width = widget.Width;
+        double height = widget.Height;
+        widget.WindowState = WindowState.Maximized;
+        Pump();
+        Assert(widget.WindowState == WindowState.Normal,
+            "A snapped or maximized Medium Detail widget must return to Normal immediately.");
+        Assert(Math.Abs(widget.Width - width) < 0.5 && Math.Abs(widget.Height - height) < 0.5,
+            $"A snapped or maximized Medium Detail widget must keep its fixed size: {widget.Width}x{widget.Height} instead of {width}x{height}.");
+        Rect workArea = SystemParameters.WorkArea;
+        Assert(widget.Left >= workArea.Left - 0.5 && widget.Top >= workArea.Top - 0.5 &&
+               widget.Left + widget.Width <= workArea.Right + 0.5 && widget.Top + widget.Height <= workArea.Bottom + 0.5,
+            "The restored Medium Detail widget must stay inside the work area.");
+        Console.WriteLine("WIDGET_FIXED_SIZE PASS: no resize grip, maximize undone, fixed size and placement restored.");
     }
 
     /// <summary>Verifies Cancel restores the saved mode, position, theme, and widget visibility.</summary>

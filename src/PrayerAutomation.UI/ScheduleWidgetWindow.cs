@@ -20,6 +20,7 @@ internal sealed class ScheduleWidgetWindow : Window
     private readonly bool _taskbarDashboard;
     private bool _allowClose;
     private bool _dashboardPlaced;
+    private bool _restoringWindowState;
     private string? _taskbarIconKey;
     private System.Windows.Controls.Image _nextPrayerIcon = null!;
     private (string Mode, string Motion, string Position)? _appearancePreview;
@@ -76,6 +77,7 @@ internal sealed class ScheduleWidgetWindow : Window
             WindowState = WindowState.Normal;
         }
         WindowStartupLocation = WindowStartupLocation.Manual;
+        StateChanged += (_, _) => RestoreDesktopPlacementAfterStateChange();
         Closing += (_, e) =>
         {
             if (_taskbarDashboard && !_allowClose)
@@ -195,30 +197,26 @@ internal sealed class ScheduleWidgetWindow : Window
     {
         ThemePalette palette = ThemeManager.Current;
         string mode = Mode;
-        double requestedWidth = mode switch
-        {
-            "essential" => 700,
-            "minimalist" => 470,
-            _ => 440
-        };
-        double requestedHeight = mode switch
-        {
-            "essential" => 34,
-            "minimalist" => 34,
-            _ => 300
-        };
+        double requestedWidth = RequestedWidth(mode);
+        double requestedHeight = RequestedHeight(mode);
 
         if (_taskbarDashboard)
         {
             requestedWidth = _dashboardPlaced ? Width : 440;
             requestedHeight = _dashboardPlaced ? Height : 300;
         }
-        // Clear Detail constraints before assigning the compact window size.
+        // The desktop widget is a fixed-size panel in every mode. A window that was
+        // snapped or maximized by Windows must return to Normal before its size is
+        // assigned, otherwise Width/Height are ignored and the panel stays full-screen.
         MinWidth = 0;
         MinHeight = 0;
-        if (!IsDetailMode && WindowState == WindowState.Maximized)
+        if (!_taskbarDashboard && WindowState != WindowState.Normal)
             WindowState = WindowState.Normal;
-        ResizeMode = IsDetailMode ? ResizeMode.CanResizeWithGrip : ResizeMode.NoResize;
+        ResizeMode = _taskbarDashboard ? ResizeMode.CanResizeWithGrip : ResizeMode.NoResize;
+        // Medium Detail is large enough to get in the way, so it stays in the normal
+        // z-order. The thin Essential/Minimalist bars remain always on top. During a
+        // settings preview Detail is raised briefly so the user can actually see it.
+        Topmost = !_taskbarDashboard && (!IsDetailMode || _appearancePreview is not null);
         Width = requestedWidth;
         Height = requestedHeight;
         Background = System.Windows.Media.Brushes.Transparent;
@@ -444,10 +442,49 @@ internal sealed class ScheduleWidgetWindow : Window
         Height = placement.Height;
         Left = placement.Left;
         Top = placement.Top;
-        if (IsDetailMode)
+    }
+
+    /// <summary>Returns the requested window width for a widget mode.</summary>
+    /// <param name="mode">Normalized widget mode.</param>
+    /// <returns>Width in device-independent pixels.</returns>
+    private static double RequestedWidth(string mode) => mode switch
+    {
+        "essential" => 700,
+        "minimalist" => 470,
+        _ => 440
+    };
+
+    /// <summary>Returns the requested window height for a widget mode.</summary>
+    /// <param name="mode">Normalized widget mode.</param>
+    /// <returns>Height in device-independent pixels.</returns>
+    private static double RequestedHeight(string mode) => mode switch
+    {
+        "essential" => 34,
+        "minimalist" => 34,
+        _ => 300
+    };
+
+    /// <summary>Restores the fixed widget size and configured position; used when the window is shown again.</summary>
+    internal void RestoreDesktopPlacement()
+    {
+        if (_taskbarDashboard) return;
+        if (WindowState != WindowState.Normal)
+            WindowState = WindowState.Normal;
+        ApplyPlacement(RequestedWidth(Mode), RequestedHeight(Mode));
+    }
+
+    /// <summary>Undoes a Windows snap/maximize so the desktop widget stays fixed-size.</summary>
+    private void RestoreDesktopPlacementAfterStateChange()
+    {
+        if (_taskbarDashboard || _restoringWindowState || WindowState == WindowState.Normal) return;
+        _restoringWindowState = true;
+        try
         {
-            MinWidth = Math.Min(360, placement.Width);
-            MinHeight = Math.Min(300, placement.Height);
+            RestoreDesktopPlacement();
+        }
+        finally
+        {
+            _restoringWindowState = false;
         }
     }
 

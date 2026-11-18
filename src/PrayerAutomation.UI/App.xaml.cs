@@ -175,6 +175,7 @@ public partial class App : Application
     private void ShowWidget()
     {
         ScheduleWidgetWindow widget = EnsureWidget();
+        widget.RestoreDesktopPlacement();
         if (!widget.IsVisible) widget.Show();
         widget.Activate();
     }
