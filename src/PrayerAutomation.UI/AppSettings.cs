@@ -50,6 +50,10 @@ internal sealed class AppSettings
     [JsonPropertyName("widget")] public bool WidgetEnabled { get; set; }
     /// <summary>Whether the taskbar countdown panel is enabled.</summary>
     [JsonPropertyName("taskbar_widget")] public bool TaskbarWidgetEnabled { get; set; }
+    /// <summary>Whether the app checks GitHub for updates automatically.</summary>
+    [JsonPropertyName("update_auto_check")] public bool UpdateAutoCheck { get; set; } = true;
+    /// <summary>Update tag the user chose to skip, or null.</summary>
+    [JsonPropertyName("ignored_update_version")] public string? IgnoredUpdateVersion { get; set; }
     /// <summary>Taskbar widget renderer mode; only "popup" is supported.</summary>
     [JsonPropertyName("taskbar_widget_mode")] public string TaskbarWidgetMode { get; set; } = "popup";
     /// <summary>Schedule widget display mode.</summary>

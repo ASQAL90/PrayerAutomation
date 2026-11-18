@@ -263,7 +263,7 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="125" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="Nama lokasi" />
-                                        <TextBox Grid.Row="0" Grid.Column="1" Name="LocationNameBox" AutomationProperties.AutomationId="LocationNameBox" Margin="3"
+                                        <TextBox Grid.Row="0" Grid.Column="1" Name="LocationNameBox" AutomationProperties.AutomationId="LocationNameBox" Margin="3" TextAlignment="Left"
                                                  TextChanged="SettingsPreviewInput_Changed" PreviewKeyDown="LocationNameBox_PreviewKeyDown"
                                                  LostKeyboardFocus="LocationNameBox_LostKeyboardFocus"
                                                  ToolTip="Ketik minimal dua karakter untuk mencari kota/permukiman dari data lokal. Pilih hasil untuk mengisi koordinat dan zona waktu; belum disimpan." />
@@ -290,14 +290,20 @@
                                             </Border>
                                         </Popup>
                                         <TextBlock Grid.Row="1" Style="{StaticResource FieldLabel}" Text="Lintang (Latitude)" />
-                                        <TextBox Grid.Row="1" Grid.Column="1" Name="LatitudeBox" Margin="3" TextChanged="SettingsPreviewInput_Changed" />
+                                        <TextBox Grid.Row="1" Grid.Column="1" Name="LatitudeBox" Margin="3" TextAlignment="Left" TextChanged="SettingsPreviewInput_Changed" />
                                         <TextBlock Grid.Row="2" Style="{StaticResource FieldLabel}" Text="Bujur (Longitude)" />
-                                        <TextBox Grid.Row="2" Grid.Column="1" Name="LongitudeBox" Margin="3" TextChanged="SettingsPreviewInput_Changed" />
+                                        <TextBox Grid.Row="2" Grid.Column="1" Name="LongitudeBox" Margin="3" TextAlignment="Left" TextChanged="SettingsPreviewInput_Changed" />
                                         <TextBlock Grid.Row="3" Style="{StaticResource FieldLabel}" Text="Zona waktu" />
                                         <ComboBox Grid.Row="3" Grid.Column="1" Name="TimeZoneBox" AutomationProperties.AutomationId="TimeZoneBox" Margin="3"
                                                   IsEditable="True" IsTextSearchEnabled="True" MaxDropDownHeight="260"
                                                   TextBoxBase.TextChanged="SettingsPreviewInput_Changed"
-                                                  ToolTip="Pilih atau ketik zona waktu. Saat koordinat diubah, zona waktu dicocokkan otomatis." />
+                                                  ToolTip="Pilih atau ketik zona waktu. Saat koordinat diubah, zona waktu dicocokkan otomatis.">
+                                            <ComboBox.Resources>
+                                                <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="TextAlignment" Value="Left" />
+                                                </Style>
+                                            </ComboBox.Resources>
+                                        </ComboBox>
                                         <TextBlock Grid.Row="4" Style="{StaticResource FieldLabel}" Text="Metode hitung" />
                                         <ComboBox Grid.Row="4" Grid.Column="1" Name="MethodBox" Margin="3" SelectedValuePath="Id" SelectionChanged="MethodBox_SelectionChanged">
                                             <ComboBox.ItemTemplate>
@@ -437,6 +443,10 @@
                                         </CheckBox>
                                         <TextBlock Style="{StaticResource FormHelpText}" Text="Default nonaktif. Jika dicentang, aplikasi mulai di area notifikasi saat dibuka manual maupun otomatis oleh Windows. Tombol tutup dan minimize juga menyembunyikan jendela; pilih Keluar untuk berhenti." Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
+                                    <CheckBox Name="UpdateAutoCheckCheckBox" AutomationProperties.AutomationId="UpdateAutoCheckCheckBox" AutomationProperties.Name="Periksa pembaruan otomatis dari GitHub" Margin="3,8,3,3" >
+                                        <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Periksa pembaruan otomatis" />
+                                    </CheckBox>
+                                    <TextBlock Style="{StaticResource FormHelpText}" Text="Saat aplikasi dibuka, pembaruan baru diperiksa dari GitHub (tanpa mengirim data). Anda tetap bisa mematikannya dan memeriksa secara manual dari menu ikon tray." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
                                     <CheckBox Name="AutoLockEnabledCheckBox" AutomationProperties.AutomationId="AutoLockEnabledCheckBox" >
                                         <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Kunci Windows saat lima waktu sholat" />
                                     </CheckBox>

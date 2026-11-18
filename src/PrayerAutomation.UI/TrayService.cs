@@ -26,10 +26,18 @@ internal sealed class TrayService : IDisposable
         menu.Items.Add("Buka kalender", null, (_, _) => Dispatch(() => _app.OpenCalendar()));
         menu.Items.Add("Tampilkan widget jadwal", null, (_, _) => Dispatch(() => _app.ToggleWidget()));
         menu.Items.Add("Tentang", null, (_, _) => Dispatch(_about.Show));
+        menu.Items.Add("Periksa pembaruan", null, (_, _) => Dispatch(() => _app.CheckForUpdatesNow()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Keluar", null, (_, _) => Dispatch(() => _app.ShutdownApplication()));
         _icon = new NotifyIcon { Icon = icon, Text = AppBranding.DisplayName, ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => Dispatch(() => _app.ShowMainWindow());
+    }
+
+    /// <summary>Shows a tray notification with the application name and message.</summary>
+    /// <param name="message">Text to display in the balloon.</param>
+    internal void Notify(string message)
+    {
+        _icon.ShowBalloonTip(5000, AppBranding.DisplayName, message, ToolTipIcon.Info);
     }
 
     /// <summary>Runs an action on the WPF dispatcher, marshaling to it when called off the UI thread.</summary>

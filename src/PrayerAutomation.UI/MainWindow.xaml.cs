@@ -1069,6 +1069,7 @@ public partial class MainWindow : Window
             AutoLockEnabledCheckBox.IsChecked = _settings.AutoLockEnabled;
             LockScreenCheckBox.IsChecked = _settings.LockScreenEnabled && _settings.LockScreenOptIn;
             LockScreenDurationBox.Text = _settings.LockScreenDurationMinutes.ToString(CultureInfo.InvariantCulture);
+            UpdateAutoCheckCheckBox.IsChecked = _settings.UpdateAutoCheck;
             RefreshLockScreenSafety();
             UpdateTaskbarWidgetAvailability();
         }
@@ -1946,6 +1947,8 @@ public partial class MainWindow : Window
         candidate.LockScreenEnabled = lockScreenOptIn;
         candidate.LockScreenOptIn = lockScreenOptIn;
         candidate.LockScreenDurationMinutes = lockScreenDurationMinutes;
+        candidate.UpdateAutoCheck = UpdateAutoCheckCheckBox.IsChecked == true;
+        candidate.IgnoredUpdateVersion = _settings.IgnoredUpdateVersion;
         candidate.LocationName = string.IsNullOrWhiteSpace(LocationNameBox.Text) ? "Lokasi belum diatur" : LocationNameBox.Text.Trim();
 
         candidate.Latitude = latitude;
@@ -2074,6 +2077,8 @@ public partial class MainWindow : Window
         destination.LockScreenEnabled = source.LockScreenEnabled;
         destination.LockScreenOptIn = source.LockScreenOptIn;
         destination.LockScreenDurationMinutes = source.LockScreenDurationMinutes;
+        destination.UpdateAutoCheck = source.UpdateAutoCheck;
+        destination.IgnoredUpdateVersion = source.IgnoredUpdateVersion;
         destination.AutoLockEnabled = source.AutoLockEnabled;
         destination.StartupEnabled = source.StartupEnabled;
         destination.StartHidden = source.StartHidden;
