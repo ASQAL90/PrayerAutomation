@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.3.0"
-!define APP_VERSION_QUAD "2.3.0.0"
+!define APP_VERSION "2.3.1"
+!define APP_VERSION_QUAD "2.3.1.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -228,6 +228,15 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\AyoJamaah.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
   Delete "$DESKTOP\AyoJamaah.lnk"
+  ; Remove the startup entry only when it still belongs to this installation.
+  ; A portable copy may have taken it over; that entry is not ours to delete.
+  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "PrayerAutomation"
+  ${If} $0 != ""
+    System::Call 'shlwapi::StrStrIW(w r0, w "$INSTDIR\${APP_EXE}") p .r1'
+    ${If} $1 != 0
+      DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "PrayerAutomation"
+    ${EndIf}
+  ${EndIf}
   DeleteRegKey HKCU "${APP_UNINSTALL_KEY}"
   DeleteRegKey HKCU "Software\AyoJamaah"
   RMDir "$INSTDIR"

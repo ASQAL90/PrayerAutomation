@@ -1654,6 +1654,18 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Sets the storage/update status text; marshals to the UI thread when needed.</summary>
+    /// <param name="message">Status message to display.</param>
+    internal void SetStorageStatus(string message)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(() => SetStorageStatus(message));
+            return;
+        }
+        StorageStatusText.Text = message;
+    }
+
     /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>
     /// <param name="message">Status message to display.</param>
     internal void SetLockScreenStatus(string message)

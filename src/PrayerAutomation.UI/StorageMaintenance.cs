@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace PrayerAutomation.UI;
@@ -20,6 +21,8 @@ internal static partial class StorageMaintenance
         "PrayerAutomation");
 
     internal static string UpdateFolder => Path.Combine(DataRoot, "Update");
+
+    internal static string UpdateJobsFolder => Path.Combine(UpdateFolder, "jobs");
 
     internal static string LockScreenFolder => LockScreenStatePaths.DefaultDirectory;
 
@@ -93,6 +96,40 @@ internal static partial class StorageMaintenance
                     removed++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException) { }
+        return removed;
+    }
+
+    /// <summary>Removes finished update job folders, but never an in-progress one.</summary>
+    /// <returns>Number of job folders removed.</returns>
+    internal static int DeleteFinishedUpdateJobs()
+    {
+        int removed = 0;
+        try
+        {
+            var root = new DirectoryInfo(UpdateJobsFolder);
+            if (!root.Exists) return 0;
+            DateTime cutoff = DateTime.UtcNow - OldInstallerAge;
+            foreach (DirectoryInfo folder in root.EnumerateDirectories())
+            {
+                if ((folder.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                try
+                {
+                    string journal = Path.Combine(folder.FullName, "journal.json");
+                    if (!File.Exists(journal) || folder.LastWriteTimeUtc >= cutoff) continue;
+                    string status = File.ReadAllText(journal);
+                    if (!status.Contains("\"applied\"", StringComparison.Ordinal) &&
+                        !status.Contains("\"failed\"", StringComparison.Ordinal)) continue;
+                    foreach (FileInfo file in folder.EnumerateFiles("*", SearchOption.AllDirectories))
+                    {
+                        if ((file.Attributes & FileAttributes.ReparsePoint) == 0) file.Delete();
+                    }
+                    folder.Delete(recursive: true);
+                    removed++;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException) { }

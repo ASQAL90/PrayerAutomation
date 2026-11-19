@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PrayerAutomation.UI/UpdateVersion.cs" Link="UpdateVersion.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/UpdateManifest.cs" Link="UpdateManifest.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/UpdatePlanner.cs" Link="UpdatePlanner.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/UpdateJob.cs" Link="UpdateJob.cs" />
+  </ItemGroup>
+</Project>

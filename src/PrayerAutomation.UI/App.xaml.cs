@@ -1,5 +1,8 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -46,6 +49,16 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // The updater helper is a copy of this executable. It must run before the
+        // single-instance mutex, otherwise it would shut itself down immediately.
+        if (UpdateApplier.TryHandleCommandLine(e.Args, out int updateExitCode))
+        {
+            Environment.ExitCode = updateExitCode;
+            Shutdown();
+            return;
+        }
+
         try
         {
             _singleInstanceMutex = new Mutex(false, @"Global\PrayerAutomation.Desktop.SingleInstance", out bool createdNew);
@@ -65,10 +78,15 @@ public partial class App : Application
         }
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         Settings = SettingsStore.Load();
+        StartupRegistration.SelfHeal(Settings.StartupEnabled, Environment.ProcessPath);
+        StorageMaintenance.DeleteFinishedUpdateJobs();
         ThemeManager.Apply(this, Settings.ThemeId);
         _widgetSettingEnabled = Settings.WidgetEnabled;
         _tray = new TrayService(this);
         _mainWindow = new MainWindow(Settings);
+        string? updateFailure = UpdateApplier.FindLastFailure();
+        if (updateFailure is not null)
+            _mainWindow.SetStorageStatus("Pembaruan terakhir gagal dan sudah dikembalikan: " + updateFailure + ".");
         MainWindow = _mainWindow;
         if (!StartupRegistration.ShouldStartHidden(e.Args, Settings.StartHidden))
             _mainWindow.Show();
@@ -467,9 +485,12 @@ public partial class App : Application
         if (_isShuttingDown) return;
         try
         {
-            UpdateInfo? info = await new UpdateService().CheckAsync(AppBranding.Version, CancellationToken.None);
-            if (info is null || info.Tag == Settings.IgnoredUpdateVersion || _isShuttingDown) return;
-            _ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(info));
+            bool installed = StartupRegistration.IsInstalledPath(
+                Path.GetDirectoryName(Environment.ProcessPath ?? string.Empty) ?? AppContext.BaseDirectory);
+            UpdateRelease? release = await new UpdateService()
+                .CheckAsync(AppBranding.Version, installed, CancellationToken.None).ConfigureAwait(false);
+            if (release is null || release.Tag == Settings.IgnoredUpdateVersion || _isShuttingDown) return;
+            _ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(release));
         }
         catch (Exception ex)
         {
@@ -480,7 +501,7 @@ public partial class App : Application
 
     /// <summary>Opens (or focuses) the update window.</summary>
     /// <param name="info">Known release to display, or null to check first.</param>
-    internal void ShowUpdateWindow(UpdateInfo? info = null)
+    internal void ShowUpdateWindow(UpdateRelease? info = null)
     {
         if (_isShuttingDown) return;
         if (_updateWindow is not null)
@@ -567,6 +588,120 @@ public partial class App : Application
         }
         ReleaseAndShutdown();
         return true;
+    }
+
+    /// <summary>Stages a verified delta, writes its job, and hands it to the updater helper.</summary>
+    /// <param name="plan">Verified update plan.</param>
+    /// <param name="deltaZipPath">Downloaded and hash-checked delta zip.</param>
+    /// <returns><c>true</c> when the helper was started.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the delta cannot be prepared.</exception>
+    internal async Task<bool> InstallDeltaAsync(UpdatePlan plan, string deltaZipPath)
+    {
+        if (!File.Exists(deltaZipPath))
+            throw new FileNotFoundException("Berkas pembaruan tidak ditemukan.", deltaZipPath);
+        if (plan.Needed.Count == 0) return false;
+        if (_isShuttingDown) return false;
+        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return false;
+        _isShuttingDown = true;
+
+        try
+        {
+            if (_lockScreenScheduler is not null)
+            {
+                LockScreenTransactionResult restore = await _lockScreenScheduler.StopAndRestoreAsync();
+                if (restore == LockScreenTransactionResult.PendingVerification)
+                {
+                    _isShuttingDown = false;
+                    _mainWindow?.SetLockScreenStatus(
+                        "Pemulihan lock screen belum terverifikasi; pembaruan ditunda agar tampilan tidak tertinggal.");
+                    throw new InvalidOperationException(
+                        "Pemulihan lock screen belum terverifikasi. Pulihkan atau batalkan pemulihan tertunda, lalu coba lagi.");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            await AbortUpdatePreparationAsync().ConfigureAwait(false);
+            AppLogger.Write("update.prepare-delta", ex);
+            throw new InvalidOperationException(
+                "Pembaruan ditunda karena lock screen belum bisa dipulihkan.", ex);
+        }
+
+        string executable = Environment.ProcessPath
+            ?? throw new InvalidOperationException("Path aplikasi tidak dapat ditentukan.");
+        string root = Path.GetDirectoryName(executable) ?? AppContext.BaseDirectory;
+        string jobFolder = Path.Combine(StorageMaintenance.UpdateFolder, "jobs",
+            DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "-" +
+            Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+        try
+        {
+            Directory.CreateDirectory(jobFolder);
+            string stage = Path.Combine(jobFolder, "stage");
+            ZipFile.ExtractToDirectory(deltaZipPath, stage);
+            foreach (ManifestFile file in plan.Needed)
+            {
+                string source = Path.Combine(stage, file.Path.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(source) || new FileInfo(source).Length != file.Size ||
+                    !string.Equals(await UpdatePlanner.ComputeSha256Async(source, CancellationToken.None)
+                            .ConfigureAwait(false), file.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Isi pembaruan tidak lolos pemeriksaan keutuhan.");
+            }
+
+            var job = new UpdateJob
+            {
+                TargetRoot = root,
+                SourceFolder = stage,
+                BackupFolder = Path.Combine(jobFolder, "backup"),
+                JournalPath = Path.Combine(jobFolder, "journal.json"),
+                Files = plan.Needed.Select(file => file.Path).ToList(),
+                Deleted = plan.Deleted.ToList(),
+                TargetVersion = plan.Manifest.Version,
+                IsInstalled = StartupRegistration.IsInstalledPath(root)
+            };
+            string jobPath = Path.Combine(jobFolder, "job.json");
+            job.Save(jobPath);
+
+            // PublishSingleFile is false, so the helper needs the rest of the
+            // application files next to it. Copy the whole folder, then give the
+            // copy a different name so the locked AyoJamaah.exe can be replaced.
+            string updateFolder = StorageMaintenance.UpdateFolder;
+            Directory.CreateDirectory(updateFolder);
+            foreach (string sourceFile in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                string destination = Path.Combine(updateFolder, Path.GetRelativePath(root, sourceFile));
+                string? parent = Path.GetDirectoryName(destination);
+                if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+                File.Copy(sourceFile, destination, overwrite: true);
+            }
+            string helper = Path.Combine(updateFolder, "Updater.exe");
+            File.Copy(executable, helper, overwrite: true);
+            var start = new ProcessStartInfo(helper)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = StorageMaintenance.UpdateFolder,
+                Arguments = "--apply-update \"" + jobPath + "\" " +
+                    Environment.ProcessId.ToString(CultureInfo.InvariantCulture)
+            };
+            Process.Start(start);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException
+            or System.ComponentModel.Win32Exception)
+        {
+            await AbortUpdatePreparationAsync().ConfigureAwait(false);
+            AppLogger.Write("update.stage-delta", ex);
+            throw new InvalidOperationException("Pembaruan tidak bisa disiapkan: " + ex.Message, ex);
+        }
+        ReleaseAndShutdown();
+        return true;
+    }
+
+    /// <summary>Restores scheduling after a cancelled update preparation.</summary>
+    private async Task AbortUpdatePreparationAsync()
+    {
+        _isShuttingDown = false;
+        if (_lockScreenScheduler is null) return;
+        try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow).ConfigureAwait(false); }
+        catch (Exception ex) { AppLogger.Write("update.prepare-resume", ex); }
     }
 
     /// <summary>Triggers an update check requested by the user.</summary>

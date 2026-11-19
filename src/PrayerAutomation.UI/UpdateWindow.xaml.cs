@@ -15,14 +15,14 @@ internal partial class UpdateWindow : Window
 {
     private readonly App _app;
     private readonly UpdateService _service = new();
-    private UpdateInfo? _info;
+    private UpdateRelease? _release;
     private bool _busy;
     private CancellationTokenSource? _downloadCts;
 
     /// <summary>Creates the window, optionally showing a release that was already found.</summary>
     /// <param name="app">Application used for shutdown and installer launch.</param>
     /// <param name="info">Known release, or null to check immediately.</param>
-    internal UpdateWindow(App app, UpdateInfo? info)
+    internal UpdateWindow(App app, UpdateRelease? info)
     {
         InitializeComponent();
         _app = app;
@@ -38,7 +38,7 @@ internal partial class UpdateWindow : Window
         if (_busy) return;
         _busy = true;
         SetBusy(true);
-        _info = null;
+        _release = null;
         InstallButton.Visibility = Visibility.Collapsed;
         IgnoreButton.Visibility = Visibility.Collapsed;
         DownloadProgress.Visibility = Visibility.Collapsed;
@@ -46,16 +46,24 @@ internal partial class UpdateWindow : Window
         StatusText.Text = "Memeriksa pembaruan ke GitHub…";
         try
         {
-            UpdateInfo? info = await _service.CheckAsync(AppBranding.Version, CancellationToken.None);
-            if (info is null)
+            UpdateRelease? release = await _service.CheckAsync(AppBranding.Version, IsInstalledCopy(),
+                CancellationToken.None).ConfigureAwait(true);
+            if (release is null)
             {
                 StatusText.Text = $"Anda sudah memakai versi terbaru ({AppBranding.VersionLabel}). " +
                     "Tidak ada yang perlu diunduh.";
                 ProgressText.Text = $"Diperiksa pukul {DateTime.Now:HH:mm:ss}.";
             }
+            else if (string.Equals(_app.Settings.IgnoredUpdateVersion, release.Tag,
+                         StringComparison.OrdinalIgnoreCase))
+            {
+                StatusText.Text = $"Versi {release.Tag} tersedia, tetapi sudah Anda pilih untuk diabaikan. " +
+                    "Gunakan Periksa lagi bila ingin melihatnya kembali.";
+                ProgressText.Text = $"Diperiksa pukul {DateTime.Now:HH:mm:ss}.";
+            }
             else
             {
-                ShowAvailable(info);
+                ShowAvailable(release);
             }
         }
         catch (Exception ex)
@@ -75,33 +83,34 @@ internal partial class UpdateWindow : Window
     }
 
     /// <summary>Fills the window with an available release.</summary>
-    /// <param name="info">Release to offer.</param>
-    private void ShowAvailable(UpdateInfo info)
+    /// <param name="release">Release to offer.</param>
+    private void ShowAvailable(UpdateRelease release)
     {
-        _info = info;
-        long megabytes = info.SizeBytes / (1024 * 1024);
-        string size = megabytes > 0 ? $"± {megabytes} MB" : "ukuran tidak diketahui";
-        StatusText.Text = $"Versi {info.Tag} tersedia; Anda memakai {AppBranding.VersionLabel}. " +
-            $"Unduhan {size}.\r\n\r\n" +
-            "Saat dipasang, aplikasi ditutup sebentar agar berkasnya bisa diganti. " +
-            "Pengaturan, jadwal, dan data Anda tetap disimpan.";
+        _release = release;
+        bool delta = release.Manifest is not null && release.Signature is not null;
+        StatusText.Text = $"Versi {release.Tag} tersedia; Anda memakai {AppBranding.VersionLabel}.\r\n\r\n" +
+            (delta
+                ? "Aplikasi akan memeriksa berkas lokal Anda, lalu mengunduh hanya bagian yang berubah. " +
+                  "Jika pembaruan kecil tidak tersedia, aplikasi mengunduh versi lengkap."
+                : "Rilis ini belum menyediakan pembaruan kecil, jadi aplikasi akan mengunduh versi lengkap.") +
+            "\r\n\r\nPengaturan, jadwal, dan data Anda tetap disimpan.";
         ProgressText.Text = string.Empty;
         InstallButton.Visibility = Visibility.Visible;
         IgnoreButton.Visibility = Visibility.Visible;
     }
 
-    /// <summary>Downloads and verifies the release, then hands it to the installer.</summary>
+    /// <summary>Downloads, verifies, and installs the smallest available payload.</summary>
     private async Task InstallAsync()
     {
-        if (_info is null || _busy) return;
+        if (_release is null || _busy) return;
         _busy = true;
         SetBusy(true);
         InstallButton.IsEnabled = false;
         IgnoreButton.IsEnabled = false;
         DownloadProgress.Visibility = Visibility.Visible;
         DownloadProgress.Value = 0;
-        ProgressText.Text = "Mengunduh 0%";
-        StatusText.Text = $"Mengunduh pembaruan {_info.Tag}… Jendela ini boleh dibiarkan terbuka.";
+        ProgressText.Text = "Menyiapkan 0%";
+        StatusText.Text = "Memeriksa berkas yang perlu diganti…";
         try
         {
             string folder = Path.Combine(
@@ -114,20 +123,27 @@ internal partial class UpdateWindow : Window
             });
             _downloadCts?.Dispose();
             _downloadCts = new CancellationTokenSource();
-            string? path = await _service.DownloadAsync(_info, folder, progress, _downloadCts.Token);
+
+            UpdatePreparation? prepared = await _service.PrepareAsync(_release, AppBranding.Version,
+                ApplicationRoot(), folder, progress, _downloadCts.Token).ConfigureAwait(true);
             if (_downloadCts.IsCancellationRequested) return;
-            if (path is null)
+            if (prepared is null)
             {
-                StatusText.Text = "Unduhan tidak lolos pemeriksaan keutuhan (SHA-256), jadi tidak dipasang. " +
+                StatusText.Text = "Pembaruan tidak lolos pemeriksaan keutuhan, jadi tidak dipasang. " +
                     "Coba periksa dan unduh lagi.";
                 ProgressText.Text = string.Empty;
                 return;
             }
+
             DownloadProgress.Value = 100;
-            ProgressText.Text = "Unduhan selesai dan sudah diperiksa.";
-            StatusText.Text = "Aplikasi ditutup sebentar, lalu pembaruan dipasang otomatis.";
-            await _app.InstallUpdateAsync(path);
-            if (IsVisible)
+            ProgressText.Text = prepared.Summary;
+            StatusText.Text = prepared.Mode == UpdateInstallMode.Installer
+                ? "Aplikasi ditutup sebentar, lalu pemasang lengkap dijalankan otomatis."
+                : "Aplikasi ditutup sebentar agar berkas bisa diganti. Jangan matikan komputer sampai selesai.";
+            bool started = prepared.Mode == UpdateInstallMode.Installer
+                ? await _app.InstallUpdateAsync(prepared.LocalPath).ConfigureAwait(true)
+                : await _app.InstallDeltaAsync(prepared.Plan!, prepared.LocalPath).ConfigureAwait(true);
+            if (started && IsVisible)
             {
                 StatusText.Text = "Pembaruan ditunda. Tidak ada berkas yang diubah.";
                 ProgressText.Text = string.Empty;
@@ -189,6 +205,15 @@ internal partial class UpdateWindow : Window
         _ => "Unduhan gagal. Coba lagi nanti."
     };
 
+    private static string ApplicationRoot()
+    {
+        string executable = Environment.ProcessPath ?? string.Empty;
+        return string.IsNullOrWhiteSpace(executable) ? AppContext.BaseDirectory
+            : Path.GetDirectoryName(executable) ?? AppContext.BaseDirectory;
+    }
+
+    private static bool IsInstalledCopy() => StartupRegistration.IsInstalledPath(ApplicationRoot());
+
     /// <summary>Runs a check again on request.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Event arguments.</param>
@@ -204,7 +229,7 @@ internal partial class UpdateWindow : Window
     /// <param name="e">Event arguments.</param>
     private void OnIgnoreClick(object sender, RoutedEventArgs e)
     {
-        if (_info is not null) _app.IgnoreUpdate(_info.Tag);
+        if (_release is not null) _app.IgnoreUpdate(_release.Tag);
         Close();
     }
 

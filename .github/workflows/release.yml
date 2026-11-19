@@ -65,6 +65,26 @@ jobs:
           }
           $lines | Out-File -Encoding ascii SHA256SUMS.txt
 
+      - name: Build signed delta payloads
+        shell: pwsh
+        env:
+          AYOJAMAAH_UPDATE_SIGNING_KEY_B64: ${{ secrets.AYOJAMAAH_UPDATE_SIGNING_KEY_B64 }}
+        run: |
+          $env:PATH = "$env:PATH;C:\Program Files\Git\usr\bin"
+          $version = (Select-Xml -Path src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -XPath '//Version').Node.InnerText
+          python installer/build_update_payload.py --version $version --arch x64 `
+            --source out/portable-x64 `
+            --baseline installer/update/baseline-2.3.0-x64.json `
+            --portable-zip AyoJamaah-win-x64.zip `
+            --installer out/installer/AyoJamaah.Setup-$version.exe `
+            --output-dir out/update
+          python installer/build_update_payload.py --version $version --arch x86 `
+            --source out/portable-x86 `
+            --baseline installer/update/baseline-2.3.0-x86.json `
+            --portable-zip AyoJamaah-win-x86.zip `
+            --installer out/installer/AyoJamaah.Setup-$version.exe `
+            --output-dir out/update
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -74,6 +94,9 @@ jobs:
             AyoJamaah-win-x86.zip
             out\installer\AyoJamaah.Setup-*.exe
             AyoJamaah.Setup-*.zip
+            out\update\AyoJamaah-*.json
+            out\update\AyoJamaah-*.sig
+            out\update\AyoJamaah-delta-*.zip
             SHA256SUMS.txt
 
       - name: Publish GitHub release
@@ -85,5 +108,8 @@ jobs:
             AyoJamaah-win-x86.zip
             out\installer\AyoJamaah.Setup-*.exe
             AyoJamaah.Setup-*.zip
+            out\update\AyoJamaah-*.json
+            out\update\AyoJamaah-*.sig
+            out\update\AyoJamaah-delta-*.zip
             SHA256SUMS.txt
           generate_release_notes: true
