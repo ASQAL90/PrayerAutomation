@@ -1,6 +1,6 @@
-# Installer Ayo Jama'ah! 2.2.0
+# Installer Ayo Jama'ah! 2.2.1
 
-> **Status 2.2.0:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup sudah dihapus; NSIS satu-satunya jalur installer. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.2.0 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
+> **Status 2.2.1:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup sudah dihapus; NSIS satu-satunya jalur installer. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.2.1 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
 
 ## Jalur build NSIS
 
@@ -24,7 +24,7 @@ Alur yang dijalankan:
 2. Setiap file di receipt di-hash ulang terhadap `portable-x64`/`portable-x86`. Perbedaan satu byte menghentikan proses.
 3. `installer/generate_nsis_payload.py` menulis ulang `installer/nsis/AyoJamaahPayload-dual.nsh`: section payload, manifest install, dan daftar hapus uninstall. Tidak ada wildcard.
 4. `makensis` dijalankan. Di Termux ini memakai proot Debian (NSIS 3.11); di Windows memakai `makensis` native atau `--makensis <path>`.
-5. Output default: `<AYOJAMAAH_OUT>/installer/AyoJamaah.Setup-2.2.0.exe` (default `AYOJAMAAH_OUT` adalah `../AyoJamaah-build`).
+5. Output default: `<AYOJAMAAH_OUT>/installer/AyoJamaah.Setup-2.2.1.exe` (default `AYOJAMAAH_OUT` adalah `../AyoJamaah-build`).
 
 Payload tidak dibangun ulang oleh installer. Kalau payload sengaja dibangun ulang, receipt harus dibuat ulang dengan `--force` dan include NSIS direview sebelum build berikutnya. Jangan mengganti file payload secara manual.
 

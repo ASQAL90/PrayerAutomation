@@ -1,6 +1,6 @@
 # Distribusi lokal — Ayo Jama'ah!
 
-> **Status 2.2.0:** portable 2.2.0 sudah dipublish di luar repo (x64 482 file, x86 481 file). Installer 2.2.0 sekarang dibangun dengan **NSIS** (`installer/build_installer_nsis.py`) sehingga compile dan validasi payload dapat dilakukan di perangkat ini; output default `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.0.exe`. Uji install/upgrade/uninstall dan verifikasi visual tetap harus di Windows. Artefak 2.1.0 di bawah adalah paket lokal terakhir yang sudah tersedia sebelumnya.
+> **Status 2.2.1:** portable 2.2.1 sudah dipublish di luar repo (x64 482 file, x86 481 file). Installer 2.2.1 sekarang dibangun dengan **NSIS** (`installer/build_installer_nsis.py`) sehingga compile dan validasi payload dapat dilakukan di perangkat ini; output default `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.1.exe`. Uji install/upgrade/uninstall dan verifikasi visual tetap harus di Windows. Artefak 2.1.0 di bawah adalah paket lokal terakhir yang sudah tersedia sebelumnya.
 
 Paket di bawah disiapkan lokal untuk pemeriksaan pengguna. **Unsigned: signing belum selesai.** CompanyName/AppPublisher `Ayo Jama'ah!` hanya metadata, bukan publisher Authenticode terverifikasi. SmartScreen/Smart App Control masih dapat memperingatkan atau memblokir. Tidak ada pemasangan sertifikat self-signed, pengecualian Defender, atau perubahan trust Windows.
 

@@ -1,9 +1,9 @@
-# Build portable + installer lalu unggah ke GitHub Release saat tag v*
+# Build portable + installer lalu unggah ke GitHub Release.
+# Dijalankan manual: rilis normal dibangun lokal, dan tag dari GitHub API
+# tetap memicu event push yang tidak kita inginkan di sini.
 name: Release
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:

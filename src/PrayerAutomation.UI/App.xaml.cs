@@ -471,7 +471,7 @@ public partial class App : Application
     }
 
     /// <summary>Remembers a release the user chose not to be offered again.</summary>
-    /// <param name="tag">Release tag, e.g. v2.2.0.</param>
+    /// <param name="tag">Release tag, e.g. v2.2.1.</param>
     internal void IgnoreUpdate(string tag)
     {
         Settings.IgnoredUpdateVersion = tag;
