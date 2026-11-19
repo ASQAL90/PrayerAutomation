@@ -9,7 +9,7 @@ mod prayer;
 /// ABI version for the C# host. Increment only alongside coordinated host changes.
 #[unsafe(no_mangle)]
 pub extern "C" fn prayer_core_abi_version() -> u32 {
-    1
+    2
 }
 
 /// Return a stable status code for validating one manual correction value.

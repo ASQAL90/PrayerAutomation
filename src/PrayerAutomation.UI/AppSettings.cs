@@ -9,6 +9,12 @@ internal sealed class AppSettings
 {
     /// <summary>Default Nominatim endpoint used for online reverse geocoding.</summary>
     public const string DefaultOnlineGeocodingEndpoint = "https://nominatim.openstreetmap.org";
+    /// <summary>Calendar source value for the civil/tabular Hijri calendar.</summary>
+    public const string CalendarSourceCivil = "civil";
+    /// <summary>Calendar source value for the official KHGT month table.</summary>
+    public const string CalendarSourceKhgt = "khgt";
+    /// <summary>Label of the Muhammadiyah prayer-time method.</summary>
+    public const string MuhammadiyahMethodLabel = "Indonesia — Muhammadiyah";
     /// <summary>Default reminder notification message template.</summary>
     public const string DefaultReminderMessage = "Sebentar lagi waktu sholat {prayer} ({minutes_before} menit lagi).";
     /// <summary>Maximum allowed length of a reminder message.</summary>
@@ -20,6 +26,8 @@ internal sealed class AppSettings
     [JsonPropertyName("latitude")] public double Latitude { get; set; } = -6.4336368;
     /// <summary>Longitude in decimal degrees (WGS84).</summary>
     [JsonPropertyName("longitude")] public double Longitude { get; set; } = 107.1934549;
+    /// <summary>Observer height above sea level in metres; 0 means sea level.</summary>
+    [JsonPropertyName("elevation_meters")] public int ElevationMeters { get; set; }
     /// <summary>IANA time zone identifier used for schedules.</summary>
     [JsonPropertyName("timezone")] public string TimeZoneId { get; set; } = "Asia/Jakarta";
     /// <summary>Display name of the configured location.</summary>
@@ -78,6 +86,12 @@ internal sealed class AppSettings
     [JsonPropertyName("dhuha_after_sunrise_minutes")] public int DhuhaAfterSunriseMinutes { get; set; } = 15;
     /// <summary>Offset in days applied to the computed Hijri date.</summary>
     [JsonPropertyName("hijri_date_correction_days")] public int HijriDateCorrectionDays { get; set; }
+    /// <summary>Hijri calendar source: civil/tabular or the official KHGT table.</summary>
+    [JsonPropertyName("calendar_source")] public string CalendarSource { get; set; } = CalendarSourceCivil;
+    /// <summary>True after the one-time KHGT offer has been answered on an existing installation.</summary>
+    [JsonPropertyName("khgt_offer_seen")] public bool KhgtOfferSeen { get; set; }
+    /// <summary>True when the official KHGT table is the selected Hijri calendar source.</summary>
+    [JsonIgnore] public bool UsesKhgtCalendar => string.Equals(CalendarSource, CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase);
     /// <summary>Unrecognized settings preserved across round trips.</summary>
     [JsonExtensionData] public Dictionary<string, JsonElement>? OtherSettings { get; set; }
 
@@ -86,6 +100,7 @@ internal sealed class AppSettings
     {
         if (!double.IsFinite(Latitude) || Latitude is < -90 or > 90) Latitude = -6.4336368;
         if (!double.IsFinite(Longitude) || Longitude is < -180 or > 180) Longitude = 107.1934549;
+        ElevationMeters = Math.Clamp(ElevationMeters, 0, 9000);
         TimeZoneId = string.IsNullOrWhiteSpace(TimeZoneId) ? "Asia/Jakarta" : TimeZoneId.Trim();
         LocationName = string.IsNullOrWhiteSpace(LocationName) ? "Lokasi belum diatur" : LocationName.Trim();
         OnlineGeocodingEndpoint = string.IsNullOrWhiteSpace(OnlineGeocodingEndpoint)
@@ -99,6 +114,9 @@ internal sealed class AppSettings
         LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 60);
         DhuhaAfterSunriseMinutes = Math.Clamp(DhuhaAfterSunriseMinutes, 0, 180);
         HijriDateCorrectionDays = Math.Clamp(HijriDateCorrectionDays, -7, 7);
+        CalendarSource = string.Equals(CalendarSource, CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
+            ? CalendarSourceKhgt
+            : CalendarSourceCivil;
         // The Gregorian date follows the computer clock; drop the retired correction key.
         OtherSettings?.Remove("calendar_date_correction_days");
         string savedWidgetMode = WidgetMode ?? "";
@@ -123,6 +141,9 @@ internal sealed class AppSettings
             MethodId = 11;
         else if (MethodId == 1)
             MethodId = 3;
+        // The Muhammadiyah method only sets Fajr/Isha angles; drop the retired "hisab" suffix.
+        if (MethodId == 99 && standard.Contains("muhammadiyah"))
+            CalculationStandard = MuhammadiyahMethodLabel;
     }
 }
 
@@ -142,15 +163,20 @@ internal static class SettingsStore
     public static AppSettings Load()
     {
         var settings = new AppSettings();
+        bool isNewInstall = !File.Exists(ConfigPath);
         try
         {
-            if (File.Exists(ConfigPath))
+            if (!isNewInstall)
                 settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(ConfigPath), JsonOptions) ?? settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             LoadWarning = $"Pengaturan lama tidak dapat dibaca; file tidak diubah. {ex.Message}";
         }
+        // Instalasi baru langsung memakai tabel KHGT resmi. Pengaturan lama tetap
+        // mempertahankan pilihannya dan mendapat tawaran sekali di jendela utama.
+        if (isNewInstall)
+            settings.CalendarSource = AppSettings.CalendarSourceKhgt;
         settings.Normalize();
         return settings;
     }

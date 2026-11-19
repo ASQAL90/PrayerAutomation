@@ -101,6 +101,11 @@ public partial class App : Application
             _mainWindow?.SetLockScreenStatus("Lock screen belum bisa dipastikan; tidak ada perubahan baru yang dijalankan.");
         }
         CompleteWidgetStartup();
+        _ = Task.Run(() =>
+        {
+            int removed = StorageMaintenance.DeleteOldInstallers();
+            if (removed > 0) AppLogger.WriteInfo("storage.cleanup", $"oldInstallersRemoved={removed}");
+        });
         if (Settings.UpdateAutoCheck)
             _ = AutoCheckForUpdatesAsync();
     }
@@ -361,6 +366,12 @@ public partial class App : Application
             return;
         }
 
+        ReleaseAndShutdown();
+    }
+
+    /// <summary>Releases windows, tray, schedulers, and the single-instance mutex, then exits.</summary>
+    private void ReleaseAndShutdown()
+    {
         _lockScreenScheduler?.Dispose();
         _mainWindow?.AllowClose();
         _widget?.Close();
@@ -425,6 +436,18 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Applies the real lock-screen image for one minute, then restores automatically.</summary>
+    /// <returns>The outcome of the test transaction.</returns>
+    internal async Task<LockScreenTransactionResult> TestLockScreenNowAsync()
+    {
+        if (_lockScreenScheduler is null)
+            throw new InvalidOperationException("Lock screen belum siap.");
+        if (_lockScreenScheduler.HasPendingRecovery)
+            throw new InvalidOperationException("Pemulihan lock screen masih tertunda; selesaikan dulu sebelum menguji.");
+        return await _lockScreenScheduler.ApplyTestAsync(
+            DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
     /// <summary>Cancels a pending lock-screen recovery after explicit user confirmation.</summary>
     internal void CancelLockScreenRecovery()
     {
@@ -471,7 +494,7 @@ public partial class App : Application
     }
 
     /// <summary>Remembers a release the user chose not to be offered again.</summary>
-    /// <param name="tag">Release tag, e.g. v2.2.1.</param>
+    /// <param name="tag">Release tag, e.g. v2.2.2.</param>
     internal void IgnoreUpdate(string tag)
     {
         Settings.IgnoredUpdateVersion = tag;
@@ -480,17 +503,70 @@ public partial class App : Application
 
     /// <summary>Launches the downloaded installer after this process exits so files are not locked.</summary>
     /// <param name="installerPath">Downloaded installer executable.</param>
-    internal void LaunchInstallerAndExit(string installerPath)
+    /// <returns><c>true</c> when the installer was started; <c>false</c> when the user cancelled.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the update cannot be prepared or started.</exception>
+    internal async Task<bool> InstallUpdateAsync(string installerPath)
     {
-        var launcher = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true };
-        launcher.ArgumentList.Add("-NoProfile");
-        launcher.ArgumentList.Add("-WindowStyle");
-        launcher.ArgumentList.Add("Hidden");
-        launcher.ArgumentList.Add("-Command");
-        launcher.ArgumentList.Add("Wait-Process -Id " + Environment.ProcessId +
-            " -ErrorAction SilentlyContinue; Start-Process -FilePath '" + installerPath.Replace("'", "''") + "'");
-        Process.Start(launcher);
-        ShutdownApplication();
+        if (!File.Exists(installerPath))
+            throw new FileNotFoundException("Pemasang tidak ditemukan.", installerPath);
+        if (_isShuttingDown) return false;
+
+        // Resolve prompts and pending lock-screen recovery before starting the
+        // installer: it waits only briefly for this process to exit.
+        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return false;
+        _isShuttingDown = true;
+        try
+        {
+            if (_lockScreenScheduler is not null)
+            {
+                LockScreenTransactionResult restore = await _lockScreenScheduler.StopAndRestoreAsync();
+                if (restore == LockScreenTransactionResult.PendingVerification)
+                {
+                    _isShuttingDown = false;
+                    _mainWindow?.SetLockScreenStatus(
+                        "Pemulihan lock screen belum terverifikasi; pembaruan ditunda agar tampilan tidak tertinggal.");
+                    throw new InvalidOperationException(
+                        "Pemulihan lock screen belum terverifikasi. Pulihkan atau batalkan pemulihan tertunda, lalu coba lagi.");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _isShuttingDown = false;
+            AppLogger.Write("update.prepare", ex);
+            if (_lockScreenScheduler is not null)
+            {
+                try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
+                catch (Exception resumeEx) { AppLogger.Write("update.prepare-resume", resumeEx); }
+            }
+            throw new InvalidOperationException(
+                "Pembaruan ditunda karena lock screen belum bisa dipulihkan.", ex);
+        }
+
+        // The installer waits for this process to exit (see /UPDATEMODE in the
+        // NSIS script), so no PowerShell helper or console window is needed.
+        var launcher = new ProcessStartInfo(installerPath)
+        {
+            UseShellExecute = true,
+            Arguments = "/S /UPDATEMODE"
+        };
+        try
+        {
+            Process.Start(launcher);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            _isShuttingDown = false;
+            AppLogger.Write("update.launch", ex);
+            if (_lockScreenScheduler is not null)
+            {
+                try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
+                catch (Exception resumeEx) { AppLogger.Write("update.launch-resume", resumeEx); }
+            }
+            throw new InvalidOperationException("Pemasang tidak bisa dijalankan: " + ex.Message, ex);
+        }
+        ReleaseAndShutdown();
+        return true;
     }
 
     /// <summary>Triggers an update check requested by the user.</summary>

@@ -125,8 +125,13 @@ internal partial class UpdateWindow : Window
             }
             DownloadProgress.Value = 100;
             ProgressText.Text = "Unduhan selesai dan sudah diperiksa.";
-            StatusText.Text = "Aplikasi ditutup sebentar, lalu pemasang dijalankan. Ikuti langkah di jendela pemasang.";
-            _app.LaunchInstallerAndExit(path);
+            StatusText.Text = "Aplikasi ditutup sebentar, lalu pembaruan dipasang otomatis.";
+            await _app.InstallUpdateAsync(path);
+            if (IsVisible)
+            {
+                StatusText.Text = "Pembaruan ditunda. Tidak ada berkas yang diubah.";
+                ProgressText.Text = string.Empty;
+            }
         }
         catch (OperationCanceledException) when (_downloadCts?.IsCancellationRequested == true)
         {
@@ -180,6 +185,7 @@ internal partial class UpdateWindow : Window
         TaskCanceledException => "Unduhan melebihi batas waktu. Coba lagi dengan koneksi yang lebih stabil.",
         UnauthorizedAccessException => "Berkas pembaruan tidak bisa ditulis ke folder aplikasi. Periksa izin folder.",
         IOException => "Penyimpanan unduhan gagal. Periksa ruang disk, lalu coba lagi.",
+        InvalidOperationException => exception.Message,
         _ => "Unduhan gagal. Coba lagi nanti."
     };
 

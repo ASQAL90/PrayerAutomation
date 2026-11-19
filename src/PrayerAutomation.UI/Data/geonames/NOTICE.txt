@@ -8,8 +8,8 @@ Source data:
 - https://download.geonames.org/export/dump/countryInfo.txt
 - https://www.geonames.org/
 
-Snapshot: source files last modified 2026-10-22 (UTC); downloaded 2026-10-22.
-Changes made: retained GeoNames feature-class P (populated-place) records; selected the locality name, English ASCII first-level administrative name, country name, WGS84 latitude/longitude, and ISO country code; normalized whitespace and compressed the tab-separated result as `cities1000.tsv.gz`. No lookup request is made when this offline dataset is used.
+Snapshot: source files last modified 2026-11-19 (UTC); downloaded 2026-11-19.
+Changes made: retained GeoNames feature-class P (populated-place) records; selected the locality name, English ASCII first-level administrative name, country name, WGS84 latitude/longitude, ISO country code, and the GeoNames `dem` elevation in metres; normalized whitespace and compressed the tab-separated result as `cities1000.tsv.gz`. No lookup request is made when this offline dataset is used.
 
 License: Creative Commons Attribution 4.0 International (CC BY 4.0)
 https://creativecommons.org/licenses/by/4.0/

@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.2.1"
-!define APP_VERSION_QUAD "2.2.1.0"
+!define APP_VERSION "2.3.0"
+!define APP_VERSION_QUAD "2.3.0.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -116,6 +116,8 @@ Var StartFreshCheck
 Var StartFreshSelected
 Var DesktopShortcutCheck
 Var DesktopShortcutSelected
+Var UpdateMode
+Var UpdateWait
 
 Section "Aplikasi" SEC_INSTALL_MAIN
   SectionIn RO
@@ -206,6 +208,14 @@ Section "Finalisasi" SEC_INSTALL_FINAL
   ${EndIf}
 
   Call ReleaseSafetyMutex
+
+  ; Automatic updates run without pages, so the installer starts the new build
+  ; itself. A manual install keeps the finish-page "run" choice.
+  ${If} $UpdateMode != 0
+    IfFileExists "$INSTDIR\${APP_EXE}" 0 update_launch_skip
+      Exec '"$INSTDIR\${APP_EXE}"'
+    update_launch_skip:
+  ${EndIf}
 SectionEnd
 
 Section "Uninstall"
@@ -232,8 +242,25 @@ SectionEnd
 Function .onInit
   StrCpy $StartFreshSelected 0
   StrCpy $DesktopShortcutSelected 0
-  ; Silent mode would skip the review and safety pages. Refuse it explicitly.
-  IfSilent silent_blocked
+  StrCpy $UpdateMode 0
+
+  ; The application launches this installer with /UPDATEMODE after it exits.
+  ; That switch allows a silent, page-less update; ordinary silent installs are
+  ; still refused because they would skip the safety review.
+  ${GetParameters} $0
+  System::Call 'shlwapi::StrStrIW(w r0, w "/UPDATEMODE") p .r1'
+  ${If} $1 != 0
+    StrCpy $UpdateMode 1
+  ${EndIf}
+
+  IfSilent silent_guard
+  Goto guard_ready
+  silent_guard:
+    ${If} $UpdateMode == 0
+      SetErrorLevel 2
+      Quit
+    ${EndIf}
+  guard_ready:
 
   Call CheckUnsafeCommandLine
   ${If} $SafetyProblem != ""
@@ -264,10 +291,6 @@ Function .onInit
   ${EndIf}
 
   Return
-
-  silent_blocked:
-    SetErrorLevel 2
-    Quit
 FunctionEnd
 
 Function .onGUIEnd
@@ -1202,8 +1225,38 @@ Function ${P}RecheckHeldBoundary
   Call ${P}CheckTargetFiles
 FunctionEnd
 
+Function ${P}WaitForUpdateExit
+  ; /UPDATEMODE: the application starts this installer and then exits. Give it
+  ; up to 60 seconds to finish restoring state and releasing its files instead
+  ; of showing the interactive "still running" prompt.
+  ${If} $UpdateMode != 1
+    Return
+  ${EndIf}
+  StrCpy $UpdateWait 0
+  update_wait_loop:
+    Call ${P}DetectRunningProduct
+    ${If} $SafetyProblem != ""
+      Return
+    ${EndIf}
+    ${If} $SafetyDetails == ""
+      Return
+    ${EndIf}
+    IntOp $UpdateWait $UpdateWait + 1
+    ${If} $UpdateWait >= 120
+      StrCpy $SafetyProblem "Ayo Jama'ah! masih terbuka; pembaruan otomatis dibatalkan. Tutup aplikasi lewat ikon tray, lalu jalankan pemasang lagi."
+      Return
+    ${EndIf}
+    Sleep 500
+    Goto update_wait_loop
+FunctionEnd
+
 Function ${P}RequireSafeBoundary
   StrCpy $SafetyProblem ""
+  Call ${P}WaitForUpdateExit
+  ${If} $SafetyProblem != ""
+    MessageBox MB_ICONSTOP "$SafetyProblem"
+    Return
+  ${EndIf}
   Call ${P}BoundarySnapshot
   ${If} $SafetyProblem != ""
     MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \

@@ -1,6 +1,8 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.2.1
+## Mulai di sini — ringkasan 2.3.0
+
+> **Catatan 2.3.0:** source disiapkan untuk uji lokal 2.3.0 (KHGT resmi 1440–1499 H sebagai default instalasi baru dengan tawaran sekali untuk pengaturan lama, label metode Muhammadiyah dengan ihtiyat 1–2 menit dan ketinggian mdpl, gambar lock screen dengan logo di kiri atas dan jam di dalam kubah, tombol uji yang ikut mengunci layar, perawatan log/cache, peluncuran installer tanpa PowerShell). Belum ada tag, rilis GitHub, atau installer 2.3.0; artefak publik terakhir tetap 2.2.1, jadi rujukan unduhan dan installer di bawah masih menyebut 2.2.1.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.

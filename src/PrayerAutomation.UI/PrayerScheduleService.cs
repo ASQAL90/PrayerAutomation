@@ -65,7 +65,7 @@ internal static class PrayerScheduleService
         settings.Normalize();
         int offset = GetUtcOffsetMinutes(date, settings.TimeZoneId);
         NativePrayerTimes native = NativePrayerCore.PrayerTimes(date, settings.Latitude, settings.Longitude,
-            offset, settings.MethodId);
+            offset, settings.MethodId, elevationMeters: settings.ElevationMeters);
         var entries = new List<PrayerEntry>(PrayerOrder.Length);
         foreach (var item in PrayerOrder)
         {

@@ -12,7 +12,7 @@ static void Require(bool condition, string message)
 
 string cities = string.Join(Environment.NewLine, new[]
 {
-    string.Join('\t', new[] { "Near Town", "Sample State", "Sample Country", "10.01", "20.01", "ZZ" }),
+    string.Join('\t', new[] { "Near Town", "Sample State", "Sample Country", "10.01", "20.01", "ZZ", "640" }),
     string.Join('\t', new[] { "Far City", "Other State", "Sample Country", "10.35", "20.35", "ZZ" })
 });
 OfflineReverseGeocoder geocoder = OfflineReverseGeocoder.Load(new StringReader(cities));
@@ -21,11 +21,15 @@ Require(result is not null, "a nearby city should be returned for valid coordina
 Require(result!.CityName == "Near Town", "the nearest city should win, not a farther record");
 Require(result.DisplayName == "Near Town, Sample State, Sample Country", "region and country should form the local display name");
 Require(result.DistanceKm > 0 && result.DistanceKm < 5, "nearest-city distance should be measured in kilometers");
-Console.WriteLine("PASS: offline nearest-city selection and locality formatting.");
+Require(result.ElevationMeters == 640, "the optional DEM column should surface as the settlement height");
+OfflineLocationSuggestion[] suggestions = geocoder.Search("Near").ToArray();
+Require(suggestions.Length == 1 && suggestions[0].ElevationMeters == 640, "search suggestions should keep the height");
+Console.WriteLine("PASS: offline nearest-city selection, locality formatting, and elevation.");
 OfflineLocationResult? jakarta = OfflineReverseGeocoder.Bundled.FindNearest(-6.21462, 106.84513);
 Require(jakarta is not null && jakarta.CityName == "Jakarta", "the bundled GeoNames data should resolve Jakarta offline");
 Require(jakarta!.DisplayName.Contains("Indonesia", StringComparison.Ordinal), "the bundled dataset should supply a country label");
-Console.WriteLine("PASS: bundled GeoNames data resolves Jakarta without network access.");
+Require(jakarta.ElevationMeters == 16, "the bundled dataset should carry the Jakarta DEM height");
+Console.WriteLine("PASS: bundled GeoNames data resolves Jakarta and its elevation without network access.");
 
 var handler = new RecordingHandler("""
     {"licence":"Data © OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright","address":{"city":"Sample City","state":"Sample State","country":"Sample Country","road":"Private Road","house_number":"17"},"display_name":"17, Private Road, Sample City, Sample State, Sample Country"}

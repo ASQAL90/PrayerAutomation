@@ -318,12 +318,10 @@ internal static class Program
         Check("edit_reverted_skips_popup",!Dirty() && Confirm() && Prompts == 0);
         Control<TabControl>("MainTabs").SelectedIndex = 1;
         Control<ComboBox>("CalendarYearBox").SelectedIndex++;
-        Invoke("LoadCalendar_Click",Window,new RoutedEventArgs());
         Control<ComboBox>("HijriYearBox").SelectedIndex++;
-        Invoke("LoadHijriCalendar_Click",Window,new RoutedEventArgs());
         Invoke("SelectGregorianDate",new DateTime(2026,12,7));
         Check("calendar_tabs_years_dates_do_not_dirty_settings",!Dirty() && Confirm() && Prompts == 0);
-        Check("raw_snapshot_covers_28_values",Draft().Length == 28);
+        Check("raw_snapshot_covers_29_values",Draft().Length == 29);
         foreach (string n in new[]{"LocationNameBox","LatitudeBox","LongitudeBox","CorrectionFajrBox","CorrectionSunriseBox","CorrectionDhuhaBox","CorrectionDhuhrBox","CorrectionAsrBox","CorrectionMaghribBox","CorrectionIshaBox","DhuhaAfterSunriseBox","HijriDateCorrectionBox","ReminderMinutesBox","ReminderMessageBox","LockScreenDurationBox"})
         {
             TextBox box = Control<TextBox>(n); string old = box.Text;

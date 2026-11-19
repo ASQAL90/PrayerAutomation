@@ -116,6 +116,11 @@ internal sealed class ReminderScheduler : IDisposable
 /// <summary>Appends error and privacy-safe information entries to the application log file.</summary>
 internal static class AppLogger
 {
+    private const long MaxLogBytes = 2 * 1024 * 1024;
+    private const int MaxLogFiles = 3;
+    private static readonly TimeSpan ArchiveRetention = TimeSpan.FromDays(30);
+    private static DateTime _lastRetentionCheckUtc = DateTime.MinValue;
+
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "PrayerAutomation", "prayer_automation.log");
@@ -125,13 +130,7 @@ internal static class AppLogger
     /// <param name="exception">Exception to log.</param>
     public static void Write(string context, Exception exception)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath, $"{DateTimeOffset.Now:O} ERROR [{context}] {exception.Message}{Environment.NewLine}");
-        }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        Append($"{DateTimeOffset.Now:O} ERROR [{context}] {exception.Message}{Environment.NewLine}");
     }
 
     // Only explicitly wired, privacy-safe timeline fields belong in this information channel.
@@ -140,12 +139,57 @@ internal static class AppLogger
     /// <param name="message">Pre-approved timeline message.</param>
     public static void WriteInfo(string context, string message)
     {
+        Append($"{DateTimeOffset.UtcNow:O} INFO [{context}] {message}{Environment.NewLine}");
+    }
+
+    /// <summary>Appends one line, rotating at 2 MB and keeping three files at most.</summary>
+    /// <param name="line">Complete log line including a newline.</param>
+    private static void Append(string line)
+    {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath, $"{DateTimeOffset.UtcNow:O} INFO [{context}] {message}{Environment.NewLine}");
+            string? folder = Path.GetDirectoryName(LogPath);
+            if (folder is not null) Directory.CreateDirectory(folder);
+            RotateIfNeeded();
+            DeleteExpiredArchives();
+            File.AppendAllText(LogPath, line);
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Shifts the active log to .1 and .1 to .2 once the size limit is reached.</summary>
+    private static void RotateIfNeeded()
+    {
+        var active = new FileInfo(LogPath);
+        if (!active.Exists || active.Length < MaxLogBytes) return;
+        for (int index = MaxLogFiles - 1; index >= 1; index--)
+        {
+            string source = index == 1 ? LogPath : LogPath + "." + (index - 1);
+            string target = LogPath + "." + index;
+            if (!File.Exists(source)) continue;
+            if (File.Exists(target)) File.Delete(target);
+            File.Move(source, target);
+        }
+    }
+
+    /// <summary>Deletes rotated logs older than the retention window, at most once a day.</summary>
+    private static void DeleteExpiredArchives()
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        if (nowUtc - _lastRetentionCheckUtc < TimeSpan.FromDays(1)) return;
+        _lastRetentionCheckUtc = nowUtc;
+        for (int index = 1; index < MaxLogFiles; index++)
+        {
+            string path = LogPath + "." + index;
+            try
+            {
+                var archive = new FileInfo(path);
+                if (archive.Exists && nowUtc - archive.LastWriteTimeUtc > ArchiveRetention)
+                    archive.Delete();
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 }

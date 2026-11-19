@@ -45,10 +45,11 @@ internal static class WidgetMarqueeContent
         IReadOnlyList<CalendarObservance> observances, string? message = null)
     {
         DateTime calendarDate = now.Date;
+        string calendarLabel = settings.UsesKhgtCalendar ? "KHGT, perkiraan" : "sipil, perkiraan";
         var parts = new List<string>
         {
             $"Masehi: {calendarDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)}",
-            $"Hijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H (perkiraan sipil)",
+            $"Hijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H ({calendarLabel})",
             $"Jam: {now.ToString("HH:mm:ss", CultureInfo.InvariantCulture)} ({settings.TimeZoneId})",
             string.Join("   •   ", PrayerUiLogic.EssentialPrayerTimes(schedule).Select(entry =>
                 $"{entry.Label} {entry.Time.ToString(@"hh\:mm", CultureInfo.InvariantCulture)}")),
@@ -62,9 +63,9 @@ internal static class WidgetMarqueeContent
             parts.Add("Libur nasional Indonesia (tanggal tetap): " + string.Join("; ", fixedHolidays.Select(item => item.Name)));
         CalendarObservance[] religious = observances.Where(item => item.Kind != CalendarObservanceKind.PublicHoliday).ToArray();
         if (hijri.Month == 9)
-            parts.Add("Ramadan — puasa wajib (tanggal perkiraan sipil; ikuti penetapan setempat)");
+            parts.Add("Ramadan — puasa wajib (tanggal perkiraan; ikuti penetapan setempat)");
         if (religious.Length > 0)
-            parts.Add("Penanda ibadah (kalender sipil, bukan penetapan resmi): " + string.Join("; ", religious.Select(item => item.Name)));
+            parts.Add($"Penanda ibadah ({calendarLabel}, bukan penetapan resmi): " + string.Join("; ", religious.Select(item => item.Name)));
         message ??= ReligiousMessageAt(0);
         if (!string.IsNullOrWhiteSpace(message)) parts.Add(message);
         return string.Join("   •   ", parts);

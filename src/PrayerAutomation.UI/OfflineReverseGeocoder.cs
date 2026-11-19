@@ -26,7 +26,7 @@ internal sealed class OfflineReverseGeocoder
     internal static OfflineReverseGeocoder Bundled => BundledData.Value;
 
     /// <summary>Loads an offline dataset from tab-separated text.</summary>
-    /// <param name="reader">Reader for the TSV dataset (name, region, country, lat, lon, code).</param>
+    /// <param name="reader">Reader for the TSV dataset (name, region, country, lat, lon, code, optional DEM metres).</param>
     /// <returns>The loaded geocoder.</returns>
     /// <exception cref="InvalidDataException">A row is invalid or the dataset contains no settlements.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="reader"/> is null.</exception>
@@ -41,7 +41,7 @@ internal sealed class OfflineReverseGeocoder
                 continue;
 
             string[] fields = line.Split('\t');
-            if (fields.Length != 6 ||
+            if (fields.Length is not (6 or 7) ||
                 string.IsNullOrWhiteSpace(fields[0]) ||
                 !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double latitude) ||
                 !double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double longitude) ||
@@ -50,13 +50,22 @@ internal sealed class OfflineReverseGeocoder
                 throw new InvalidDataException("Dataset geonames lokal memiliki baris yang tidak valid.");
             }
 
+            int? elevationMeters = null;
+            if (fields.Length == 7 && !string.IsNullOrWhiteSpace(fields[6]) &&
+                int.TryParse(fields[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dem) &&
+                dem is >= -500 and <= 9000)
+            {
+                elevationMeters = dem;
+            }
+
             cities.Add(new OfflineCity(
                 fields[0],
                 fields[1],
                 fields[2],
                 latitude,
                 longitude,
-                fields[5]));
+                fields[5],
+                elevationMeters));
         }
 
         if (cities.Count == 0)
@@ -110,7 +119,8 @@ internal sealed class OfflineReverseGeocoder
             nearest.CountryName,
             nearest.CountryCode,
             displayName,
-            nearestDistanceKm);
+            nearestDistanceKm,
+            nearest.ElevationMeters);
     }
 
     // Settlement names only, not exhaustive street/village coverage. All query words
@@ -154,7 +164,8 @@ internal sealed class OfflineReverseGeocoder
                     .Where(value => !string.IsNullOrWhiteSpace(value))
                     .Distinct(StringComparer.OrdinalIgnoreCase)),
                 city.Latitude,
-                city.Longitude))
+                city.Longitude,
+                city.ElevationMeters))
             .ToArray();
     }
 
@@ -251,7 +262,8 @@ internal sealed class OfflineReverseGeocoder
         string CountryName,
         double Latitude,
         double Longitude,
-        string CountryCode)
+        string CountryCode,
+        int? ElevationMeters)
     {
         /// <summary>Normalized city name used for search ranking.</summary>
         internal string SearchName { get; } = NormalizeSearchText(CityName);
@@ -268,7 +280,8 @@ internal sealed record OfflineLocationSuggestion(
     string CountryName,
     string DisplayName,
     double Latitude,
-    double Longitude);
+    double Longitude,
+    int? ElevationMeters);
 
 /// <summary>The result of a nearest-settlement lookup.</summary>
 internal sealed record OfflineLocationResult(
@@ -277,4 +290,5 @@ internal sealed record OfflineLocationResult(
     string CountryName,
     string CountryCode,
     string DisplayName,
-    double DistanceKm);
+    double DistanceKm,
+    int? ElevationMeters);

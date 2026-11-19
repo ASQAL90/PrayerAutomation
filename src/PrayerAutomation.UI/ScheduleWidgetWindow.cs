@@ -774,10 +774,13 @@ internal sealed class ScheduleWidgetWindow : Window
     {
         if (_scheduleError is not null) return;
         DateTime calendarDate = now.Date;
-        NativeCalendarDate hijri = NativePrayerCore.HijriDate(calendarDate.AddDays(_settings.HijriDateCorrectionDays));
+        DateTime correctedDate = calendarDate.AddDays(_settings.HijriDateCorrectionDays);
+        // Fall back to the civil calendar when the date sits outside the KHGT table.
+        if (!NativePrayerCore.TryHijriDate(correctedDate, _settings.UsesKhgtCalendar, out NativeCalendarDate hijri))
+            hijri = NativePrayerCore.HijriDate(correctedDate);
         _marqueeContent = WidgetMarqueeContent.Build(now, _settings, hijri, GetScheduleForDate(now.Date),
             PrayerUiLogic.NextPrayerAfter(now, GetScheduleForDate),
-            NativePrayerCore.CalendarObservances(calendarDate, _settings.HijriDateCorrectionDays),
+            NativePrayerCore.CalendarObservances(calendarDate, _settings.HijriDateCorrectionDays, _settings.UsesKhgtCalendar),
             WidgetMarqueeContent.ReligiousMessageAt(_marqueeCompletedCycles));
         AutomationProperties.SetName(_marqueeLine, _marqueeContent);
         ConfigureMarquee();

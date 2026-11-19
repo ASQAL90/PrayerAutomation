@@ -89,7 +89,7 @@ fn solar_event_minutes(
     declination: f64,
     solar_noon_minutes: f64,
     morning: bool,
-) -> Option<i32> {
+) -> Option<f64> {
     let altitude = altitude_degrees.to_radians();
     let numerator = altitude.sin() - latitude.sin() * declination.sin();
     let denominator = latitude.cos() * declination.cos();
@@ -101,15 +101,24 @@ fn solar_event_minutes(
         return None;
     }
     let event_offset_minutes = cosine_hour_angle.acos().to_degrees() * 4.0;
-    Some(
-        (solar_noon_minutes
-            + if morning {
-                -event_offset_minutes
-            } else {
-                event_offset_minutes
-            })
-        .round() as i32,
-    )
+    Some(solar_noon_minutes
+        + if morning {
+            -event_offset_minutes
+        } else {
+            event_offset_minutes
+        })
+}
+
+/// Horizon dip caused by the observer's height above the surrounding terrain.
+///
+/// The Muhammadiyah hisab guide uses `Dip = 1.76' * sqrt(height in metres)`,
+/// so the visible horizon sits slightly below the astronomical horizon.
+fn horizon_dip_degrees(elevation_meters: f64) -> f64 {
+    if elevation_meters <= 0.0 {
+        return 0.0;
+    }
+    // 1.76 arc-minutes per square root of a metre, expressed in degrees.
+    (1.76 / 60.0) * elevation_meters.sqrt()
 }
 
 fn solar_declination_and_equation(year: i32, month: i32, day: i32) -> Option<(f64, f64)> {
@@ -146,12 +155,15 @@ fn calculate(
     method: i32,
     custom_fajr_angle: f64,
     custom_isha_angle: f64,
+    elevation_meters: f64,
 ) -> Result<PrayerTimesResult, i32> {
     if !valid_gregorian_date(year, month, day) {
         return Err(1);
     }
     if crate::prayer_core_validate_coordinates(latitude, longitude) != 0
         || !(-840..=840).contains(&timezone_offset_minutes)
+        || !elevation_meters.is_finite()
+        || !(0.0..=9000.0).contains(&elevation_meters)
     {
         return Err(2);
     }
@@ -161,11 +173,17 @@ fn calculate(
         solar_declination_and_equation(year, month, day).ok_or(1)?;
     let solar_noon =
         720.0 - 4.0 * longitude - equation_minutes + f64::from(timezone_offset_minutes);
-    let sunrise =
-        solar_event_minutes(-0.833, latitude_radians, declination, solar_noon, true).ok_or(4)?;
-    let sunset =
-        solar_event_minutes(-0.833, latitude_radians, declination, solar_noon, false).ok_or(4)?;
-    let fajr = solar_event_minutes(
+    // The visible horizon drops below the astronomical horizon as the observer rises.
+    // The Muhammadiyah guide applies this dip to sunrise and sunset, which also
+    // moves Maghrib.
+    let horizon_altitude = -0.833 - horizon_dip_degrees(elevation_meters);
+    let sunrise_exact =
+        solar_event_minutes(horizon_altitude, latitude_radians, declination, solar_noon, true)
+            .ok_or(4)?;
+    let sunset_exact =
+        solar_event_minutes(horizon_altitude, latitude_radians, declination, solar_noon, false)
+            .ok_or(4)?;
+    let fajr_exact = solar_event_minutes(
         -parameters.fajr_angle,
         latitude_radians,
         declination,
@@ -177,7 +195,7 @@ fn calculate(
     let asr_altitude = (1.0 / (1.0 + (latitude_radians - declination).abs().tan()))
         .atan()
         .to_degrees();
-    let asr = solar_event_minutes(
+    let asr_exact = solar_event_minutes(
         asr_altitude,
         latitude_radians,
         declination,
@@ -185,8 +203,8 @@ fn calculate(
         false,
     )
     .ok_or(4)?;
-    let isha = if let Some(interval) = parameters.isha_interval_after_maghrib {
-        sunset + interval
+    let isha_exact = if let Some(interval) = parameters.isha_interval_after_maghrib {
+        Some(sunset_exact + f64::from(interval))
     } else {
         solar_event_minutes(
             -parameters.isha_angle.ok_or(3)?,
@@ -195,9 +213,40 @@ fn calculate(
             solar_noon,
             false,
         )
-        .ok_or(4)?
+    }
+    .ok_or(4)?;
+
+    // Muhammadiyah's hisab guide adds a one-to-two minute ihtiyat to every
+    // starting time and brings sunrise forward by the same margin. Adding one
+    // minute before rounding up yields exactly that range. Other methods keep
+    // the conventional round-to-nearest behaviour.
+    let ihtiyat = method == 99;
+    let start_minutes = |exact: f64| {
+        if ihtiyat {
+            exact.ceil() as i32 + 1
+        } else {
+            exact.round() as i32
+        }
     };
-    let dhuhr = solar_noon.round() as i32;
+    let end_minutes = |exact: f64| {
+        if ihtiyat {
+            exact.floor() as i32 - 1
+        } else {
+            exact.round() as i32
+        }
+    };
+
+    let fajr = start_minutes(fajr_exact);
+    let sunrise = end_minutes(sunrise_exact);
+    let dhuhr = start_minutes(solar_noon);
+    let asr = start_minutes(asr_exact);
+    let sunset = start_minutes(sunset_exact);
+    let isha = if parameters.isha_interval_after_maghrib.is_some() {
+        // Interval-based Isha follows the (already adjusted) Maghrib exactly.
+        sunset + parameters.isha_interval_after_maghrib.unwrap_or(0)
+    } else {
+        start_minutes(isha_exact)
+    };
     if !(fajr < sunrise && sunrise < dhuhr && dhuhr < asr && asr < sunset && sunset <= isha) {
         return Err(4);
     }
@@ -213,7 +262,7 @@ fn calculate(
 }
 
 /// Calculate six prayer events in minutes after local midnight.
-/// Status: 0 success; 1 invalid date; 2 invalid coordinates/offset;
+/// Status: 0 success; 1 invalid date; 2 invalid coordinates/offset/elevation;
 /// 3 unsupported method/settings; 4 event unavailable; 5 null output; 6 panic.
 /// The caller supplies writable storage for one PrayerTimesResult.
 #[unsafe(no_mangle)]
@@ -227,6 +276,7 @@ pub extern "C" fn prayer_core_calculate_prayer_times(
     method: i32,
     custom_fajr_angle: f64,
     custom_isha_angle: f64,
+    elevation_meters: f64,
     out: *mut PrayerTimesResult,
 ) -> i32 {
     if out.is_null() {
@@ -243,6 +293,7 @@ pub extern "C" fn prayer_core_calculate_prayer_times(
             method,
             custom_fajr_angle,
             custom_isha_angle,
+            elevation_meters,
         )
     });
     match result {
@@ -259,9 +310,11 @@ pub extern "C" fn prayer_core_calculate_prayer_times(
 mod tests {
     use super::*;
 
+    const JAKARTA: (f64, f64) = (-6.2088, 106.8456);
+
     #[test]
     fn jakarta_events_are_chronological_and_known_methods_are_accepted() {
-        let result = calculate(2026, 10, 19, -6.2088, 106.8456, 420, 20, 18.0, 18.0)
+        let result = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 20, 18.0, 18.0, 0.0)
             .expect("astronomical events exist at Jakarta latitude");
         assert_eq!(result.status, 0);
         assert!(result.fajr_minutes < result.sunrise_minutes);
@@ -271,16 +324,88 @@ mod tests {
         assert!(result.maghrib_minutes < result.isha_minutes);
         for method in [1, 2, 3, 4, 11, 13, 17, 20, 99] {
             assert!(
-                calculate(2026, 10, 19, -6.2088, 106.8456, 420, method, 18.0, 18.0).is_ok(),
+                calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, method, 18.0, 18.0, 0.0)
+                    .is_ok(),
                 "method {method}"
             );
         }
-        assert!(calculate(2026, 10, 19, -6.2, 106.8, 420, 987, 18.0, 18.0).is_err());
+        assert!(calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 987, 18.0, 18.0, 0.0).is_err());
     }
 
     #[test]
-    fn invalid_date_and_timezone_are_rejected() {
-        assert_eq!(calculate(2026, 2, 29, 0.0, 0.0, 0, 20, 18.0, 18.0), Err(1));
-        assert_eq!(calculate(2026, 1, 1, 0.0, 0.0, 900, 20, 18.0, 18.0), Err(2));
+    fn invalid_date_timezone_and_elevation_are_rejected() {
+        assert_eq!(
+            calculate(2026, 2, 29, 0.0, 0.0, 0, 20, 18.0, 18.0, 0.0),
+            Err(1)
+        );
+        assert_eq!(
+            calculate(2026, 1, 1, 0.0, 0.0, 900, 20, 18.0, 18.0, 0.0),
+            Err(2)
+        );
+        assert_eq!(
+            calculate(2026, 1, 1, 0.0, 0.0, 0, 20, 18.0, 18.0, -1.0),
+            Err(2)
+        );
+        assert_eq!(
+            calculate(2026, 1, 1, 0.0, 0.0, 0, 20, 18.0, 18.0, 9001.0),
+            Err(2)
+        );
+        assert_eq!(
+            calculate(2026, 1, 1, 0.0, 0.0, 0, 20, 18.0, 18.0, f64::NAN),
+            Err(2)
+        );
+    }
+
+    #[test]
+    fn muhammadiyah_method_adds_ihtiyat_to_every_event() {
+        // Method 1 uses the same 18/18 angles without ihtiyat, so the pair isolates
+        // the Muhammadiyah adjustment.
+        let plain = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 1, 18.0, 18.0, 0.0)
+            .expect("baseline events");
+        let muhammadiyah =
+            calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 0.0)
+                .expect("Muhammadiyah events");
+
+        assert!(muhammadiyah.fajr_minutes > plain.fajr_minutes);
+        assert!(muhammadiyah.sunrise_minutes < plain.sunrise_minutes);
+        assert!(muhammadiyah.dhuhr_minutes > plain.dhuhr_minutes);
+        assert!(muhammadiyah.asr_minutes > plain.asr_minutes);
+        assert!(muhammadiyah.maghrib_minutes > plain.maghrib_minutes);
+        assert!(muhammadiyah.isha_minutes > plain.isha_minutes);
+        for (late, early) in [
+            (muhammadiyah.fajr_minutes, plain.fajr_minutes),
+            (muhammadiyah.dhuhr_minutes, plain.dhuhr_minutes),
+            (muhammadiyah.asr_minutes, plain.asr_minutes),
+            (muhammadiyah.maghrib_minutes, plain.maghrib_minutes),
+            (muhammadiyah.isha_minutes, plain.isha_minutes),
+            (plain.sunrise_minutes, muhammadiyah.sunrise_minutes),
+        ] {
+            let shift = late - early;
+            assert!(
+                (1..=2).contains(&shift),
+                "ihtiyat should shift by one or two minutes, got {shift}"
+            );
+        }
+    }
+
+    #[test]
+    fn elevation_lowers_the_horizon_for_sunrise_and_sunset() {
+        let sea_level = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 0.0)
+            .expect("sea-level events");
+        let highland = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 900.0)
+            .expect("highland events");
+
+        assert!(highland.sunrise_minutes < sea_level.sunrise_minutes);
+        assert!(highland.maghrib_minutes > sea_level.maghrib_minutes);
+        // The -18 degree twilight angles are measured from the astronomical horizon.
+        assert_eq!(highland.fajr_minutes, sea_level.fajr_minutes);
+        assert_eq!(highland.isha_minutes, sea_level.isha_minutes);
+    }
+
+    #[test]
+    fn dip_matches_the_muhammadiyah_formula() {
+        assert_eq!(horizon_dip_degrees(0.0), 0.0);
+        let dip = horizon_dip_degrees(400.0);
+        assert!((dip - 0.586_6).abs() < 0.001, "unexpected dip {dip}");
     }
 }

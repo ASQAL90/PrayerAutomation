@@ -26,9 +26,10 @@ internal enum CalendarObservanceKind
 
 /// <summary>A single calendar observance entry, keyed by bit position in the native mask.</summary>
 /// <param name="Bit">Bit index of the observance in the native mask.</param>
-/// <param name="Name">Display name of the observance.</param>
+/// <param name="Name">Full display name of the observance.</param>
+/// <param name="ShortName">Compact label used in the fixed-height date detail panel.</param>
 /// <param name="Kind">Classification used for styling and fasting rules.</param>
-internal readonly record struct CalendarObservance(int Bit, string Name, CalendarObservanceKind Kind);
+internal readonly record struct CalendarObservance(int Bit, string Name, string ShortName, CalendarObservanceKind Kind);
 
 /// <summary>Visual state for a calendar day cell, including colors and border thickness.</summary>
 /// <param name="IsToday">True if the cell represents today.</param>
@@ -198,7 +199,7 @@ internal static class PrayerUiLogic
     /// <returns>The marker visual state for the cell.</returns>
     public static CalendarMarker CalendarMarkerFor(DateTime date, DateTime today, bool isSelected, bool isHoliday) =>
         CalendarMarkerFor(date, today, isSelected, isHoliday
-            ? [new CalendarObservance(0, "Hari libur", CalendarObservanceKind.PublicHoliday)]
+            ? [new CalendarObservance(0, "Hari libur", "Libur", CalendarObservanceKind.PublicHoliday)]
             : Array.Empty<CalendarObservance>());
 
     /// <summary>Builds a calendar day marker from the set of observances applicable to the date.</summary>

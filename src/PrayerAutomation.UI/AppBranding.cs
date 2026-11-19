@@ -62,6 +62,11 @@ public static class AppBranding
         resources["BrandBackgroundBrush"] = ThemeManager.ToBrush(isDefault ? "#0F5C47" : theme.Accent);
         resources["BrandMosqueBrush"] = ThemeManager.ToBrush(isDefault ? "#F5EFDB" : darkMark ? "#101418" : "#ffffff");
         resources["BrandCongregationBrush"] = ThemeManager.ToBrush(isDefault ? "#E2AF4A" : darkMark ? "#101418" : "#ffd76a");
+        // Watermark latar: hijau logo pada tema terang, warna teks utama pada tema
+        // gelap, dengan alfa yang sudah diperhitungkan (18% / 14%).
+        resources["WatermarkBrush"] = ThemeManager.ToBrush(darkMark
+            ? $"#24{theme.PrimaryText.TrimStart('#')}"
+            : "#2E0F5C47");
         double radius = isDefault ? 20 : theme.Id == "classic" ? 0 : theme.CornerRadius;
         var badge = new RectangleGeometry(new Rect(3, 3, 94, 94), radius, radius);
         badge.Freeze();

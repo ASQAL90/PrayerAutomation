@@ -22,6 +22,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 - Muncul pengingat sebelum waktu sholat (teks saja, tanpa suara/adzan).
 - Setelah itu Windows dikunci sementara; kamu harus benar-benar berhenti kerja.
 - Jadwal dihitung di komputer, tidak perlu internet, ada beberapa pilihan metode perhitungan.
+- Metode Muhammadiyah memakai sudut Subuh/Isya 18°, ihtiyat 1–2 menit, dan ketinggian tempat (mdpl) untuk menyesuaikan terbit dan Maghrib.
 - Ada kalender Masehi & Hijriyah, widget desktop, dan pengingat.
 - Lokasi bisa diisi manual, diperkirakan dari jaringan, atau dari Windows Location Services.
 - Cari nama tempat offline pakai data GeoNames.

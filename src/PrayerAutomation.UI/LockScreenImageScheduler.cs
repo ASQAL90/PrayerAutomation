@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -19,9 +21,14 @@ internal sealed class LockScreenImageScheduler : IDisposable
         "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"
     };
 
-    private static readonly TimeSpan TriggerWindow = TimeSpan.FromSeconds(5);
+    // Covers the two-minute lead-in plus a short catch-up window after sleep/resume.
+    private static readonly TimeSpan TriggerWindow = TimeSpan.FromMinutes(2);
+    // Install the image shortly before the prayer so a pending AutoLock shows it at once.
+    private static readonly TimeSpan PreApplyLead = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ActiveImagePollInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RecoveryPollInterval = TimeSpan.FromSeconds(30);
+    // A steady "no active transaction" result is not worth a log line every poll.
+    private static readonly TimeSpan RecoveryTraceInterval = TimeSpan.FromMinutes(30);
     private readonly Func<bool> _isEnabled;
     private readonly Func<DateTime, IReadOnlyList<LockScreenPrayerTrigger>> _scheduleForDate;
     private readonly Func<TimeZoneInfo> _timeZone;
@@ -30,7 +37,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
     private readonly LockScreenImageTransaction _transaction;
     private readonly Action<string, Exception>? _log;
     private readonly Action<string, string>? _trace;
-    private readonly Func<string, string>? _imagePathProvider;
+    private readonly Func<string, TimeSpan, string>? _imagePathProvider;
     private DateTimeOffset? _lastTickUtc;
     private DateTimeOffset? _lastRecoveryTraceUtc;
     private LockScreenTransactionResult? _lastRecoveryResult;
@@ -58,7 +65,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
     /// <param name="durationMinutes">Optional override for the temporary image duration.</param>
     /// <param name="executionRequest">Optional execution-required power request helper.</param>
     /// <param name="trace">Optional trace sink for timeline events.</param>
-    /// <param name="imagePathProvider">Optional factory generating the image shown at each prayer time instead of a fixed path.</param>
+    /// <param name="imagePathProvider">Optional factory generating the image for a prayer key and its scheduled time.</param>
     internal LockScreenImageScheduler(
         Func<bool> isEnabled,
         Func<DateTime, IReadOnlyList<LockScreenPrayerTrigger>> scheduleForDate,
@@ -69,7 +76,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         Func<int>? durationMinutes = null,
         ILockScreenExecutionRequest? executionRequest = null,
         Action<string, string>? trace = null,
-        Func<string, string>? imagePathProvider = null)
+        Func<string, TimeSpan, string>? imagePathProvider = null)
     {
         _isEnabled = isEnabled;
         _scheduleForDate = scheduleForDate;
@@ -178,7 +185,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
             {
                 if (!EssentialPrayerKeys.Contains(trigger.Key)) continue;
                 DateTime triggerTime = localDate.Add(trigger.Time);
-                if (Math.Abs((localNow - triggerTime).TotalSeconds) > TriggerWindow.TotalSeconds) continue;
+                DateTime dueTime = triggerTime - PreApplyLead;
+                // Fire once at T-2 minutes, with a short catch-up window for a late start.
+                if (localNow < dueTime || localNow > triggerTime + TriggerWindow) continue;
 
                 string triggerId = localDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + "|" + trigger.Key;
                 if (!_processedPrayerTriggers.Add(triggerId)) continue;
@@ -186,16 +195,18 @@ internal sealed class LockScreenImageScheduler : IDisposable
 
                 try
                 {
-                    TimeSpan duration = TimeSpan.FromMinutes(
-                        Math.Min(Math.Clamp(_durationMinutes(), 1, 60),
-                                 Math.Max(1, (int)Math.Floor(DurationUntilNextPrayer(localDate, localNow).TotalMinutes))));
-                    Trace("trigger", nowUtc, $"triggerUtc={nowUtc.Add(triggerTime - localNow):O} deadlineUtc={nowUtc.Add(duration):O}");
+                    // Keep the configured visible time counted from the prayer itself, plus the lead-in.
+                    double configuredMinutes = Math.Clamp(_durationMinutes(), 1, 60);
+                    double untilNextPrayer = Math.Max(1, DurationUntilNextPrayer(localDate, triggerTime).TotalMinutes);
+                    TimeSpan duration = TimeSpan.FromMinutes(PreApplyLead.TotalMinutes + Math.Min(configuredMinutes, untilNextPrayer));
+                    Trace("trigger", nowUtc,
+                        $"scheduledUtc={nowUtc.Add(triggerTime - localNow):O} leadSeconds={(triggerTime - localNow).TotalSeconds:F0} deadlineUtc={nowUtc.Add(duration):O}");
                     RequestExecutionUntil(nowUtc.Add(duration), acquireOnly: true);
-                    string imagePath = _imagePathProvider?.Invoke(trigger.Key) ?? _imagePath;
+                    string imagePath = _imagePathProvider?.Invoke(trigger.Key, trigger.Time) ?? _imagePath;
                     LockScreenTransactionResult result = await _transaction.BeginOrExtendAsync(
                         imagePath, nowUtc, CancellationToken.None, duration);
                     SynchronizeExecutionRequest(result);
-                    Trace("apply-result", nowUtc, $"result={result} deadlineUtc={ReadDiagnosticDeadline():O} visual=unverified");
+                    Trace("apply-result", nowUtc, $"result={result} deadlineUtc={ReadDiagnosticDeadline():O} {DescribeImage(imagePath)}");
                     results.Add(result);
                     if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended)
                     {
@@ -218,6 +229,18 @@ internal sealed class LockScreenImageScheduler : IDisposable
             _isProcessing = false;
             processingCompleted.TrySetResult();
         }
+    }
+
+    /// <summary>Resumes normal scheduling after an update launch was aborted.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
+    internal async Task ResumeSchedulingAsync(DateTimeOffset nowUtc)
+    {
+        ThrowIfDisposed();
+        _restoreOnly = false;
+        _nextRecoveryCheckAtUtc = DateTimeOffset.MinValue;
+        ResetScheduleCache();
+        StartTimer();
+        await ProcessTickAsync(nowUtc);
     }
 
     /// <summary>Stops scheduling and restores the previous lock-screen state; safe to call at shutdown.</summary>
@@ -285,11 +308,11 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
-    /// <summary>Gap to the next prayer trigger today or (as fallback) tomorrow.</summary>
+    /// <summary>Gap from a prayer time to the next prayer trigger today or tomorrow.</summary>
     /// <param name="localDate">Today's local date.</param>
-    /// <param name="localNow">Current local time.</param>
+    /// <param name="after">Prayer time that must be excluded from the search.</param>
     /// <returns>Gap to the next trigger; falls back to 60 minutes when no trigger is known.</returns>
-    private TimeSpan DurationUntilNextPrayer(DateTime localDate, DateTime localNow)
+    private TimeSpan DurationUntilNextPrayer(DateTime localDate, DateTime after)
     {
         DateTime next = DateTime.MaxValue;
         IReadOnlyList<LockScreenPrayerTrigger> today = _cachedTriggers ?? Array.Empty<LockScreenPrayerTrigger>();
@@ -297,7 +320,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
         {
             if (!EssentialPrayerKeys.Contains(trigger.Key)) continue;
             DateTime candidate = localDate.Add(trigger.Time);
-            if (candidate > localNow && candidate < next) next = candidate;
+            if (candidate > after && candidate < next) next = candidate;
         }
         if (next == DateTime.MaxValue)
         {
@@ -310,7 +333,75 @@ internal sealed class LockScreenImageScheduler : IDisposable
                 if (candidate < next) next = candidate;
             }
         }
-        return next == DateTime.MaxValue ? TimeSpan.FromMinutes(60) : next - localNow;
+        return next == DateTime.MaxValue ? TimeSpan.FromMinutes(60) : next - after;
+    }
+
+    /// <summary>Applies a one-off preview image for a short duration, for the settings test button.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <param name="duration">How long the image stays applied.</param>
+    /// <returns>The transaction result.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the lock-screen feature is disabled.</exception>
+    internal async Task<LockScreenTransactionResult> ApplyTestAsync(DateTimeOffset nowUtc, TimeSpan duration)
+    {
+        ThrowIfDisposed();
+        if (!_isEnabled())
+            throw new InvalidOperationException("Aktifkan dan setujui gambar lock screen sebelum menguji.");
+        if (_isProcessing && _processingCompleted is not null) await _processingCompleted.Task;
+        LockScreenPrayerTrigger trigger = ResolveTestTrigger(nowUtc);
+        string imagePath = _imagePathProvider?.Invoke(trigger.Key, trigger.Time) ?? _imagePath;
+        Trace("test-apply-start", nowUtc, $"scheduled={trigger.Key}@{trigger.Time:hh\\:mm} {DescribeImage(imagePath)}");
+        LockScreenTransactionResult result = await _transaction.BeginOrExtendAsync(
+            imagePath, nowUtc, CancellationToken.None, duration);
+        SynchronizeExecutionRequest(result);
+        if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended)
+        {
+            _nextRecoveryCheckAtUtc = nowUtc.Add(ActiveImagePollInterval);
+            StartTimer();
+        }
+        Trace("test-apply-result", nowUtc, $"result={result} deadlineUtc={ReadDiagnosticDeadline():O}");
+        PublishTransactionStatus(result);
+        return result;
+    }
+
+    /// <summary>Chooses the next essential prayer today for a preview image, with a stable fallback.</summary>
+    /// <param name="nowUtc">Current UTC time.</param>
+    /// <returns>The trigger to render.</returns>
+    private LockScreenPrayerTrigger ResolveTestTrigger(DateTimeOffset nowUtc)
+    {
+        DateTime localNow = TimeZoneInfo.ConvertTime(nowUtc, _timeZone()).DateTime;
+        IReadOnlyList<LockScreenPrayerTrigger> today = _scheduleForDate(localNow.Date) ?? Array.Empty<LockScreenPrayerTrigger>();
+        LockScreenPrayerTrigger? next = today
+            .Where(trigger => EssentialPrayerKeys.Contains(trigger.Key) && trigger.Time >= localNow.TimeOfDay)
+            .OrderBy(trigger => trigger.Time)
+            .FirstOrDefault();
+        if (next is null)
+        {
+            IReadOnlyList<LockScreenPrayerTrigger> tomorrow =
+                _scheduleForDate(localNow.Date.AddDays(1)) ?? Array.Empty<LockScreenPrayerTrigger>();
+            next = tomorrow
+                .Where(trigger => EssentialPrayerKeys.Contains(trigger.Key))
+                .OrderBy(trigger => trigger.Time)
+                .FirstOrDefault();
+        }
+        return next ?? new LockScreenPrayerTrigger("Asr", TimeSpan.FromMinutes(15 * 60 + 1));
+    }
+
+    /// <summary>Describes the rendered image for diagnostics without exposing user paths.</summary>
+    /// <param name="path">Rendered image path.</param>
+    /// <returns>File name, size, and a short SHA-256 prefix.</returns>
+    private static string DescribeImage(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            using FileStream stream = File.OpenRead(path);
+            string hash = Convert.ToHexString(SHA256.HashData(stream));
+            return $"file={info.Name} bytes={info.Length} sha256={hash[..16]}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return "file=unavailable";
+        }
     }
 
     /// <summary>Disposes the scheduler and its power request; the timer is stopped.</summary>
@@ -380,7 +471,7 @@ internal sealed class LockScreenImageScheduler : IDisposable
             if (!enabled || (deadline.HasValue && nowUtc >= deadline.Value))
                 Trace("restore-start", nowUtc, $"deadlineUtc={deadline:O} due={deadline.HasValue && nowUtc >= deadline.Value} enabled={enabled} visual=unverified");
             LockScreenTransactionResult result = await _transaction.RecoverAsync(enabled, nowUtc, CancellationToken.None);
-            if (result != _lastRecoveryResult || !_lastRecoveryTraceUtc.HasValue || nowUtc - _lastRecoveryTraceUtc.Value >= RecoveryPollInterval)
+            if (result != _lastRecoveryResult || !_lastRecoveryTraceUtc.HasValue || nowUtc - _lastRecoveryTraceUtc.Value >= RecoveryTraceInterval)
             {
                 Trace("recovery-result", nowUtc, $"result={result} deadlineUtc={deadline:O} verification=config-only visual=unverified");
                 _lastRecoveryResult = result;

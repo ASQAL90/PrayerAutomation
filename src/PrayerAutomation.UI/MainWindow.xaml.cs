@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
@@ -30,7 +31,7 @@ public partial class MainWindow : Window
     private static readonly CalculationMethod[] CalculationMethods =
     [
         new(20, "Indonesia — Kementerian Agama (Kemenag)", "Asia/Jakarta", 20, 18),
-        new(99, "Indonesia — Muhammadiyah (hisab)", "Asia/Jakarta", 18, 18),
+        new(99, AppSettings.MuhammadiyahMethodLabel, "Asia/Jakarta", 18, 18),
         new(17, "Malaysia — JAKIM", "Asia/Kuala_Lumpur", 20, 18),
         new(11, "Singapura — MUIS", "Asia/Singapore", 20, 18),
         new(4, "Arab Saudi — Umm al-Qura", "Asia/Riyadh", 18.5, 18),
@@ -67,6 +68,10 @@ public partial class MainWindow : Window
     private bool _loadingSettings;
     private bool _allowClose;
     private object?[]? _savedFormBaseline;
+    /// <summary>True once the user edits the height field by hand.</summary>
+    private bool _elevationManuallyEdited;
+    /// <summary>True while the height field is being filled from the offline dataset.</summary>
+    private bool _settingAutoElevation;
     private bool _resolvingUnsavedChanges;
     private bool _savingSettings;
     private WindowState _lastNonMinimizedWindowState = WindowState.Normal;
@@ -79,6 +84,9 @@ public partial class MainWindow : Window
     // work out of the startup path so the initially visible controls accept input
     // as soon as the window is shown.
     private bool _calendarViewsLoaded;
+    // The year selectors are filled and moved by code as well; this keeps the
+    // SelectionChanged handlers from rendering the same year twice.
+    private bool _syncingYearSelectors;
 
     /// <summary>Initializes the window with the default settings store and startup registration.</summary>
     /// <param name="settings">Application settings.</param>
@@ -141,6 +149,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         MoveCalendarCorrectionEditorsBesideDates();
         LoadLockScreenPreview();
+        RefreshStorageSummary();
         AttachCorrectionEditors();
         Icon = App.LoadApplicationIcon();
         Closing += OnClosing;
@@ -246,11 +255,13 @@ public partial class MainWindow : Window
         TodayLabel.Text = todayLabel;
         LocationSummary.Text = $"{_settings.LocationName}  ·  {_settings.TimeZoneId}  ·  {_settings.CalculationStandard}";
         OverviewMethodLabel.Text = _settings.CalculationStandard;
-        OverviewCalculationNote.Text = $"Jadwal {scheduleDate.ToString("d MMMM yyyy", IndonesianCulture)} dihitung tanpa internet (metode {_settings.MethodId}). Sudut dan sumber mengikuti metode yang dipilih. Koreksi menit dapat diatur.";
+        OverviewCalculationNote.Text = _settings.MethodId == 99
+            ? $"Jadwal {scheduleDate.ToString("d MMMM yyyy", IndonesianCulture)} dihitung tanpa internet (metode Muhammadiyah 18°). Ihtiyat 1–2 menit dan ketinggian {_settings.ElevationMeters} mdpl sudah diterapkan; koreksi menit tetap dapat diatur."
+            : $"Jadwal {scheduleDate.ToString("d MMMM yyyy", IndonesianCulture)} dihitung tanpa internet (metode {_settings.MethodId}). Sudut dan sumber mengikuti metode yang dipilih. Koreksi menit dapat diatur.";
         OverviewReminderStatus.Text = _settings.RemindersEnabled
             ? $"Pengingat teks: aktif — {_settings.ReminderMinutes} menit sebelumnya (tanpa suara)."
             : "Pengingat teks: nonaktif.";
-        OverviewCalendarStatus.Text = "Kalender Masehi dan Hijriyah sipil dapat dikoreksi tanpa mengubah jadwal sholat. Hari besar adalah perkiraan, bukan hasil rukyat atau SKB resmi.";
+        OverviewCalendarStatus.Text = "Kalender Masehi dan Hijriyah dapat dikoreksi tanpa mengubah jadwal sholat. " + CurrentCalendarSourceNote();
 
         ScheduleOverviewGrid.Children.Clear();
         try
@@ -453,10 +464,7 @@ public partial class MainWindow : Window
     private void InitializeYearSelectors()
     {
         DateTime today = GetCalendarToday();
-        int gregorianStart = Math.Max(1, today.Year - 100);
-        CalendarYearBox.ItemsSource = Enumerable.Range(gregorianStart, today.Year + 100 - gregorianStart + 1).ToArray();
         _selectedGregorianYear = today.Year;
-        CalendarYearBox.SelectedItem = _selectedGregorianYear;
         _selectedGregorianDate = today;
 
         int currentHijriYear = 1448;
@@ -470,12 +478,58 @@ public partial class MainWindow : Window
             try { currentHijriYear = new UmAlQuraCalendar().GetYear(today.AddDays(_settings.HijriDateCorrectionDays)); }
             catch (ArgumentOutOfRangeException) { currentHijriYear = Math.Max(1, today.Year - 579); }
         }
-        currentHijriYear = Math.Clamp(currentHijriYear, 1, 9665);
-        int hijriStart = Math.Max(1, currentHijriYear - 100);
-        int hijriEnd = Math.Min(9666, currentHijriYear + 100);
-        HijriYearBox.ItemsSource = Enumerable.Range(hijriStart, hijriEnd - hijriStart + 1).ToArray();
-        _selectedHijriYear = currentHijriYear;
-        HijriYearBox.SelectedItem = currentHijriYear;
+        _selectedHijriYear = Math.Clamp(currentHijriYear, 1, 9666);
+        RebuildYearSelectors();
+    }
+
+    /// <summary>
+    /// Rebuilds both year selectors from the ranges the active source can render,
+    /// clamps the current selections into those ranges, and updates the arrows.
+    /// </summary>
+    private void RebuildYearSelectors()
+    {
+        DateTime today = GetCalendarToday();
+        int todayHijriYear = _selectedHijriYear;
+        try { todayHijriYear = HijriForCalendarDate(today).Year; }
+        catch (Exception ex) when (IsNativeCoreFailure(ex) || ex is InvalidOperationException)
+        {
+            AppLogger.Write("calendar.selector-hijri-year", ex);
+        }
+
+        CalendarYearRange gregorian = CalendarYearBounds.Gregorian(UseKhgtCalendar, today.Year);
+        CalendarYearRange hijri = CalendarYearBounds.Hijri(UseKhgtCalendar, todayHijriYear);
+
+        _syncingYearSelectors = true;
+        try
+        {
+            _selectedGregorianYear = gregorian.Clamp(_selectedGregorianYear);
+            if (_selectedGregorianDate.Year != _selectedGregorianYear)
+                _selectedGregorianDate = _selectedGregorianYear == today.Year ? today : new DateTime(_selectedGregorianYear, 1, 1);
+            CalendarYearBox.ItemsSource = Enumerable
+                .Range(gregorian.First, gregorian.Last - gregorian.First + 1).ToArray();
+            CalendarYearBox.SelectedItem = _selectedGregorianYear;
+
+            _selectedHijriYear = hijri.Clamp(_selectedHijriYear);
+            HijriYearBox.ItemsSource = Enumerable
+                .Range(hijri.First, hijri.Last - hijri.First + 1).ToArray();
+            HijriYearBox.SelectedItem = _selectedHijriYear;
+        }
+        finally { _syncingYearSelectors = false; }
+        UpdateYearNavigationButtons();
+    }
+
+    /// <summary>Disables the year arrows that would move past the selectable range.</summary>
+    private void UpdateYearNavigationButtons()
+    {
+        if (PreviousCalendarYearButton is null || NextCalendarYearButton is null ||
+            PreviousHijriYearButton is null || NextHijriYearButton is null)
+            return;
+        PreviousCalendarYearButton.IsEnabled = CalendarYearBox.SelectedIndex > 0;
+        NextCalendarYearButton.IsEnabled = CalendarYearBox.SelectedIndex >= 0 &&
+            CalendarYearBox.SelectedIndex < CalendarYearBox.Items.Count - 1;
+        PreviousHijriYearButton.IsEnabled = HijriYearBox.SelectedIndex > 0;
+        NextHijriYearButton.IsEnabled = HijriYearBox.SelectedIndex >= 0 &&
+            HijriYearBox.SelectedIndex < HijriYearBox.Items.Count - 1;
     }
 
     /// <summary>Resets the calendar view state to today and re-renders both calendars.</summary>
@@ -483,15 +537,8 @@ public partial class MainWindow : Window
     {
         DateTime correctedToday = GetCalendarToday();
         _lastCalendarToday = correctedToday;
-        if (CalendarYearBox.ItemsSource is IEnumerable<int> gregorianYears && !gregorianYears.Contains(correctedToday.Year))
-        {
-            int start = Math.Max(1, correctedToday.Year - 100);
-            CalendarYearBox.ItemsSource = Enumerable.Range(start, correctedToday.Year + 100 - start + 1).ToArray();
-        }
         _selectedGregorianYear = correctedToday.Year;
         _selectedGregorianDate = correctedToday;
-        CalendarYearBox.SelectedItem = _selectedGregorianYear;
-
         try
         {
             _selectedHijriYear = Math.Clamp(HijriForCalendarDate(correctedToday).Year, 1, 9666);
@@ -500,7 +547,10 @@ public partial class MainWindow : Window
         {
             AppLogger.Write("calendar.refresh-hijri-year", ex);
         }
-        HijriYearBox.SelectedItem = _selectedHijriYear;
+        RebuildYearSelectors();
+        string sourceNote = CurrentCalendarSourceNote();
+        GregorianCalendarNote.Text = sourceNote;
+        HijriCalendarNote.Text = sourceNote;
         RenderGregorianYear(_selectedGregorianYear);
         RenderHijriYear(_selectedHijriYear);
     }
@@ -579,7 +629,7 @@ public partial class MainWindow : Window
                         continue;
                     }
                     DateTime date = new(year, month, day);
-                    CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays()).ToArray();
+                    CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays(), UseKhgtCalendar).ToArray();
                     bool isSelected = date == _selectedGregorianDate;
                     _gregorianObservances[date] = observances;
                     Button dateButton = CreateGregorianDateButton(date, today, observances, isSelected);
@@ -590,7 +640,7 @@ public partial class MainWindow : Window
                 CalendarGrid.Children.Add(monthCard);
             }
             UpdateGregorianSelection(_selectedGregorianDate);
-            FooterStatus.Text = $"Kalender Masehi {year}: 12 bulan dimuat. Penanda membedakan hari besar, puasa sunnah, dan hari tidak berpuasa; tanggal Hijriyah bersifat perkiraan sipil.";
+            FooterStatus.Text = $"Kalender Masehi {year}: 12 bulan dimuat. Penanda membedakan hari besar, puasa sunnah, dan hari tidak berpuasa. " + CurrentCalendarSourceNote();
         }
         catch (Exception ex) when (IsNativeCoreFailure(ex) || ex is InvalidOperationException or ArgumentOutOfRangeException)
         {
@@ -698,7 +748,7 @@ public partial class MainWindow : Window
             int totalDays = 0;
             for (int month = 1; month <= 12; month++)
             {
-                NativeHijriMonth nativeMonth = NativePrayerCore.HijriMonth(year, month);
+                NativeHijriMonth nativeMonth = NativePrayerCore.HijriMonth(year, month, UseKhgtCalendar);
                 DateTime uncorrectedStart = new(nativeMonth.GregorianYear, nativeMonth.GregorianMonth, nativeMonth.GregorianDay);
                 DateTime displayStart = uncorrectedStart.AddDays(-GetHijriDateCorrectionDays());
                 int firstWeekday = MondayBasedWeekday(displayStart);
@@ -762,7 +812,7 @@ public partial class MainWindow : Window
                 monthPanel.Children.Add(datesGrid);
                 HijriCalendarGrid.Children.Add(monthCard);
             }
-            HijriYearLabel.Text = $"Tahun {year} H — 12 bulan dimuat ({totalDays} hari). Kalender Hijriyah sipil/tabular; tanggal resmi dapat berbeda menurut rukyat.";
+            HijriYearLabel.Text = $"Tahun {year} H — 12 bulan dimuat ({totalDays} hari). " + CurrentCalendarSourceNote();
             HijriSelectedDateDetail.Text = "Pilih tanggal Hijriyah untuk melihat padanan Masehi.";
             FooterStatus.Text = $"Kalender Hijriyah {year} H: 12 bulan dan {totalDays} tanggal dimuat.";
         }
@@ -770,9 +820,18 @@ public partial class MainWindow : Window
         {
             AppLogger.Write("calendar.hijri.render", ex);
             HijriCalendarGrid.Children.Clear();
-            HijriYearLabel.Text = $"Tahun {year} H dipilih, tetapi data bulan tidak dapat dimuat.";
-            HijriSelectedDateDetail.Text = "Mesin perhitungan rusak. Instal ulang Ayo Jama’ah! atau periksa log aplikasi.";
-            FooterStatus.Text = "Kalender Hijriyah gagal dimuat; rincian teknis disimpan di log aplikasi.";
+            if (UseKhgtCalendar && year is < NativePrayerCore.KhgtFirstYear or > NativePrayerCore.KhgtLastYear)
+            {
+                HijriYearLabel.Text = $"Tahun {year} H belum tersedia di tabel KHGT resmi ({NativePrayerCore.KhgtFirstYear}–{NativePrayerCore.KhgtLastYear} H).";
+                HijriSelectedDateDetail.Text = "Pilih tahun lain, atau ganti sumber kalender ke Sipil/tabular di Pengaturan.";
+                FooterStatus.Text = "Tabel KHGT tidak mencakup tahun ini; tidak ada tanggal yang ditampilkan.";
+            }
+            else
+            {
+                HijriYearLabel.Text = $"Tahun {year} H dipilih, tetapi data bulan tidak dapat dimuat.";
+                HijriSelectedDateDetail.Text = "Mesin perhitungan rusak. Instal ulang Ayo Jama’ah! atau periksa log aplikasi.";
+                FooterStatus.Text = "Kalender Hijriyah gagal dimuat; rincian teknis disimpan di log aplikasi.";
+            }
         }
     }
 
@@ -786,7 +845,7 @@ public partial class MainWindow : Window
     /// <returns>The date button.</returns>
     private Button CreateHijriDateButton(int year, int month, int day, DateTime gregorianDate, DateTime calendarToday, bool isActiveDate)
     {
-        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays());
+        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays(), UseKhgtCalendar);
         CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(gregorianDate, calendarToday, isActiveDate, observances);
         CalendarThemeColors themeColors = ThemeCatalog.CalendarColorsFor(ThemeManager.Current, markerStyle);
         string[] names = observances.Select(item => item.Name).ToArray();
@@ -912,19 +971,21 @@ public partial class MainWindow : Window
         try
         {
             string weekday = date.ToString("dddd", IndonesianCulture);
-            string caption = $"{weekday}, {date.ToString("d MMMM yyyy", IndonesianCulture)}";
-            CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays()).ToArray();
-            if (observances.Length > 0)
-                caption += "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
+            string dateCaption = $"{weekday}, {date.ToString("d MMMM yyyy", IndonesianCulture)}";
+            CalendarObservance[] observances = NativePrayerCore.CalendarObservances(date, GetHijriDateCorrectionDays(), UseKhgtCalendar).ToArray();
+            string fullObservanceLine = observances.Length == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
+            string shortObservanceLine = observances.Length == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.ShortName));
             NativeCalendarDate hijri = HijriForCalendarDate(date);
-            caption += $"\nHijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H\nPerkiraan kalender sipil; dapat berbeda dari rukyat atau otoritas setempat.";
-            SelectedDateDetail.Text = caption;
-            AutomationProperties.SetName(SelectedDateDetail, caption);
+            string hijriLine = $"\nHijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H";
+            SelectedDateDetail.Text = dateCaption + shortObservanceLine + hijriLine;
+            AutomationProperties.SetName(SelectedDateDetail, dateCaption + fullObservanceLine + hijriLine + "\n" + CurrentCalendarSourceNote());
         }
         catch (Exception ex) when (IsNativeCoreFailure(ex) || ex is InvalidOperationException)
         {
             AppLogger.Write("calendar.gregorian.selection", ex);
-            SelectedDateDetail.Text = $"{date.ToString("dddd, d MMMM yyyy", IndonesianCulture)}\nDetail Hijriyah tidak tersedia.";
+            SelectedDateDetail.Text = UseKhgtCalendar
+                ? $"{date.ToString("dddd, d MMMM yyyy", IndonesianCulture)}\nTanggal ini di luar cakupan tabel KHGT ({NativePrayerCore.KhgtFirstYear}–{NativePrayerCore.KhgtLastYear} H); detail Hijriyah tidak ditampilkan."
+                : $"{date.ToString("dddd, d MMMM yyyy", IndonesianCulture)}\nDetail Hijriyah tidak tersedia.";
         }
     }
 
@@ -936,17 +997,19 @@ public partial class MainWindow : Window
     private void SelectHijriDate(int year, int month, int day, DateTime gregorianDate)
     {
         string name = NativePrayerCore.HijriMonthName(month);
-        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays());
-        string observanceDescription = observances.Count == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
-        HijriSelectedDateDetail.Text = $"{day} {name} {year} H — {gregorianDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} M\nPerkiraan kalender sipil; dapat berbeda dari rukyat atau otoritas setempat.{observanceDescription}";
-        AutomationProperties.SetName(HijriSelectedDateDetail, HijriSelectedDateDetail.Text);
+        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays(), UseKhgtCalendar);
+        string fullObservanceLine = observances.Count == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
+        string shortObservanceLine = observances.Count == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.ShortName));
+        string dateCaption = $"{day} {name} {year} H — {gregorianDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} M";
+        HijriSelectedDateDetail.Text = dateCaption + shortObservanceLine;
+        AutomationProperties.SetName(HijriSelectedDateDetail, dateCaption + "\n" + CurrentCalendarSourceNote() + fullObservanceLine);
     }
 
     /// <summary>Computes the corrected Hijri date for a Gregorian date.</summary>
     /// <param name="date">The Gregorian date.</param>
     /// <returns>The corrected Hijri date.</returns>
     private NativeCalendarDate HijriForCalendarDate(DateTime date) =>
-        NativePrayerCore.HijriDate(date.Date.AddDays(GetHijriDateCorrectionDays()));
+        NativePrayerCore.HijriDate(date.Date.AddDays(GetHijriDateCorrectionDays()), UseKhgtCalendar);
 
     /// <summary>Returns the current time in the configured time zone.</summary>
     /// <returns>The location-local current time.</returns>
@@ -975,6 +1038,27 @@ public partial class MainWindow : Window
         !_loadingSettings && CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox?.Text, out int days)
             ? days
             : _settings.HijriDateCorrectionDays;
+
+    /// <summary>True when the saved settings use the official KHGT calendar table.</summary>
+    private bool UseKhgtCalendar => _settings.UsesKhgtCalendar;
+
+    /// <summary>Builds the honest source note shown below both calendars.</summary>
+    /// <param name="useKhgt">Whether the KHGT table is active.</param>
+    /// <param name="correctionDays">Manual correction applied after the source date.</param>
+    /// <returns>The source note.</returns>
+    private static string CalendarSourceNote(bool useKhgt, int correctionDays)
+    {
+        string note = useKhgt
+            ? $"Kalender Hijriyah KHGT (perkiraan) dari tabel resmi Muhammadiyah {NativePrayerCore.KhgtFirstYear}–{NativePrayerCore.KhgtLastYear} H; penetapan resmi tetap milik otoritas."
+            : "Perkiraan kalender sipil/tabular, bukan penetapan resmi. Ikuti hasil rukyat atau otoritas setempat.";
+        if (correctionDays != 0)
+            note += $" Digeser {correctionDays:+0;-0} hari dari sumber kalender.";
+        return note;
+    }
+
+    /// <summary>Returns the source note for the saved settings.</summary>
+    /// <returns>The source note.</returns>
+    private string CurrentCalendarSourceNote() => CalendarSourceNote(UseKhgtCalendar, GetHijriDateCorrectionDays());
 
     /// <summary>Returns the date for which prayer times are scheduled; falls back to tomorrow after Isha.</summary>
     /// <returns>The schedule date.</returns>
@@ -1038,6 +1122,8 @@ public partial class MainWindow : Window
             LocationNameBox.Text = _settings.LocationName;
             LatitudeBox.Text = _settings.Latitude.ToString("G", CultureInfo.InvariantCulture);
             LongitudeBox.Text = _settings.Longitude.ToString("G", CultureInfo.InvariantCulture);
+            ElevationBox.Text = _settings.ElevationMeters.ToString(CultureInfo.InvariantCulture);
+            _elevationManuallyEdited = false;
             TimeZoneBox.ItemsSource = TimeZoneConverter.TZConvert.KnownIanaTimeZoneNames
                 .Append(_settings.TimeZoneId).Distinct(StringComparer.Ordinal).OrderBy(id => id, StringComparer.Ordinal).ToArray();
             TimeZoneBox.Text = _settings.TimeZoneId;
@@ -1070,6 +1156,14 @@ public partial class MainWindow : Window
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.ThemeId, StringComparison.OrdinalIgnoreCase));
             DhuhaAfterSunriseBox.Text = _settings.DhuhaAfterSunriseMinutes.ToString(CultureInfo.InvariantCulture);
             HijriDateCorrectionBox.Text = _settings.HijriDateCorrectionDays.ToString(CultureInfo.InvariantCulture);
+            CalendarSourceBox.SelectedItem = CalendarSourceBox.Items.OfType<ComboBoxItem>().FirstOrDefault(
+                item => string.Equals(item.Tag as string,
+                    _settings.UsesKhgtCalendar ? AppSettings.CalendarSourceKhgt : AppSettings.CalendarSourceCivil,
+                    StringComparison.OrdinalIgnoreCase));
+            HijriSourceBox.SelectedItem = HijriSourceBox.Items.OfType<ComboBoxItem>().FirstOrDefault(
+                item => string.Equals(item.Tag as string,
+                    _settings.UsesKhgtCalendar ? AppSettings.CalendarSourceKhgt : AppSettings.CalendarSourceCivil,
+                    StringComparison.OrdinalIgnoreCase));
             StartupEnabledCheckBox.IsChecked = _settings.StartupEnabled;
             StartHiddenCheckBox.IsChecked = _settings.StartHidden;
 
@@ -1084,8 +1178,10 @@ public partial class MainWindow : Window
         finally { _loadingSettings = false; }
         UpdateWidgetOptionStates();
         UpdateStartupOptionStates();
+        CalendarSourceHelp.Text = CalendarSourceNote(_settings.UsesKhgtCalendar, _settings.HijriDateCorrectionDays);
         RefreshSettingsSchedulePreview();
         _savedFormBaseline = CaptureSettingsFormDraft();
+        UpdateKhgtOfferPanel();
     }
 
     /// <summary>Returns the stored correction for a prayer as text, defaulting to "0".</summary>
@@ -1102,6 +1198,116 @@ public partial class MainWindow : Window
     {
         if (_loadingSettings || MethodBox.SelectedItem is not CalculationMethod) return;
         RefreshSettingsSchedulePreview();
+    }
+
+    /// <summary>Returns the calendar source selected in the form.</summary>
+    private string SelectedCalendarSource =>
+        string.Equals((CalendarSourceBox.SelectedItem as ComboBoxItem)?.Tag as string,
+            AppSettings.CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
+            ? AppSettings.CalendarSourceKhgt
+            : AppSettings.CalendarSourceCivil;
+
+    /// <summary>Updates the source help text and schedule preview when the calendar source changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
+    private void CalendarSourceBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        int correction = CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox?.Text, out int days)
+            ? days
+            : 0;
+        CalendarSourceHelp.Text = CalendarSourceNote(SelectedCalendarSource == AppSettings.CalendarSourceKhgt, correction);
+        RefreshSettingsSchedulePreview();
+    }
+
+    /// <summary>Applies the calendar source chosen directly in the Hijriyah tab.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
+    private void HijriSourceBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        string source = string.Equals((HijriSourceBox.SelectedItem as ComboBoxItem)?.Tag as string,
+            AppSettings.CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
+            ? AppSettings.CalendarSourceKhgt
+            : AppSettings.CalendarSourceCivil;
+        ApplyCalendarSource(source);
+    }
+
+    /// <summary>Accepts the one-time KHGT offer shown on the overview tab.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private void KhgtOfferAccept_Click(object sender, RoutedEventArgs e) =>
+        ApplyCalendarSource(AppSettings.CalendarSourceKhgt);
+
+    /// <summary>Declines the one-time KHGT offer and keeps the civil calendar.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private void KhgtOfferDecline_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.KhgtOfferSeen = true;
+        SaveCalendarSourceChange();
+        UpdateKhgtOfferPanel();
+        FooterStatus.Text = "Kalender sipil/tabular tetap dipakai; pilihan bisa diubah di Pengaturan atau tab Hijriyah.";
+    }
+
+    /// <summary>Shows the KHGT offer only until an existing installation answers it once.</summary>
+    private void UpdateKhgtOfferPanel()
+    {
+        if (KhgtOfferPanel is null) return;
+        KhgtOfferPanel.Visibility = !_settings.UsesKhgtCalendar && !_settings.KhgtOfferSeen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    /// <summary>Persists the current settings object after a calendar-source change.</summary>
+    private void SaveCalendarSourceChange()
+    {
+        try
+        {
+            _saveSettings(_settings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            _logSettingsError("settings.calendar-source", ex);
+            SettingsStatusLabel.Text = "Sumber kalender berubah untuk sesi ini, tetapi gagal disimpan. Periksa izin dan ruang penyimpanan.";
+        }
+    }
+
+    /// <summary>Applies a calendar source immediately and refreshes every dependent view.</summary>
+    /// <param name="source">Either the civil or the KHGT source constant.</param>
+    private void ApplyCalendarSource(string source)
+    {
+        bool hadUnsavedChanges = HasUnsavedSettingsChanges();
+        _settings.CalendarSource = string.Equals(source, AppSettings.CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
+            ? AppSettings.CalendarSourceKhgt
+            : AppSettings.CalendarSourceCivil;
+        _settings.KhgtOfferSeen = true;
+        SaveCalendarSourceChange();
+
+        bool wasLoading = _loadingSettings;
+        _loadingSettings = true;
+        try
+        {
+            CalendarSourceBox.SelectedItem = CalendarSourceBox.Items.OfType<ComboBoxItem>().FirstOrDefault(
+                item => string.Equals(item.Tag as string, _settings.CalendarSource, StringComparison.OrdinalIgnoreCase));
+            HijriSourceBox.SelectedItem = HijriSourceBox.Items.OfType<ComboBoxItem>().FirstOrDefault(
+                item => string.Equals(item.Tag as string, _settings.CalendarSource, StringComparison.OrdinalIgnoreCase));
+            CalendarSourceHelp.Text = CurrentCalendarSourceNote();
+            HijriCalendarNote.Text = CurrentCalendarSourceNote();
+        }
+        finally { _loadingSettings = wasLoading; }
+
+        // The source is already persisted, so it must not look like an unsaved form edit.
+        if (!hadUnsavedChanges)
+            _savedFormBaseline = CaptureSettingsFormDraft();
+        UpdateKhgtOfferPanel();
+        _refreshDependentViews();
+        if (_calendarViewsLoaded)
+            RefreshCalendarViews();
+        RefreshSettingsSchedulePreview();
+        FooterStatus.Text = _settings.UsesKhgtCalendar
+            ? "Kalender Hijriyah memakai tabel KHGT resmi 1440–1499 H (perkiraan)."
+            : "Kalender Hijriyah memakai kalender sipil/tabular (perkiraan).";
     }
 
     /// <summary>Applies a live theme preview when the theme selection changes.</summary>
@@ -1167,21 +1373,84 @@ public partial class MainWindow : Window
     private void LoadLockScreenPreview()
     {
         if (LockScreenPreviewImage is null) return;
-        string path = System.IO.Path.Combine(AppContext.BaseDirectory, "sedang_sholat.png");
-        if (!File.Exists(path)) return;
         try
         {
-            var image = new System.Windows.Media.Imaging.BitmapImage();
-            image.BeginInit();
-            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            image.UriSource = new Uri(path, UriKind.Absolute);
-            image.EndInit();
-            image.Freeze();
-            LockScreenPreviewImage.Source = image;
+            (string key, TimeSpan time) = PreviewPrayer();
+            LockScreenPreviewImage.Source = LockScreenImageRenderer.RenderPreview(key, time);
         }
-        catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FileFormatException)
+        catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or FileFormatException or InvalidOperationException)
         {
             AppLogger.Write("lock-screen.preview", ex);
+        }
+    }
+
+    /// <summary>Chooses the next essential prayer for the preview image.</summary>
+    /// <returns>The prayer key and its scheduled time.</returns>
+    private (string Key, TimeSpan Time) PreviewPrayer()
+    {
+        try
+        {
+            DateTime now = GetLocationNow();
+            IReadOnlyList<PrayerEntry> essential = PrayerUiLogic.EssentialPrayerTimes(
+                PrayerScheduleService.ForDate(now, _settings));
+            PrayerEntry? next = essential.Where(entry => entry.Time >= now.TimeOfDay)
+                .OrderBy(entry => entry.Time)
+                .FirstOrDefault();
+            if (next is not null) return (next.Key, next.Time);
+        }
+        catch (Exception ex) when (IsScheduleFailure(ex))
+        {
+            AppLogger.Write("lock-screen.preview-schedule", ex);
+        }
+        return ("Asr", TimeSpan.FromMinutes(15 * 60 + 1));
+    }
+
+    /// <summary>Installs the real lock-screen image for one minute as a live test.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private async void LockScreenTestNow_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is not App app)
+        {
+            LockScreenStatus.Text = "Uji hanya tersedia saat aplikasi berjalan penuh.";
+            return;
+        }
+        if (!ConfirmDialog.Ask(this, "Uji lock screen",
+            "Gambar uji akan dipasang selama satu menit, lalu layar dikunci.\n\n" +
+            "Setelah Anda masuk kembali, gambar lock screen dipulihkan otomatis.",
+            "Pasang & kunci layar"))
+            return;
+
+        LockScreenTestNowButton.IsEnabled = false;
+        LockScreenStatus.Text = "Memasang gambar uji selama satu menit…";
+        try
+        {
+            LockScreenTransactionResult result = await app.TestLockScreenNowAsync();
+            if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended)
+            {
+                LockScreenStatus.Text = "Gambar uji terpasang. Mengunci layar dalam dua detik…";
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                LockScreenStatus.Text = WorkstationLockService.TryLock()
+                    ? "Layar dikunci. Setelah masuk kembali, gambar dipulihkan otomatis dalam satu menit."
+                    : "Gambar uji terpasang, tetapi layar tidak dapat dikunci. Kunci Windows secara manual untuk melihatnya; gambar dipulihkan otomatis setelah satu menit.";
+            }
+            else if (result == LockScreenTransactionResult.ExternalChangePreserved)
+            {
+                LockScreenStatus.Text = "Perubahan lock screen dari pengguna dipertahankan; gambar uji tidak dipasang.";
+            }
+            else
+            {
+                LockScreenStatus.Text = "Status lock screen belum dapat diverifikasi; gambar uji tidak dipasang.";
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            AppLogger.Write("lock-screen.test", ex);
+            LockScreenStatus.Text = "Uji gagal: " + ex.Message;
+        }
+        finally
+        {
+            LockScreenTestNowButton.IsEnabled = true;
         }
     }
 
@@ -1264,14 +1533,13 @@ public partial class MainWindow : Window
     private void LockScreenCancelRecovery_Click(object sender, RoutedEventArgs e)
     {
         if (Application.Current is not App app) return;
-        System.Windows.MessageBoxResult answer = System.Windows.MessageBox.Show(this,
-            "Lock screen masih menampilkan gambar sholat dan menghalangi pemasangan/penghapusan.\r\n\r\n" +
+        if (!ConfirmDialog.Ask(this, "Batalkan pemulihan lock screen",
+            "Lock screen masih menampilkan gambar sholat dan menghalangi pemasangan/penghapusan.\n\n" +
             "Batalkan pemulihan? Catatan pemulihan dihapus, fitur gambar lock screen dimatikan, dan gambar lock screen " +
             "dibiarkan seperti saat ini. Lanjutkan hanya bila gambar lock screen Anda sudah sesuai tampilan semula dan " +
             "tidak bisa dipastikan kembali.",
-            "Batalkan pemulihan lock screen", System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning, System.Windows.MessageBoxResult.No);
-        if (answer != System.Windows.MessageBoxResult.Yes) return;
+            "Batalkan pemulihan"))
+            return;
         app.CancelLockScreenRecovery();
         LockScreenCheckBox.IsChecked = false;
         RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; catatan pemulihan dihapus dan fitur gambar dimatikan.");
@@ -1283,6 +1551,107 @@ public partial class MainWindow : Window
     private void CheckUpdatesNow_Click(object sender, RoutedEventArgs e)
     {
         if (Application.Current is App app) app.ShowUpdateWindow();
+    }
+
+    /// <summary>Refreshes the reported sizes of log, update, and lock-screen folders.</summary>
+    private void RefreshStorageSummary()
+    {
+        if (StorageSummaryText is null) return;
+        long log = StorageMaintenance.GetLogBytes();
+        long update = StorageMaintenance.GetFolderBytes(StorageMaintenance.UpdateFolder);
+        long images = StorageMaintenance.GetFolderBytes(StorageMaintenance.LockScreenFolder);
+        StorageSummaryText.Text =
+            "Total " + StorageMaintenance.FormatBytes(log + update + images) +
+            " · Log " + StorageMaintenance.FormatBytes(log) +
+            " · Unduhan pembaruan " + StorageMaintenance.FormatBytes(update) +
+            " · Gambar lock screen " + StorageMaintenance.FormatBytes(images) + ".";
+    }
+
+    /// <summary>Opens the per-user data folder in Explorer.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(StorageMaintenance.DataRoot);
+            Process.Start(new ProcessStartInfo(StorageMaintenance.DataRoot) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            AppLogger.Write("storage.open-folder", ex);
+            StorageStatusText.Text = "Folder data tidak bisa dibuka: " + ex.Message;
+        }
+    }
+
+    /// <summary>Opens the current log file, or the data folder when no log exists yet.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void OpenLog_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (File.Exists(StorageMaintenance.LogPath))
+            {
+                Process.Start(new ProcessStartInfo(StorageMaintenance.LogPath) { UseShellExecute = true });
+                return;
+            }
+            Directory.CreateDirectory(StorageMaintenance.DataRoot);
+            StorageStatusText.Text = "Belum ada log. Folder data dibuka.";
+            Process.Start(new ProcessStartInfo(StorageMaintenance.DataRoot) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+        {
+            AppLogger.Write("storage.open-log", ex);
+            StorageStatusText.Text = "Log tidak bisa dibuka: " + ex.Message;
+        }
+    }
+
+    /// <summary>Clears logs, downloaded updates, and stale lock-screen images after confirmation.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void ClearCache_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDialog.Ask(this, "Bersihkan cache & log",
+            "Hapus log, unduhan pembaruan, dan gambar lock screen lama?\n\n" +
+            "Pengaturan, jadwal, dan catatan pemulihan lock screen tidak dihapus. " +
+            "Gambar lock screen yang masih dibutuhkan pemulihan akan dilewati.",
+            "Bersihkan"))
+            return;
+
+        long freed = StorageMaintenance.ClearLogs()
+            + StorageMaintenance.ClearUpdateDownloads()
+            + StorageMaintenance.ClearLockScreenImages();
+        RefreshStorageSummary();
+        StorageStatusText.Text = StorageMaintenance.HasPendingLockScreenRecovery
+            ? "Cache dibersihkan (" + StorageMaintenance.FormatBytes(freed) + "). Gambar lock screen dilewati karena pemulihan masih tertunda."
+            : "Cache dibersihkan; sekitar " + StorageMaintenance.FormatBytes(freed) + " ruang dibebaskan.";
+    }
+
+    /// <summary>Saves a sanitized diagnostics report chosen by the user.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void ExportDiagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Simpan laporan diagnostik",
+            Filter = "Berkas teks (*.txt)|*.txt|Semua berkas (*.*)|*.*",
+            DefaultExt = ".txt",
+            FileName = "AyoJamaah-diagnostik-" + DateTime.Now.ToString("yyyyMMdd-HHmm", CultureInfo.InvariantCulture) + ".txt"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            File.WriteAllText(dialog.FileName, StorageMaintenance.BuildDiagnostics(_settings),
+                new System.Text.UTF8Encoding(false));
+            StorageStatusText.Text = "Laporan diagnostik disimpan. Periksa isinya sebelum dibagikan.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            AppLogger.Write("storage.export-diagnostics", ex);
+            StorageStatusText.Text = "Laporan tidak bisa disimpan: " + ex.Message;
+        }
     }
 
     /// <summary>Sets the lock-screen status text; marshals to the UI thread when needed.</summary>
@@ -1341,6 +1710,8 @@ public partial class MainWindow : Window
     {
         if (!_loadingSettings)
         {
+            if (sender == ElevationBox && !_settingAutoElevation)
+                _elevationManuallyEdited = true;
             if (sender == LocationNameBox || sender == LatitudeBox || sender == LongitudeBox || sender == TimeZoneBox)
                 _locationRequestVersion++;
             if (sender == LocationNameBox)
@@ -1359,6 +1730,7 @@ public partial class MainWindow : Window
                     {
                         OfflineLocationResult? place = OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude);
                         LocationNameBox.Text = place?.DisplayName ?? "Lokasi manual";
+                        ApplyAutoElevation(place?.ElevationMeters);
                         OfflineReverseGeocodeStatus.Text = place is null
                             ? "Tidak ada permukiman dalam radius 75 km. Isi nama sendiri; koordinat tetap lokal dan belum disimpan."
                             : $"Nama otomatis dari daftar kota lokal: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
@@ -1373,6 +1745,23 @@ public partial class MainWindow : Window
             }
             RefreshSettingsSchedulePreview();
         }
+    }
+
+    /// <summary>
+    /// Fills the elevation field from the nearest settlement, unless the user has
+    /// typed their own value. Values in metres are clamped by <see cref="AppSettings"/>.
+    /// </summary>
+    /// <param name="elevationMeters">DEM height from the offline dataset, or null.</param>
+    private void ApplyAutoElevation(int? elevationMeters)
+    {
+        if (elevationMeters is not int value || _elevationManuallyEdited) return;
+        string text = Math.Clamp(value, 0, 9000).ToString(CultureInfo.InvariantCulture);
+        _settingAutoElevation = true;
+        try
+        {
+            ElevationBox.Text = text;
+        }
+        finally { _settingAutoElevation = false; }
     }
 
     /// <summary>Refreshes the Hijri calendar after the correction input changes.</summary>
@@ -1460,6 +1849,8 @@ public partial class MainWindow : Window
             LocationNameBox.Text = suggestion.DisplayName;
             LatitudeBox.Text = suggestion.Latitude.ToString("G", CultureInfo.InvariantCulture);
             LongitudeBox.Text = suggestion.Longitude.ToString("G", CultureInfo.InvariantCulture);
+            _elevationManuallyEdited = false;
+            ApplyAutoElevation(suggestion.ElevationMeters);
             TimeZoneBox.Text = timezone;
         }
         finally { _loadingSettings = false; }
@@ -1563,7 +1954,7 @@ public partial class MainWindow : Window
             RenderScheduleEntries(SettingsSchedulePreviewGrid, entries, columns: 7, CreatePrayerCorrectionEditor);
 
             SettingsScheduleDateLabel.Text = $"{calendarDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} ({previewSettings.TimeZoneId})";
-            NativeCalendarDate hijri = NativePrayerCore.HijriDate(calendarDate.AddDays(previewSettings.HijriDateCorrectionDays));
+            NativeCalendarDate hijri = NativePrayerCore.HijriDate(calendarDate.AddDays(previewSettings.HijriDateCorrectionDays), previewSettings.UsesKhgtCalendar);
             SettingsScheduleHijriDateLabel.Text = $"Hijriyah: {hijri.Day} {NativePrayerCore.HijriMonthName(hijri.Month)} {hijri.Year} H";
 
             string methodName = (MethodBox.SelectedItem as CalculationMethod)?.Name ?? previewSettings.CalculationStandard;
@@ -1606,6 +1997,11 @@ public partial class MainWindow : Window
             error = "Longitude harus berupa angka antara −180 dan 180.";
             return false;
         }
+        if (!TryInt(ElevationBox.Text, 0, 9000, out int elevationMeters))
+        {
+            error = "Ketinggian harus berupa bilangan bulat 0–9000 mdpl.";
+            return false;
+        }
 
         string timezone = TimeZoneBox.Text.Trim();
         try { _ = PrayerScheduleService.ResolveTimeZone(timezone); }
@@ -1622,7 +2018,7 @@ public partial class MainWindow : Window
 
         if (!CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
         {
-            error = "Koreksi tanggal Hijriyah harus berada pada rentang ±7 hari.";
+            error = "Geser tanggal Hijriyah harus berada pada rentang ±7 hari.";
             return false;
         }
 
@@ -1640,12 +2036,14 @@ public partial class MainWindow : Window
         candidate = CloneSettings(_settings);
         candidate.Latitude = latitude;
         candidate.Longitude = longitude;
+        candidate.ElevationMeters = elevationMeters;
         candidate.TimeZoneId = timezone;
         candidate.MethodId = method.Id;
         candidate.CalculationStandard = method.Name;
         candidate.DhuhaAfterSunriseMinutes = dhuhaAfterSunrise;
         candidate.Corrections = corrections;
         candidate.HijriDateCorrectionDays = hijriCorrection;
+        candidate.CalendarSource = SelectedCalendarSource;
         candidate.LocationName = LocationNameBox.Text.Trim();
         candidate.Normalize();
         return true;
@@ -1684,6 +2082,22 @@ public partial class MainWindow : Window
                 TimeZoneBox.Text = result.IpApi.TimeZoneId!;
             }
             finally { _loadingSettings = wasLoading; }
+
+            try
+            {
+                OfflineLocationResult? offlinePlace = await Task.Run(
+                    () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
+                if (requestVersion != _locationRequestVersion) return;
+                if (offlinePlace is not null)
+                {
+                    _elevationManuallyEdited = false;
+                    ApplyAutoElevation(offlinePlace.ElevationMeters);
+                }
+            }
+            catch (Exception)
+            {
+                // Height is optional; keep the existing value when the dataset is unreadable.
+            }
 
             NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); belum disimpan.";
             RefreshSettingsSchedulePreview();
@@ -1766,6 +2180,8 @@ public partial class MainWindow : Window
             if (offlinePlace is not null)
             {
                 LocationNameBox.Text = offlinePlace.DisplayName;
+                _elevationManuallyEdited = false;
+                ApplyAutoElevation(offlinePlace.ElevationMeters);
                 GpsLocationStatus.Text += $" Nama terdekat: {offlinePlace.DisplayName}.";
                 OfflineReverseGeocodeStatus.Text = $"Nama lokasi perangkat dicocokkan secara lokal dengan data lokasi lokal: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
             }
@@ -1906,6 +2322,11 @@ public partial class MainWindow : Window
             error = "Longitude harus berupa angka antara −180 dan 180.";
             return false;
         }
+        if (!TryInt(ElevationBox.Text, 0, 9000, out int elevationMeters))
+        {
+            error = "Ketinggian harus berupa bilangan bulat 0–9000 mdpl.";
+            return false;
+        }
 
         string timezone = TimeZoneBox.Text.Trim();
         try { _ = PrayerScheduleService.ResolveTimeZone(timezone); }
@@ -1937,7 +2358,7 @@ public partial class MainWindow : Window
         }
         if (!CorrectionInputBehavior.TryParseDateCorrection(HijriDateCorrectionBox.Text, out int hijriCorrection))
         {
-            error = "Koreksi tanggal Hijriyah harus berada pada rentang −7 sampai +7 hari.";
+            error = "Geser tanggal Hijriyah harus berada pada rentang −7 sampai +7 hari.";
             return false;
         }
         var corrections = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -1969,6 +2390,7 @@ public partial class MainWindow : Window
 
         candidate.Latitude = latitude;
         candidate.Longitude = longitude;
+        candidate.ElevationMeters = elevationMeters;
         candidate.TimeZoneId = timezone;
         candidate.MethodId = method.Id;
         candidate.CalculationStandard = method.Name;
@@ -2015,6 +2437,7 @@ public partial class MainWindow : Window
         candidate.ThemeId = themeId;
         candidate.DhuhaAfterSunriseMinutes = dhuhaAfterSunrise;
         candidate.HijriDateCorrectionDays = hijriCorrection;
+        candidate.CalendarSource = SelectedCalendarSource;
         candidate.StartupEnabled = StartupEnabledCheckBox.IsChecked == true;
         candidate.StartHidden = StartHiddenCheckBox.IsChecked == true;
         candidate.Normalize();
@@ -2083,6 +2506,7 @@ public partial class MainWindow : Window
     {
         destination.Latitude = source.Latitude;
         destination.Longitude = source.Longitude;
+        destination.ElevationMeters = source.ElevationMeters;
         destination.TimeZoneId = source.TimeZoneId;
         destination.LocationName = source.LocationName;
         destination.OnlineGeocodingEndpoint = source.OnlineGeocodingEndpoint;
@@ -2112,6 +2536,8 @@ public partial class MainWindow : Window
         destination.ReminderMessage = source.ReminderMessage;
         destination.DhuhaAfterSunriseMinutes = source.DhuhaAfterSunriseMinutes;
         destination.HijriDateCorrectionDays = source.HijriDateCorrectionDays;
+        destination.CalendarSource = source.CalendarSource;
+        destination.KhgtOfferSeen = source.KhgtOfferSeen;
         destination.OtherSettings = source.OtherSettings is null ? null : new(source.OtherSettings);
     }
 
@@ -2159,11 +2585,12 @@ public partial class MainWindow : Window
     /// <returns>The captured field values.</returns>
     private object?[] CaptureSettingsFormDraft() =>
     [
-        LocationNameBox.Text, LatitudeBox.Text, LongitudeBox.Text, TimeZoneBox.Text,
+        LocationNameBox.Text, LatitudeBox.Text, LongitudeBox.Text, ElevationBox.Text, TimeZoneBox.Text,
         MethodBox.SelectedValue,
         CorrectionFajrBox.Text, CorrectionSunriseBox.Text, CorrectionDhuhaBox.Text,
         CorrectionDhuhrBox.Text, CorrectionAsrBox.Text, CorrectionMaghribBox.Text, CorrectionIshaBox.Text,
         DhuhaAfterSunriseBox.Text, HijriDateCorrectionBox.Text,
+        (CalendarSourceBox.SelectedItem as ComboBoxItem)?.Tag,
         ReminderEnabledCheckBox.IsChecked, ReminderMinutesBox.Text, ReminderMessageBox.Text,
         WidgetEnabledCheckBox.IsChecked, (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
         (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag, (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag,
@@ -2220,57 +2647,58 @@ public partial class MainWindow : Window
     /// <param name="e">Routed event arguments.</param>
     private void Exit_Click(object sender, RoutedEventArgs e) => ((App)Application.Current).ShutdownApplication();
 
-    /// <summary>Renders the selected Gregorian year from the year selector.</summary>
+    /// <summary>Renders the selected Gregorian year as soon as the selector changes.</summary>
     /// <param name="sender">Event source.</param>
-    /// <param name="e">Routed event arguments.</param>
-    private void LoadCalendar_Click(object sender, RoutedEventArgs e)
+    /// <param name="e">Selection event arguments.</param>
+    private void CalendarYearBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_syncingYearSelectors || !_calendarViewsLoaded) return;
         if (CalendarYearBox.SelectedItem is not int year) return;
         _selectedGregorianYear = year;
         if (_selectedGregorianDate.Year != year)
             _selectedGregorianDate = year == GetCalendarToday().Year ? GetCalendarToday() : new DateTime(year, 1, 1);
         RenderGregorianYear(year);
+        UpdateYearNavigationButtons();
+    }
+
+    /// <summary>Renders the selected Hijri year as soon as the selector changes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
+    private void HijriYearBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingYearSelectors || !_calendarViewsLoaded) return;
+        if (HijriYearBox.SelectedItem is not int year) return;
+        _selectedHijriYear = year;
+        RenderHijriYear(year);
+        UpdateYearNavigationButtons();
     }
 
     /// <summary>Moves the Gregorian year selector back one year.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
-    private void PreviousGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, -1, hijri: false);
+    private void PreviousGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, -1);
     /// <summary>Moves the Gregorian year selector forward one year.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
-    private void NextGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, 1, hijri: false);
+    private void NextGregorianYear_Click(object sender, RoutedEventArgs e) => MoveYear(CalendarYearBox, 1);
     /// <summary>Moves the Hijri year selector back one year.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
-    private void PreviousHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, -1, hijri: true);
+    private void PreviousHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, -1);
     /// <summary>Moves the Hijri year selector forward one year.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
-    private void NextHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, 1, hijri: true);
+    private void NextHijriYear_Click(object sender, RoutedEventArgs e) => MoveYear(HijriYearBox, 1);
 
-    /// <summary>Shifts a year selector by a delta and re-renders the calendar.</summary>
+    /// <summary>Shifts a year selector by one step; its SelectionChanged handler re-renders the calendar.</summary>
     /// <param name="selector">The year ComboBox to shift.</param>
     /// <param name="delta">Year delta (+1/-1).</param>
-    /// <param name="hijri">True for the Hijri calendar; false for Gregorian.</param>
-    private void MoveYear(ComboBox selector, int delta, bool hijri)
+    private static void MoveYear(ComboBox selector, int delta)
     {
         if (selector.SelectedIndex < 0) return;
         int nextIndex = selector.SelectedIndex + delta;
         if (nextIndex < 0 || nextIndex >= selector.Items.Count) return;
         selector.SelectedIndex = nextIndex;
-        if (hijri) LoadHijriCalendar_Click(this, new RoutedEventArgs());
-        else LoadCalendar_Click(this, new RoutedEventArgs());
-    }
-
-    /// <summary>Renders the selected Hijri year from the year selector.</summary>
-    /// <param name="sender">Event source.</param>
-    /// <param name="e">Routed event arguments.</param>
-    private void LoadHijriCalendar_Click(object sender, RoutedEventArgs e)
-    {
-        if (HijriYearBox.SelectedItem is not int year) return;
-        _selectedHijriYear = year;
-        RenderHijriYear(year);
     }
 
     /// <summary>Cancels close to hide to the tray unless allowed; prompts for unsaved changes.</summary>

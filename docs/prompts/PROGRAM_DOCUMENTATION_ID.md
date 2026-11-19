@@ -55,11 +55,11 @@ Contoh uji setelah auto-lock/consent gambar dinonaktifkan oleh pengguna:
 - Koordinat manual yang sudah dikonfirmasi tetap menjadi acuan sampai pengguna mengubah dan menyimpan.
 - **Perkiraan dari jaringan** mengirim permintaan setelah tombol ditekan. Lokasinya dapat menunjuk gateway/proxy/VPN; bukan bukti posisi fisik.
 - **Lokasi perangkat / GPS** memakai Windows Location Services. Sumber Windows dapat berupa GPS maupun sumber lokasi sistem lain.
-- **Cari nama offline** memakai koordinat form dan data GeoNames yang dibundel, tanpa request jaringan. Hasil adalah permukiman perkiraan, bukan alamat persis; lisensi/atribusi ada di `src/src/PrayerAutomation.UI/Data/geonames/NOTICE.txt`.
+- **Cari nama offline** memakai koordinat form dan data GeoNames yang dibundel, tanpa request jaringan. Hasil adalah permukiman perkiraan, bukan alamat persis; kolom `dem` dipakai sebagai ketinggian awal (mdpl) dan dapat diubah manual. Lisensi/atribusi ada di `src/PrayerAutomation.UI/Data/geonames/NOTICE.txt`.
 - Lookup online memerlukan consent eksplisit yang tidak dipersistenkan. Jalur ini hanya memakai posisi Windows terbaru, bukan koordinat manual/tersimpan atau estimasi IP. Server menerima koordinat dan IP publik; jangan menguji dengan posisi nyata tanpa izin.
 - Consent online dicabut saat checkbox/endpoint berubah atau jendela ditutup. Tes jaringan build ini memakai HTTP mock, bukan koordinat perangkat nyata.
 
-Core Rust menghitung jadwal lokal; build aktif tidak memerlukan AlAdhan untuk perhitungan rutinnya. Nama metode dan koreksi menit tidak membuktikan kesesuaian jadwal resmi Kemenag/Muhammadiyah sepanjang tahun. Verifikasi resmi memerlukan tanggal, lokasi, timezone, parameter, dan pembandingan beberapa musim yang sama.
+Core Rust menghitung jadwal lokal; build aktif tidak memerlukan AlAdhan untuk perhitungan rutinnya. Metode Muhammadiyah memakai sudut Subuh/Isya 18°, ihtiyat 1–2 menit, Asar bayangan 1×, dan penyesuaian horizon dari tinggi mdpl untuk terbit/Maghrib. Nama metode dan koreksi menit tidak membuktikan kesesuaian jadwal resmi Kemenag/Muhammadiyah sepanjang tahun. Verifikasi resmi memerlukan tanggal, lokasi, timezone, parameter, dan pembandingan beberapa musim yang sama.
 
 Koreksi waktu menggunakan menit bertanda `−30` sampai `+30`. Tombol koreksi penanggalan Hijriyah memiliki rentang `±7` hari dan hanya menggeser tampilan kalender Hijriyah, bukan tanggal perhitungan jadwal. Tanggal Masehi mengikuti tanggal komputer dan tidak lagi dapat dikoreksi. Semua helper `−/+` memakai style Button yang sama; dua helper tanggal tidak memiliki chrome terpisah.
 

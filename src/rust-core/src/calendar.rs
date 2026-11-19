@@ -1,5 +1,16 @@
 //! Gregorian/Hijri calendar rules shared by the portable UI.
 
+use std::sync::OnceLock;
+
+/// Official KHGT month starts published by Muhammadiyah (api-khgt.muhammadiyah.or.id).
+const KHGT_TABLE: &str = include_str!("khgt_table.txt");
+/// First Hijri year covered by the embedded KHGT table.
+#[allow(dead_code)] // Host mirrors this range; kept here next to the table.
+pub const KHGT_FIRST_YEAR: i32 = 1440;
+/// Last Hijri year covered by the embedded KHGT table.
+#[allow(dead_code)]
+pub const KHGT_LAST_YEAR: i32 = 1499;
+
 const HIJRI_EPOCH_JDN: i64 = 1_948_440;
 const EPOCH_1970_JDN: i64 = 2_440_588;
 
@@ -151,6 +162,85 @@ fn find_hijri_month_start(hijri_year: i32, hijri_month: i32) -> Option<i64> {
     })
 }
 
+/// Parsed KHGT month starts: (days since epoch, Hijri year, Hijri month), sorted by date.
+fn khgt_starts() -> &'static [(i64, i32, i32)] {
+    static STARTS: OnceLock<Vec<(i64, i32, i32)>> = OnceLock::new();
+    STARTS.get_or_init(|| {
+        let mut rows = Vec::new();
+        for line in KHGT_TABLE.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let mut fields = line.split_whitespace();
+            let (Some(year), Some(month), Some(date)) =
+                (fields.next(), fields.next(), fields.next())
+            else {
+                continue;
+            };
+            let (Ok(year), Ok(month)) = (year.parse::<i32>(), month.parse::<i32>()) else {
+                continue;
+            };
+            let mut parts = date.split('-');
+            let (Some(gy), Some(gm), Some(gd)) = (parts.next(), parts.next(), parts.next()) else {
+                continue;
+            };
+            let (Ok(gy), Ok(gm), Ok(gd)) = (gy.parse::<i32>(), gm.parse::<i32>(), gd.parse::<i32>())
+            else {
+                continue;
+            };
+            if !(1..=12).contains(&month) || !valid_gregorian_date(gy, gm, gd) {
+                continue;
+            }
+            rows.push((days_from_civil(gy, gm, gd), year, month));
+        }
+        rows.sort_unstable_by_key(|row| row.0);
+        rows
+    })
+}
+
+fn khgt_month_index(hijri_year: i32, hijri_month: i32) -> Option<usize> {
+    khgt_starts()
+        .binary_search_by(|row| (row.1, row.2).cmp(&(hijri_year, hijri_month)))
+        .ok()
+}
+
+/// Maps a Gregorian date through the official KHGT month table; `None` outside its range.
+fn khgt_hijri_from_gregorian(year: i32, month: i32, day: i32) -> Option<HijriDate> {
+    if !valid_gregorian_date(year, month, day) {
+        return None;
+    }
+    let serial = days_from_civil(year, month, day);
+    let starts = khgt_starts();
+    let index = starts.partition_point(|row| row.0 <= serial).checked_sub(1)?;
+    let day_in_month = serial - starts[index].0 + 1;
+    let upper = if index + 1 < starts.len() {
+        starts[index + 1].0 - starts[index].0
+    } else {
+        // The table stops after its final month start; accept a full 30-day month there.
+        30
+    };
+    if !(1..=upper).contains(&day_in_month) {
+        return None;
+    }
+    Some(HijriDate {
+        year: starts[index].1,
+        month: starts[index].2,
+        day: day_in_month as i32,
+    })
+}
+
+fn khgt_month_info(hijri_year: i32, hijri_month: i32) -> Option<(i64, i32)> {
+    let starts = khgt_starts();
+    let index = khgt_month_index(hijri_year, hijri_month)?;
+    let days = if index + 1 < starts.len() {
+        starts[index + 1].0 - starts[index].0
+    } else {
+        30
+    };
+    Some((starts[index].0, days as i32))
+}
+
 /// Convert Gregorian Y-M-D to the civil Hijri date used by the Python app.
 /// `out` must point to writable storage for one PrayerCalendarDate.
 #[unsafe(no_mangle)]
@@ -228,6 +318,74 @@ pub extern "C" fn prayer_core_calendar_hijri_month(
     }
 }
 
+/// Convert Gregorian Y-M-D through the official KHGT month table.
+/// `out` must point to writable storage for one PrayerCalendarDate.
+/// Returns 1 when the date falls outside the embedded table.
+#[unsafe(no_mangle)]
+pub extern "C" fn prayer_core_calendar_gregorian_to_hijri_khgt(
+    year: i32,
+    month: i32,
+    day: i32,
+    out: *mut PrayerCalendarDate,
+) -> i32 {
+    if out.is_null() {
+        return 2;
+    }
+    let result = std::panic::catch_unwind(|| {
+        let h = khgt_hijri_from_gregorian(year, month, day).ok_or(1)?;
+        Ok::<_, i32>(PrayerCalendarDate {
+            status: 0,
+            year: h.year,
+            month: h.month,
+            day: h.day,
+            weekday_monday0: weekday_monday0(days_from_civil(year, month, day)),
+        })
+    });
+    match result {
+        Ok(Ok(value)) => {
+            unsafe { out.write(value) };
+            0
+        }
+        Ok(Err(code)) => code,
+        Err(_) => 3,
+    }
+}
+
+/// Load a KHGT Hijri month from the official table.
+/// `out` must point to writable storage for one PrayerHijriMonth.
+#[unsafe(no_mangle)]
+pub extern "C" fn prayer_core_calendar_hijri_month_khgt(
+    hijri_year: i32,
+    hijri_month: i32,
+    out: *mut PrayerHijriMonth,
+) -> i32 {
+    if out.is_null() {
+        return 2;
+    }
+    let result = std::panic::catch_unwind(|| {
+        let (start, days) = khgt_month_info(hijri_year, hijri_month).ok_or(1)?;
+        let g = civil_from_days(start);
+        Ok::<_, i32>(PrayerHijriMonth {
+            status: 0,
+            hijri_year,
+            hijri_month,
+            days_in_month: days,
+            gregorian_year: g.year,
+            gregorian_month: g.month,
+            gregorian_day: g.day,
+            weekday_monday0: weekday_monday0(start),
+        })
+    });
+    match result {
+        Ok(Ok(value)) => {
+            unsafe { out.write(value) };
+            0
+        }
+        Ok(Err(code)) => code,
+        Err(_) => 4,
+    }
+}
+
 /// Return a bit mask for fixed/general and estimated Islamic calendar markers.
 /// Bits 0-4: New Year, Labour Day, Pancasila, Independence Day, Christmas.
 /// Bits 5-9: Islamic New Year, Mawlid, Isra Mi'raj, Eid al-Fitr, Eid al-Adha.
@@ -270,6 +428,30 @@ fn islamic_observance_mask(h: HijriDate, weekday: i32) -> u32 {
     mask
 }
 
+/// Combines fixed Gregorian holidays with the Islamic markers for one Hijri date.
+fn combined_observance_mask(year: i32, month: i32, day: i32, h: HijriDate) -> u32 {
+    let mut mask = match (month, day) {
+        (1, 1) => 1 << 0,
+        (5, 1) => 1 << 1,
+        (6, 1) => 1 << 2,
+        (8, 17) => 1 << 3,
+        (12, 25) => 1 << 4,
+        _ => 0,
+    };
+    let bit = match (h.month, h.day) {
+        (1, 1) => Some(5),
+        (3, 12) => Some(6),
+        (7, 27) => Some(7),
+        (10, 1) => Some(8),
+        (12, 10) => Some(9),
+        _ => None,
+    };
+    if let Some(bit) = bit {
+        mask |= 1 << bit;
+    }
+    mask | islamic_observance_mask(h, weekday_monday0(days_from_civil(year, month, day)))
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn prayer_core_calendar_holiday_mask(
     year: i32,
@@ -280,31 +462,39 @@ pub extern "C" fn prayer_core_calendar_holiday_mask(
     if !valid_gregorian_date(year, month, day) {
         return 0;
     }
-    let mut mask = match (month, day) {
-        (1, 1) => 1 << 0,
-        (5, 1) => 1 << 1,
-        (6, 1) => 1 << 2,
-        (8, 17) => 1 << 3,
-        (12, 25) => 1 << 4,
-        _ => 0,
-    };
     let shifted = days_from_civil(year, month, day) + i64::from(hijri_correction_days.clamp(-7, 7));
     let g = civil_from_days(shifted);
-    if let Some(h) = hijri_from_gregorian(g.year, g.month, g.day) {
-        let bit = match (h.month, h.day) {
-            (1, 1) => Some(5),
-            (3, 12) => Some(6),
-            (7, 27) => Some(7),
-            (10, 1) => Some(8),
-            (12, 10) => Some(9),
-            _ => None,
-        };
-        if let Some(bit) = bit {
-            mask |= 1 << bit;
-        }
-        mask |= islamic_observance_mask(h, weekday_monday0(days_from_civil(year, month, day)));
+    match hijri_from_gregorian(g.year, g.month, g.day) {
+        Some(h) => combined_observance_mask(year, month, day, h),
+        None => 0,
     }
-    mask
+}
+
+/// Holiday mask using the official KHGT date. Returns 1 when the shifted date is
+/// outside the embedded table, so the host can fall back to the civil calendar.
+#[unsafe(no_mangle)]
+pub extern "C" fn prayer_core_calendar_holiday_mask_khgt(
+    year: i32,
+    month: i32,
+    day: i32,
+    hijri_correction_days: i32,
+    out_mask: *mut u32,
+) -> i32 {
+    if out_mask.is_null() {
+        return 2;
+    }
+    if !valid_gregorian_date(year, month, day) {
+        return 1;
+    }
+    let shifted = days_from_civil(year, month, day) + i64::from(hijri_correction_days.clamp(-7, 7));
+    let g = civil_from_days(shifted);
+    match khgt_hijri_from_gregorian(g.year, g.month, g.day) {
+        Some(h) => {
+            unsafe { out_mask.write(combined_observance_mask(year, month, day, h)) };
+            0
+        }
+        None => 1,
+    }
 }
 
 #[cfg(test)]
@@ -358,6 +548,72 @@ mod tests {
                 month: 11,
                 day: 28
             }
+        );
+    }
+
+    #[test]
+    fn khgt_matches_official_1447_month_starts() {
+        let start = |year: i32, month: i32| {
+            let (serial, days) = khgt_month_info(year, month).expect("KHGT month exists");
+            assert!((29..=30).contains(&days), "month {year}/{month} length");
+            civil_from_days(serial)
+        };
+        assert_eq!(
+            start(1447, 1),
+            GregorianDate { year: 2025, month: 6, day: 26 }
+        );
+        assert_eq!(
+            start(1447, 9),
+            GregorianDate { year: 2026, month: 2, day: 18 }
+        );
+        assert_eq!(
+            start(1447, 10),
+            GregorianDate { year: 2026, month: 3, day: 20 }
+        );
+        assert_eq!(
+            start(1447, 12),
+            GregorianDate { year: 2026, month: 5, day: 18 }
+        );
+        assert_eq!(
+            khgt_hijri_from_gregorian(2025, 6, 26),
+            Some(HijriDate { year: 1447, month: 1, day: 1 })
+        );
+        assert_eq!(
+            khgt_hijri_from_gregorian(2025, 6, 25),
+            Some(HijriDate { year: 1446, month: 12, day: 29 })
+        );
+        assert_eq!(khgt_hijri_from_gregorian(2018, 9, 10), None);
+        assert_eq!(khgt_hijri_from_gregorian(2076, 10, 30), None);
+    }
+
+    #[test]
+    fn khgt_table_has_every_month_in_range_with_valid_lengths() {
+        for year in KHGT_FIRST_YEAR..=KHGT_LAST_YEAR {
+            for month in 1..=12 {
+                if year == KHGT_LAST_YEAR && month > 11 {
+                    continue;
+                }
+                let (serial, days) =
+                    khgt_month_info(year, month).unwrap_or_else(|| panic!("{year}/{month}"));
+                assert!((29..=30).contains(&days), "{year}/{month} length {days}");
+                assert_eq!(khgt_month_index(year, month), khgt_starts().iter().position(|row| row.1 == year && row.2 == month));
+                assert!(serial > 0);
+            }
+        }
+    }
+
+    #[test]
+    fn khgt_holiday_mask_marks_eid_and_reports_out_of_range() {
+        let mut mask = 0u32;
+        assert_eq!(
+            prayer_core_calendar_holiday_mask_khgt(2026, 3, 20, 0, &mut mask),
+            0
+        );
+        assert_ne!(mask & (1 << 8), 0, "Idulfitri marker");
+        let mut outside = 0u32;
+        assert_eq!(
+            prayer_core_calendar_holiday_mask_khgt(2018, 9, 10, 0, &mut outside),
+            1
         );
     }
 
