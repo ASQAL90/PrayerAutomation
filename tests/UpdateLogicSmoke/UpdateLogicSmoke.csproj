@@ -14,6 +14,7 @@
     <Compile Include="../../src/PrayerAutomation.UI/UpdateRecoveryPolicy.cs" Link="UpdateRecoveryPolicy.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateReminderPolicy.cs" Link="UpdateReminderPolicy.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/ReleaseNotesParser.cs" Link="ReleaseNotesParser.cs" />
+    <None Include="../../src/PrayerAutomation.UI/UpdateService.cs" Link="UpdateService.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/UpdateWindow.xaml.cs" Link="UpdateWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/UpdateWindow.xaml" Link="UpdateWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/ReleaseNotesWindow.xaml" Link="ReleaseNotesWindow.xaml" CopyToOutputDirectory="PreserveNewest" />

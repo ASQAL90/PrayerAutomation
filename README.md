@@ -53,9 +53,11 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
-### v2.4.2 (terbaru)
+### v2.4.2 (draft internal)
 
 Ringkasan perubahan ditampilkan di popup pembaruan, riwayat seluruh versi tersedia dari halaman Tentang, dan preflight pembaruan menyelesaikan pemulihan lock screen tanpa menahan proses. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru.
+
+Rilis ini sengaja disimpan sebagai draft untuk QC; stable terbaru tetap `v2.4.1`. Tautan aset di bawah hanya dapat diakses oleh pemilik repo. Panduan uji updater: [kanal pembaruan internal](docs/INTERNAL_UPDATE_CHANNEL.md).
 
 | Berkas | Keterangan |
 |---|---|

@@ -6,7 +6,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -20,7 +19,7 @@ namespace PrayerAutomation.UI;
 /// <param name="Url">Browser download URL.</param>
 /// <param name="Size">Asset size in bytes.</param>
 /// <param name="Sha256">Digest advertised by GitHub, when present.</param>
-internal sealed record ReleaseAsset(string Name, string Url, long Size, string? Sha256);
+internal sealed record ReleaseAsset(string Name, string Url, long Size, string? Sha256, string? ApiUrl = null);
 
 /// <summary>A newer release found on GitHub.</summary>
 /// <param name="Tag">Release tag.</param>
@@ -58,12 +57,19 @@ internal sealed record UpdatePreparation(UpdateInstallMode Mode, string LocalPat
 internal sealed class UpdateService
 {
     private const string ReleasesUrl = "https://api.github.com/repos/ASQAL90/PrayerAutomation/releases/latest";
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(10) };
+    private const string InternalUrlVariable = "AYOJAMAAH_UPDATE_URL";
+    private const string InternalTokenVariable = "AYOJAMAAH_UPDATE_TOKEN";
+    private const string GitHubApiHost = "api.github.com";
+    private static readonly HttpClient ChannelHttp = CreateChannelClient();
+    private static readonly string? InternalUpdateUrl = ReadInternalSetting(InternalUrlVariable);
+    private static readonly string? InternalToken = ReadInternalSetting(InternalTokenVariable);
 
     static UpdateService()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("AyoJamaah");
+        ChannelHttp.DefaultRequestHeaders.UserAgent.ParseAdd("AyoJamaah");
     }
+
+    private static string UpdateUrl => InternalUpdateUrl ?? ReleasesUrl;
 
     /// <summary>Queries GitHub for a newer release with the signed manifest assets.</summary>
     /// <param name="currentVersion">Installed version.</param>
@@ -73,9 +79,12 @@ internal sealed class UpdateService
     internal async Task<UpdateRelease?> CheckAsync(string currentVersion, bool isInstalled,
         CancellationToken cancellationToken)
     {
-        using JsonDocument? document = await Http.GetFromJsonAsync<JsonDocument>(ReleasesUrl, cancellationToken)
+        using HttpResponseMessage response = await SendWithInternalAuthAsync(UpdateUrl, cancellationToken)
             .ConfigureAwait(false);
-        if (document is null) return null;
+        if (!response.IsSuccessStatusCode) return null;
+        await using Stream jsonStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using JsonDocument document = await JsonDocument.ParseAsync(jsonStream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         JsonElement root = document.RootElement;
         string tag = root.GetProperty("tag_name").GetString() ?? string.Empty;
         if (!UpdateVersion.TryParse(tag, out Version? latest) ||
@@ -95,11 +104,12 @@ internal sealed class UpdateService
             string? name = asset.GetProperty("name").GetString();
             string? url = asset.GetProperty("browser_download_url").GetString();
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(url)) continue;
+            string? apiUrl = asset.TryGetProperty("url", out JsonElement apiElement) ? apiElement.GetString() : null;
             string? digest = null;
             if (asset.TryGetProperty("digest", out JsonElement digestElement))
                 digest = digestElement.GetString()?.Replace("sha256:", "", StringComparison.OrdinalIgnoreCase);
             long size = asset.TryGetProperty("size", out JsonElement sizeElement) ? sizeElement.GetInt64() : 0;
-            assets[name] = new ReleaseAsset(name, url, size, digest);
+            assets[name] = new ReleaseAsset(name, url, size, digest, apiUrl);
         }
 
         assets.TryGetValue($"AyoJamaah-update-{version}-{arch}.json", out ReleaseAsset? manifest);
@@ -192,10 +202,8 @@ internal sealed class UpdateService
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, asset.Url);
-            if (offset > 0) request.Headers.Range = new RangeHeaderValue(offset, null);
-            using HttpResponseMessage response = await Http.SendAsync(request,
-                HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await SendAssetAsync(AssetDownloadUrl(asset), cancellationToken,
+                offset > 0 ? offset : null).ConfigureAwait(false);
             bool appending = offset > 0 && response.StatusCode == System.Net.HttpStatusCode.PartialContent;
             if (!appending) offset = 0;
             response.EnsureSuccessStatusCode();
@@ -304,18 +312,77 @@ internal sealed class UpdateService
     /// <param name="folder">Folder used only to keep the API shape consistent.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
     /// <returns>Exact response bytes, or an empty array on failure.</returns>
-    private static async Task<byte[]> DownloadBytesAsync(ReleaseAsset asset, string folder,
+    private async Task<byte[]> DownloadBytesAsync(ReleaseAsset asset, string folder,
         CancellationToken cancellationToken)
     {
         _ = folder;
         try
         {
-            return await Http.GetByteArrayAsync(asset.Url, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await SendAssetAsync(AssetDownloadUrl(asset), cancellationToken)
+                .ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
             return [];
         }
+    }
+
+    private static string AssetDownloadUrl(ReleaseAsset asset) =>
+        InternalToken is not null && asset.ApiUrl is not null ? asset.ApiUrl : asset.Url;
+
+    private static bool IsGitHubApi(Uri uri) =>
+        string.Equals(uri.Host, GitHubApiHost, StringComparison.OrdinalIgnoreCase);
+
+    private static Task<HttpResponseMessage> SendAssetAsync(string url, CancellationToken cancellationToken,
+        long? offsetFrom = null) =>
+        SendWithInternalAuthAsync(url, cancellationToken, offsetFrom, octetStream: true);
+
+    private static async Task<HttpResponseMessage> SendWithInternalAuthAsync(string url,
+        CancellationToken cancellationToken, long? offsetFrom = null, bool octetStream = false)
+    {
+        Uri uri = new(url, UriKind.Absolute);
+        for (int hop = 0; hop < 5; hop++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            if (IsGitHubApi(uri) && InternalToken is not null)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", InternalToken);
+                if (octetStream) request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+            }
+            if (offsetFrom is not null) request.Headers.Range = new RangeHeaderValue(offsetFrom, null);
+            HttpResponseMessage response = await ChannelHttp.SendAsync(request,
+                HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            if ((int)response.StatusCode is >= 300 and < 400 && response.Headers.Location is not null)
+            {
+                Uri next = response.Headers.Location.IsAbsoluteUri
+                    ? response.Headers.Location
+                    : new Uri(uri, response.Headers.Location);
+                response.Dispose();
+                uri = next;
+                continue;
+            }
+            return response;
+        }
+        throw new HttpRequestException("Terlalu banyak redirect saat mengambil data.");
+    }
+
+    private static HttpClient CreateChannelClient()
+    {
+        var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        return new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
+    }
+
+    private static string? ReadInternalSetting(string name)
+    {
+#if AYOJAMAAH_INTERNAL_UPDATE
+        string? value = Environment.GetEnvironmentVariable(name);
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+#else
+        _ = name;
+        return null;
+#endif
     }
 
     private static ReleaseAsset? FindInstaller(IReadOnlyDictionary<string, ReleaseAsset> assets, string version)

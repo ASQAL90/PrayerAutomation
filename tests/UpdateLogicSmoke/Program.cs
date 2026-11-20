@@ -185,4 +185,31 @@ Check(changelog.Contains("## v2.4.2", StringComparison.Ordinal) &&
       !newestNotes.Contains("dibantu", StringComparison.OrdinalIgnoreCase),
     "Changelog memuat semua versi dan catatan rilis memakai bahasa pihak ketiga.");
 
+string updateServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateService.cs"));
+Check(updateServiceSource.Contains("AYOJAMAAH_UPDATE_URL") &&
+      updateServiceSource.Contains("AYOJAMAAH_UPDATE_TOKEN") &&
+      updateServiceSource.Contains("#if AYOJAMAAH_INTERNAL_UPDATE") &&
+      updateServiceSource.Contains("Environment.GetEnvironmentVariable(name)") &&
+      updateServiceSource.Contains("InternalUpdateUrl ?? ReleasesUrl") &&
+      updateServiceSource.Contains("api.github.com"),
+    "Kanal internal hanya dibaca dari ENV pada build ber-symbol; stable tetap memakai rilis latest.");
+int internalStart = updateServiceSource.IndexOf("#if AYOJAMAAH_INTERNAL_UPDATE", StringComparison.Ordinal);
+int internalEnd = updateServiceSource.IndexOf("#else", internalStart, StringComparison.Ordinal);
+Check(internalStart >= 0 && internalEnd > internalStart &&
+      updateServiceSource[internalStart..internalEnd].Contains("Environment.GetEnvironmentVariable(name)") &&
+      !updateServiceSource[..internalStart].Contains("Environment.GetEnvironmentVariable(") &&
+      !updateServiceSource[internalEnd..].Contains("Environment.GetEnvironmentVariable("),
+    "Pembacaan ENV hanya boleh berada di dalam blok symbol internal.");
+Check(updateServiceSource.Contains("GitHubApiHost") &&
+      updateServiceSource.Contains("IsGitHubApi(uri)") &&
+      updateServiceSource.Contains("AllowAutoRedirect = false") &&
+      updateServiceSource.Contains("request.Headers.Authorization") &&
+      updateServiceSource.Contains("response.Headers.Location") &&
+      updateServiceSource.Contains("new Uri(uri, response.Headers.Location)"),
+    "Token hanya dikirim ke api.github.com; redirect ke CDN diikuti tanpa Authorization.");
+Check(updateServiceSource.Contains("ApiUrl = null") &&
+      updateServiceSource.Contains("apiElement") &&
+      updateServiceSource.Contains("asset.ApiUrl : asset.Url"),
+    "Aset draft/privat memakai URL API, bukan browser_download_url, saat token tersedia.");
+
 Console.WriteLine("UpdateLogicSmoke: PASS");
