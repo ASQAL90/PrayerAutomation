@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path, PurePosixPath
 
@@ -35,7 +36,8 @@ def parent_of(rel: str) -> str:
     return "" if parent == "." else parent
 
 
-def render_file_group(lines: list[str], source: str, files: list[str]) -> None:
+def render_file_group(lines: list[str], source: str, files: list[str],
+                      separator: str) -> None:
     by_dir: dict[str, list[str]] = {}
     for rel in files:
         by_dir.setdefault(parent_of(rel), []).append(rel)
@@ -43,7 +45,10 @@ def render_file_group(lines: list[str], source: str, files: list[str]) -> None:
         target = "$INSTDIR" if not directory else f"$INSTDIR\\{nsis_text(directory)}"
         lines.append(f'  SetOutPath "{target}"')
         for rel in sorted(by_dir[directory]):
-            lines.append(f'  File "{source}/{nsis_text(rel)}"')
+            # NSIS memecah path sumber dengan separator sistem (\\ di Windows,
+            # / di Linux). Campuran keduanya membuat File gagal di CI Windows.
+            source_rel = rel.replace("/", separator)
+            lines.append(f'  File "{source}{separator}{nsis_text(source_rel)}"')
 
 
 def render_manifest_macro(lines: list[str], name: str, files: list[str]) -> None:
@@ -66,7 +71,9 @@ def render_delete_macro(lines: list[str], files: list[str]) -> None:
     lines.append("!macroend")
 
 
-def render(payload_x64: dict[str, str], payload_x86: dict[str, str]) -> str:
+def render(payload_x64: dict[str, str], payload_x86: dict[str, str],
+           separator: str | None = None) -> str:
+    separator = separator or os.sep
     shared = {rel: digest for rel, digest in payload_x64.items()
               if payload_x86.get(rel) == digest}
     x64_only = {rel: digest for rel, digest in payload_x64.items() if rel not in shared}
@@ -87,17 +94,17 @@ def render(payload_x64: dict[str, str], payload_x86: dict[str, str]) -> str:
     lines.append("")
 
     lines.append('Section "Berkas aplikasi (bersama)" SEC_PAYLOAD_SHARED')
-    render_file_group(lines, "${PAYLOAD_X64}", sorted(shared))
+    render_file_group(lines, "${PAYLOAD_X64}", sorted(shared), separator)
     lines.append("SectionEnd")
     lines.append("")
 
     lines.append('Section "Berkas aplikasi 64-bit" SEC_PAYLOAD_X64')
-    render_file_group(lines, "${PAYLOAD_X64}", sorted(x64_only))
+    render_file_group(lines, "${PAYLOAD_X64}", sorted(x64_only), separator)
     lines.append("SectionEnd")
     lines.append("")
 
     lines.append('Section "Berkas aplikasi 32-bit" SEC_PAYLOAD_X86')
-    render_file_group(lines, "${PAYLOAD_X86}", sorted(x86_only))
+    render_file_group(lines, "${PAYLOAD_X86}", sorted(x86_only), separator)
     lines.append("SectionEnd")
     lines.append("")
 
