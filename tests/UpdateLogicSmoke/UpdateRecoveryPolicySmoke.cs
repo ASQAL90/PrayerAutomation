@@ -1,4 +1,4 @@
-// Smoke test for the bounded lock-screen restore wait used by update preflight.
+// Smoke test for the reusable bounded restore helper; update preflight no longer waits on it.
 using PrayerAutomation.UI;
 
 namespace UpdateLogicSmoke;
@@ -130,7 +130,7 @@ internal static class UpdateRecoveryPolicySmoke
             Assert(cancelled && attempts == 0, "Closing the window must stop the wait before another restore attempt.");
         }
 
-        Console.WriteLine("PASS: update preflight waits at most 60 seconds, retries every five seconds, keeps the journal on timeout, and honors cancellation.");
+        Console.WriteLine("PASS: bounded restore helper retries every five seconds, reports timeout without forcing readiness, and honors cancellation.");
     }
 
     private static void Assert(bool condition, string message)

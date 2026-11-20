@@ -24,7 +24,7 @@ internal enum LockScreenUpdateReadiness
 /// <param name="RestoreAtUtc">Journal deadline, shown only as information; never used as proof of restoration.</param>
 internal sealed record LockScreenRecoveryProgress(int RemainingSeconds, DateTimeOffset? RestoreAtUtc);
 
-/// <summary>Bounded hold/retry policy used before an update touches installed files.</summary>
+/// <summary>Reusable bounded hold/retry policy for lock-screen restore verification.</summary>
 internal static class UpdateRecoveryPolicy
 {
     internal static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(5);
