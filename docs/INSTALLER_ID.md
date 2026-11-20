@@ -1,6 +1,6 @@
 # Installer Ayo Jama'ah! 2.2.1
 
-> **Rilis terbaru:** v2.4.0 dipublish dari tag `v2.4.0`; installer `AyoJamaah.Setup-2.4.0.exe` dibangun CI dan tersedia di [GitHub Release](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.0). Angka 2.2.1 di bawah adalah snapshot alur build NSIS lokal yang masih dipertahankan sebagai panduan, bukan versi unduhan aktif.
+> **Rilis terbaru:** v2.4.1 (hotfix update) dipublish dari tag `v2.4.1`; installer `AyoJamaah.Setup-2.4.1.exe` dibangun CI dan tersedia di [GitHub Release](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.1). Angka 2.2.1 di bawah adalah snapshot alur build NSIS lokal yang masih dipertahankan sebagai panduan, bukan versi unduhan aktif.
 
 > **Status 2.2.1:** jalur installer utama sekarang **NSIS** (`installer/nsis/AyoJamaah.nsi`) supaya paket bisa dibangun langsung dari perangkat ini tanpa Windows. Inno Setup sudah dihapus; NSIS satu-satunya jalur installer. Payload dual x86+x64 digenerate eksplisit dari receipt portable 2.2.1 (482 file x64, 481 file x86, 484 file unik, 9 file dipin sekali). Uji install/upgrade/uninstall dan verifikasi visual UI tetap wajib di Windows.
 

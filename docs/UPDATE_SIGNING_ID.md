@@ -1,4 +1,6 @@
-# Penandatanganan pembaruan 2.4.0
+# Penandatanganan pembaruan 2.4.1
+
+> **Hotfix 2.4.1:** memakai kunci dan baseline yang sama dengan 2.4.0 (`baseline-2.3.0-<arch>.json`). Manifest 2.4.1 ditandatangani workflow `Release` dari tag `v2.4.1`; aset 2.4.0 tidak ditimpa.
 
 Pembaruan delta memakai manifest JSON kecil yang ditandatangani dengan RSA-SHA256. Aplikasi menyimpan **public key** di `src/PrayerAutomation.UI/UpdateManifest.cs`; private key tidak pernah ikut dikirim.
 

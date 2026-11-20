@@ -71,6 +71,12 @@ Smoke .NET dijalankan lewat `dotnet <dll>`, bukan apphost, karena bind mount rep
 
 **Publikasi 2.4.0:** commit `4d6ab67` dan tag beranotasi `v2.4.0` sudah di-push ke `github` dan mirror `origin`. Workflow `Release` dari tag tersebut selesai sukses (run `44747832207`, 6m32s, semua langkah hijau) dan [GitHub Release v2.4.0](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.0) memuat 11 aset: installer EXE/ZIP, portable x64/x86, `SHA256SUMS.txt`, serta manifest JSON, tanda tangan `.sig`, dan delta ZIP untuk kedua arsitektur. Aset dibangun CI di Windows; ini bukan bukti instalasi, updater, atau tampilan visual di PC pengguna, dan tidak mengubah status `visual=unverified`.
 
+### Hotfix 2.4.1 — kegagalan update dan jendela tertutup
+
+Dua kegagalan 2.4.0 diperbaiki tanpa memindahkan tag `v2.4.0`: (1) `Dispatcher` dibaca dari thread latar setelah `ConfigureAwait(false)` pada progress pemulihan, auto-check, status `MainWindow`, dan aksi tray; (2) `ShowMainWindow()` memanggil `Show()` pada jendela yang sudah ditutup setelah `ReleaseAndShutdown()` gagal di tengah jalan. Perbaikannya: dispatcher ditangkap di thread UI, `InstallDeltaAsync`/`AbortUpdatePreparationAsync` tetap di thread UI sampai shutdown, cleanup shutdown dibungkus `try/finally` agar `Shutdown()` selalu dijalankan, jendela utama dibuat ulang lewat `CreateMainWindow()` bila tray membukanya setelah tertutup, dan tombol **Periksa lagi** aktif kembali setelah gagal. Assertion regresi ditambahkan ke `UpdateLogicSmoke`.
+
+Pada sumber 2.4.1: WPF Release build x64 `0 Warning(s)`, `0 Error(s)`; `UpdateLogicSmoke`, `CalendarSmoke`, `PrayerUiLogicSmoke`, `LockScreenPolicySmoke`, `LocationDetectionSmoke`, dan `OfflineGeocoderSmoke` exit `0` (dua smoke terakhir dijalankan dari `/tmp` dengan `libprayer_core.so` Linux). `cargo fmt --all --check` exit `0`. Ini tetap bukti build/smoke di Termux, bukan uji update 2.4.0 → 2.4.1 di Windows; status `visual=unverified` dan `update=unverified` pada PC pengguna tetap berlaku sampai log serta hasil uji dikirim.
+
 ### Instrumentasi first-open kalender (2.4.0)
 
 - Titik ukur ada di `MainWindow.RefreshCalendarViews()` saat pemanggilan pertama dari `EnsureCalendarViewsLoaded()`. Stopwatch terpisah untuk `RenderGregorianYear` dan `RenderHijriYear`, lalu satu baris `AppLogger.WriteInfo("calendar.first-open", "gregorianMs=… hijriMs=… totalMs=… source=civil|khgt")` per proses. Tidak ada perubahan layout atau area kalender 12 bulan.

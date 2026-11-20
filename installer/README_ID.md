@@ -1,6 +1,6 @@
 # Pemasang Ayo Jama'ah! 2.2.1
 
-> **Rilis terbaru:** v2.4.0 dipublish dari tag `v2.4.0` dengan `AyoJamaah.Setup-2.4.0.exe` dari CI; lihat [GitHub Release](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.0). Versi 2.2.1 di bawah tetap dipakai sebagai contoh alur build NSIS lokal.
+> **Rilis terbaru:** v2.4.1 (hotfix update) dipublish dari tag `v2.4.1` dengan `AyoJamaah.Setup-2.4.1.exe` dari CI; lihat [GitHub Release](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.1). Versi 2.2.1 di bawah tetap dipakai sebagai contoh alur build NSIS lokal.
 
 Installer dibangun dengan **NSIS** saja. Tujuannya agar installer bisa dibangun langsung dari Termux/proot Debian tanpa menunggu Windows. Uji install/upgrade/uninstall dan verifikasi visual tetap wajib di Windows.
 

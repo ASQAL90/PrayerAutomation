@@ -53,17 +53,19 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
-### v2.4.0 (terbaru)
+### v2.4.1 (terbaru)
+
+v2.4.1 adalah hotfix untuk kegagalan update 2.4.0: error lintas-thread saat memeriksa/memasang pembaruan dan popup "window has closed" saat aplikasi dibuka dari systray setelah update gagal.
 
 | Berkas | Keterangan |
 |---|---|
-| [AyoJamaah.Setup-2.4.0.exe](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.0/AyoJamaah.Setup-2.4.0.exe) | Installer, dual x64+x86 |
-| [AyoJamaah.Setup-2.4.0.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.0/AyoJamaah.Setup-2.4.0.zip) | Installer dalam file zip |
-| [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.0/AyoJamaah-win-x64.zip) | Portable x64 |
-| [AyoJamaah-win-x86.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.0/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
-| [SHA256SUMS.txt](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.0/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
+| [AyoJamaah.Setup-2.4.1.exe](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.1/AyoJamaah.Setup-2.4.1.exe) | Installer, dual x64+x86 |
+| [AyoJamaah.Setup-2.4.1.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.1/AyoJamaah.Setup-2.4.1.zip) | Installer dalam file zip |
+| [AyoJamaah-win-x64.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.1/AyoJamaah-win-x64.zip) | Portable x64 |
+| [AyoJamaah-win-x86.zip](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.1/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
+| [SHA256SUMS.txt](https://github.com/asqal90/PrayerAutomation/releases/download/v2.4.1/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
 
-Aset pembaruan delta (`AyoJamaah-update-2.4.0-*.json`, `.sig`, dan `AyoJamaah-delta-2.4.0-*.zip`) juga tersedia di [rilis v2.4.0](https://github.com/asqal90/PrayerAutomation/releases/tag/v2.4.0) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/asqal90/PrayerAutomation/releases).
+Aset pembaruan delta (`AyoJamaah-update-2.4.1-*.json`, `.sig`, dan `AyoJamaah-delta-2.4.1-*.zip`) juga tersedia di [rilis v2.4.1](https://github.com/asqal90/PrayerAutomation/releases/tag/v2.4.1) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/asqal90/PrayerAutomation/releases).
 
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
