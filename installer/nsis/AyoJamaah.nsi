@@ -294,10 +294,9 @@ Function .onInit
   ${If} $InstalledVersion == ""
     IfFileExists "$INSTDIR\${APP_EXE}" 0 version_check_done
     ${GetFileVersion} "$INSTDIR\${APP_EXE}" $InstalledVersion
-    ${IfErrors}
-      ClearErrors
-      StrCpy $InstalledVersion ""
-    ${EndIf}
+    IfErrors 0 +3
+    ClearErrors
+    StrCpy $InstalledVersion ""
   ${EndIf}
   ${If} $InstalledVersion != ""
     ; Version 1 is this installer, version 2 is the installed build, so
