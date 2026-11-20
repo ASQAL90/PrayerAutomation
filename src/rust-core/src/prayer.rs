@@ -101,12 +101,14 @@ fn solar_event_minutes(
         return None;
     }
     let event_offset_minutes = cosine_hour_angle.acos().to_degrees() * 4.0;
-    Some(solar_noon_minutes
-        + if morning {
-            -event_offset_minutes
-        } else {
-            event_offset_minutes
-        })
+    Some(
+        solar_noon_minutes
+            + if morning {
+                -event_offset_minutes
+            } else {
+                event_offset_minutes
+            },
+    )
 }
 
 /// Horizon dip caused by the observer's height above the surrounding terrain.
@@ -177,12 +179,22 @@ fn calculate(
     // The Muhammadiyah guide applies this dip to sunrise and sunset, which also
     // moves Maghrib.
     let horizon_altitude = -0.833 - horizon_dip_degrees(elevation_meters);
-    let sunrise_exact =
-        solar_event_minutes(horizon_altitude, latitude_radians, declination, solar_noon, true)
-            .ok_or(4)?;
-    let sunset_exact =
-        solar_event_minutes(horizon_altitude, latitude_radians, declination, solar_noon, false)
-            .ok_or(4)?;
+    let sunrise_exact = solar_event_minutes(
+        horizon_altitude,
+        latitude_radians,
+        declination,
+        solar_noon,
+        true,
+    )
+    .ok_or(4)?;
+    let sunset_exact = solar_event_minutes(
+        horizon_altitude,
+        latitude_radians,
+        declination,
+        solar_noon,
+        false,
+    )
+    .ok_or(4)?;
     let fajr_exact = solar_event_minutes(
         -parameters.fajr_angle,
         latitude_radians,
@@ -324,12 +336,19 @@ mod tests {
         assert!(result.maghrib_minutes < result.isha_minutes);
         for method in [1, 2, 3, 4, 11, 13, 17, 20, 99] {
             assert!(
-                calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, method, 18.0, 18.0, 0.0)
-                    .is_ok(),
+                calculate(
+                    2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, method, 18.0, 18.0, 0.0
+                )
+                .is_ok(),
                 "method {method}"
             );
         }
-        assert!(calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 987, 18.0, 18.0, 0.0).is_err());
+        assert!(
+            calculate(
+                2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 987, 18.0, 18.0, 0.0
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -362,9 +381,8 @@ mod tests {
         // the Muhammadiyah adjustment.
         let plain = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 1, 18.0, 18.0, 0.0)
             .expect("baseline events");
-        let muhammadiyah =
-            calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 0.0)
-                .expect("Muhammadiyah events");
+        let muhammadiyah = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 0.0)
+            .expect("Muhammadiyah events");
 
         assert!(muhammadiyah.fajr_minutes > plain.fajr_minutes);
         assert!(muhammadiyah.sunrise_minutes < plain.sunrise_minutes);
@@ -392,8 +410,10 @@ mod tests {
     fn elevation_lowers_the_horizon_for_sunrise_and_sunset() {
         let sea_level = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 0.0)
             .expect("sea-level events");
-        let highland = calculate(2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 900.0)
-            .expect("highland events");
+        let highland = calculate(
+            2026, 10, 19, JAKARTA.0, JAKARTA.1, 420, 99, 18.0, 18.0, 900.0,
+        )
+        .expect("highland events");
 
         assert!(highland.sunrise_minutes < sea_level.sunrise_minutes);
         assert!(highland.maghrib_minutes > sea_level.maghrib_minutes);

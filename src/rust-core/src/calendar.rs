@@ -185,7 +185,8 @@ fn khgt_starts() -> &'static [(i64, i32, i32)] {
             let (Some(gy), Some(gm), Some(gd)) = (parts.next(), parts.next(), parts.next()) else {
                 continue;
             };
-            let (Ok(gy), Ok(gm), Ok(gd)) = (gy.parse::<i32>(), gm.parse::<i32>(), gd.parse::<i32>())
+            let (Ok(gy), Ok(gm), Ok(gd)) =
+                (gy.parse::<i32>(), gm.parse::<i32>(), gd.parse::<i32>())
             else {
                 continue;
             };
@@ -212,7 +213,9 @@ fn khgt_hijri_from_gregorian(year: i32, month: i32, day: i32) -> Option<HijriDat
     }
     let serial = days_from_civil(year, month, day);
     let starts = khgt_starts();
-    let index = starts.partition_point(|row| row.0 <= serial).checked_sub(1)?;
+    let index = starts
+        .partition_point(|row| row.0 <= serial)
+        .checked_sub(1)?;
     let day_in_month = serial - starts[index].0 + 1;
     let upper = if index + 1 < starts.len() {
         starts[index + 1].0 - starts[index].0
@@ -560,27 +563,51 @@ mod tests {
         };
         assert_eq!(
             start(1447, 1),
-            GregorianDate { year: 2025, month: 6, day: 26 }
+            GregorianDate {
+                year: 2025,
+                month: 6,
+                day: 26
+            }
         );
         assert_eq!(
             start(1447, 9),
-            GregorianDate { year: 2026, month: 2, day: 18 }
+            GregorianDate {
+                year: 2026,
+                month: 2,
+                day: 18
+            }
         );
         assert_eq!(
             start(1447, 10),
-            GregorianDate { year: 2026, month: 3, day: 20 }
+            GregorianDate {
+                year: 2026,
+                month: 3,
+                day: 20
+            }
         );
         assert_eq!(
             start(1447, 12),
-            GregorianDate { year: 2026, month: 5, day: 18 }
+            GregorianDate {
+                year: 2026,
+                month: 5,
+                day: 18
+            }
         );
         assert_eq!(
             khgt_hijri_from_gregorian(2025, 6, 26),
-            Some(HijriDate { year: 1447, month: 1, day: 1 })
+            Some(HijriDate {
+                year: 1447,
+                month: 1,
+                day: 1
+            })
         );
         assert_eq!(
             khgt_hijri_from_gregorian(2025, 6, 25),
-            Some(HijriDate { year: 1446, month: 12, day: 29 })
+            Some(HijriDate {
+                year: 1446,
+                month: 12,
+                day: 29
+            })
         );
         assert_eq!(khgt_hijri_from_gregorian(2018, 9, 10), None);
         assert_eq!(khgt_hijri_from_gregorian(2076, 10, 30), None);
@@ -596,7 +623,12 @@ mod tests {
                 let (serial, days) =
                     khgt_month_info(year, month).unwrap_or_else(|| panic!("{year}/{month}"));
                 assert!((29..=30).contains(&days), "{year}/{month} length {days}");
-                assert_eq!(khgt_month_index(year, month), khgt_starts().iter().position(|row| row.1 == year && row.2 == month));
+                assert_eq!(
+                    khgt_month_index(year, month),
+                    khgt_starts()
+                        .iter()
+                        .position(|row| row.1 == year && row.2 == month)
+                );
                 assert!(serial > 0);
             }
         }
