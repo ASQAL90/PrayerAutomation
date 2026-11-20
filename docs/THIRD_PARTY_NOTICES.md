@@ -10,7 +10,8 @@ Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lise
 |---|---|---|---|
 | GeoTimeZone | 6.1.0 | Direct; `GeoTimeZone.dll` | MIT untuk kode; ODbL untuk data boundary; atribusi Geohash-net/Geohash-js |
 | TimeZoneConverter | 7.2.0 | Direct; `TimeZoneConverter.dll` | MIT untuk library |
-| Data GeoNames (`cities1000`) | snapshot 19 November 2026 UTC | Dataset lokal permukiman di `src/PrayerAutomation.UI/Data/` | CC BY 4.0 |
+| Data GeoNames (`cities1000`, `indonesia`) | snapshot 19 November 2026 UTC | Dataset lokal permukiman dan lapisan Indonesia di `src/PrayerAutomation.UI/Data/geonames/` | CC BY 4.0 |
+| Natural Earth 1:10m Admin 0 Countries | snapshot 20 November 2026 | Poligon batas Indonesia (`indonesia.boundary.bin`) | Public domain |
 | Runtime .NET 10 (self-contained, WPF) | 10.0.9 | `AyoJamaah.exe`, `PresentationFramework*.dll`, `System.Windows.*.dll` | MIT; terms runtime Microsoft berlaku saat redistribusi |
 | Proyeksi Microsoft.Windows.SDK.NET.Ref | 10.0.26100.57 | `Microsoft.Windows.SDK.NET.dll`, `WinRT.Runtime.dll` | Windows SDK terms |
 | `prayer_core.dll` | 0.1.0 | Internal; perhitungan jadwal/kalender | Source asli aplikasi |
@@ -32,7 +33,11 @@ Source pin: `f96c7a7d167d9ab93bb8c924fc7413b84f52010c`. Copyright library: Matt 
 
 ### GeoNames
 
-Derived `cities1000`, snapshot 19 November 2026 UTC, **CC BY 4.0** (filter feature-class `P`, pilihan kolom termasuk elevasi `dem`, normalisasi whitespace, kompresi TSV). [NOTICE lengkap](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) disertakan di source dan paket portable; attribution, snapshot, dan perubahan tercantum di sana.
+Derived `cities1000` and `indonesia`, snapshot 19 November 2026 UTC, **CC BY 4.0** (filter feature-class `P`, pilihan kolom termasuk elevasi `dem`, nama provinsi Indonesia, normalisasi whitespace, kompresi TSV). [NOTICE lengkap](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) disertakan di source dan paket portable; attribution, snapshot, dan perubahan tercantum di sana.
+
+### Natural Earth
+
+`indonesia.boundary.bin` diturunkan dari Natural Earth 1:10m Admin 0 Countries (Indonesia), **public domain**. Hanya ring luar yang disimpan; dipakai untuk memilih lapisan nama Indonesia, bukan batas hukum atau navigasi. Sumber: <https://www.naturalearthdata.com/>.
 
 ### Runtime .NET dan proyeksi Windows SDK
 

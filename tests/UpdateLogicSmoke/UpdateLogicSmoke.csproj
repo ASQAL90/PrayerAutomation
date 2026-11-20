@@ -10,5 +10,8 @@
     <Compile Include="../../src/PrayerAutomation.UI/UpdateManifest.cs" Link="UpdateManifest.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdatePlanner.cs" Link="UpdatePlanner.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateJob.cs" Link="UpdateJob.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageWorkflow.cs" Link="LockScreenImageWorkflow.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/UpdateRecoveryPolicy.cs" Link="UpdateRecoveryPolicy.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/UpdateReminderPolicy.cs" Link="UpdateReminderPolicy.cs" />
   </ItemGroup>
 </Project>

@@ -95,6 +95,15 @@ internal sealed class AppSettings
     /// <summary>Unrecognized settings preserved across round trips.</summary>
     [JsonExtensionData] public Dictionary<string, JsonElement>? OtherSettings { get; set; }
 
+    /// <summary>Creates the settings a new installation starts with, including the official KHGT calendar.</summary>
+    /// <returns>Normalized factory defaults.</returns>
+    public static AppSettings CreateFreshInstall()
+    {
+        var settings = new AppSettings { CalendarSource = CalendarSourceKhgt };
+        settings.Normalize();
+        return settings;
+    }
+
     /// <summary>Clamps values and repairs legacy settings in place; called after load and before save.</summary>
     public void Normalize()
     {
@@ -155,28 +164,28 @@ internal static class SettingsStore
     public static string ConfigPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "PrayerAutomation", "config.json");
+    /// <summary>Previous config kept before every save, used by the one-click restore.</summary>
+    public static string BackupPath => ConfigPath + ".bak";
     /// <summary>Non-fatal warning from the last <see cref="Load"/>, if any.</summary>
     public static string? LoadWarning { get; private set; }
+    /// <summary>Non-fatal warning from the last backup attempt, if any.</summary>
+    public static string? BackupWarning { get; private set; }
 
     /// <summary>Loads settings from the config file, returning defaults on missing or unreadable files.</summary>
     /// <returns>The normalized settings.</returns>
     public static AppSettings Load()
     {
-        var settings = new AppSettings();
-        bool isNewInstall = !File.Exists(ConfigPath);
+        var settings = AppSettings.CreateFreshInstall();
         try
         {
-            if (!isNewInstall)
+            if (File.Exists(ConfigPath))
                 settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(ConfigPath), JsonOptions) ?? settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             LoadWarning = $"Pengaturan lama tidak dapat dibaca; file tidak diubah. {ex.Message}";
         }
-        // Instalasi baru langsung memakai tabel KHGT resmi. Pengaturan lama tetap
-        // mempertahankan pilihannya dan mendapat tawaran sekali di jendela utama.
-        if (isNewInstall)
-            settings.CalendarSource = AppSettings.CalendarSourceKhgt;
+        // Pengaturan lama tetap mempertahankan pilihannya dan mendapat tawaran sekali di jendela utama.
         settings.Normalize();
         return settings;
     }
@@ -188,9 +197,73 @@ internal static class SettingsStore
         settings.Normalize();
         string directory = Path.GetDirectoryName(ConfigPath)!;
         Directory.CreateDirectory(directory);
+        BackupWarning = null;
+        if (File.Exists(ConfigPath))
+        {
+            try
+            {
+                string backupTemp = BackupPath + ".tmp";
+                File.Copy(ConfigPath, backupTemp, overwrite: true);
+                File.Move(backupTemp, BackupPath, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // A backup failure must not block saving the user's current choices.
+                BackupWarning = "Cadangan pengaturan gagal dibuat: " + ex.Message;
+            }
+        }
         string tempPath = ConfigPath + ".tmp";
         File.WriteAllText(tempPath, JsonSerializer.Serialize(settings, JsonOptions));
         File.Move(tempPath, ConfigPath, overwrite: true);
         LoadWarning = null;
+    }
+
+    /// <summary>Restores the previous config file and returns the normalized settings.</summary>
+    /// <returns>The settings read from <see cref="BackupPath"/>.</returns>
+    /// <exception cref="FileNotFoundException">No backup exists yet.</exception>
+    /// <exception cref="InvalidDataException">The backup cannot be deserialized.</exception>
+    public static AppSettings RestoreFromBackup()
+    {
+        if (!File.Exists(BackupPath))
+            throw new FileNotFoundException("Belum ada cadangan pengaturan untuk dipulihkan.", BackupPath);
+        string json = File.ReadAllText(BackupPath);
+        AppSettings restored = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions)
+            ?? throw new InvalidDataException("Cadangan pengaturan tidak berisi data yang valid.");
+        restored.Normalize();
+        string directory = Path.GetDirectoryName(ConfigPath)!;
+        Directory.CreateDirectory(directory);
+        string tempPath = ConfigPath + ".tmp";
+        File.WriteAllText(tempPath, JsonSerializer.Serialize(restored, JsonOptions));
+        File.Move(tempPath, ConfigPath, overwrite: true);
+        LoadWarning = null;
+        BackupWarning = null;
+        return restored;
+    }
+
+    /// <summary>
+    /// Deletes the saved config and its backup, then returns fresh-install defaults.
+    /// Log, update, and lock-screen recovery files are deliberately untouched.
+    /// </summary>
+    /// <returns>The normalized factory settings for the current session.</returns>
+    /// <exception cref="IOException">One or more settings files could not be deleted.</exception>
+    public static AppSettings Reset()
+    {
+        var errors = new List<string>();
+        foreach (string path in new[] { ConfigPath, BackupPath, ConfigPath + ".tmp", BackupPath + ".tmp" })
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add(Path.GetFileName(path) + ": " + ex.Message);
+            }
+        }
+        if (errors.Count > 0)
+            throw new IOException("Pengaturan tidak dapat dihapus seluruhnya: " + string.Join("; ", errors));
+        LoadWarning = null;
+        BackupWarning = null;
+        return AppSettings.CreateFreshInstall();
     }
 }

@@ -277,6 +277,9 @@ internal sealed class LockScreenImageScheduler : IDisposable
     /// <summary>True when a lock-screen restore journal is still pending.</summary>
     internal bool HasPendingRecovery => _transaction.HasPending;
 
+    /// <summary>True while a temporary lock-screen image is applied and not yet restored.</summary>
+    internal bool HasActiveImage => _transaction.HasActiveImage;
+
     /// <summary>Cancels a pending recovery without restoring; the current lock-screen state is left as-is.</summary>
     internal void CancelPendingRecovery()
     {
@@ -359,6 +362,8 @@ internal sealed class LockScreenImageScheduler : IDisposable
             StartTimer();
         }
         Trace("test-apply-result", nowUtc, $"result={result} deadlineUtc={ReadDiagnosticDeadline():O}");
+        if (result == LockScreenTransactionResult.ManagedByPolicy)
+            Trace("policy-managed", nowUtc, "managed=yes source=policy visual=unverified");
         PublishTransactionStatus(result);
         return result;
     }
@@ -515,6 +520,10 @@ internal sealed class LockScreenImageScheduler : IDisposable
         {
             SetStatus("Status lock screen belum dapat diverifikasi; perubahan baru ditahan demi keamanan.");
         }
+        else if (result == LockScreenTransactionResult.ManagedByPolicy)
+        {
+            SetStatus("Perangkat ini dikelola kebijakan organisasi; gambar lock screen tidak diubah. Hubungi admin IT.");
+        }
     }
 
     /// <summary>Publishes a status message for recovery transaction results.</summary>
@@ -600,14 +609,24 @@ internal sealed class LockScreenImageScheduler : IDisposable
         if (_disposed) throw new ObjectDisposedException(nameof(LockScreenImageScheduler));
     }
 
+    /// <summary>Reads the journal restore deadline for status and update preflight; null when unavailable.</summary>
+    internal DateTimeOffset? RestoreDeadlineUtc
+    {
+        get
+        {
+            if (_disposed) return null;
+            try { return _transaction.RestoreAtUtc; }
+            catch (Exception)
+            {
+                // Diagnostic only: an unreadable journal must never block an update preflight.
+                return null;
+            }
+        }
+    }
+
     /// <summary>Reads the transaction restore deadline for diagnostics; null when unavailable.</summary>
     /// <returns>The diagnostic deadline, or null.</returns>
-    private DateTimeOffset? ReadDiagnosticDeadline()
-    {
-        if (_trace is null) return null;
-        try { return _transaction.RestoreAtUtc; }
-        catch (Exception) { return null; }
-    }
+    private DateTimeOffset? ReadDiagnosticDeadline() => RestoreDeadlineUtc;
 
     /// <summary>Emits a privacy-safe timeline trace entry; failures are swallowed.</summary>
     /// <param name="action">Trace action name.</param>

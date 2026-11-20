@@ -54,7 +54,8 @@ internal enum LockScreenTransactionResult
     Restored,
     ExternalChangePreserved,
     NoActiveTransaction,
-    PendingVerification
+    PendingVerification,
+    ManagedByPolicy
 }
 
 /// <summary>Journaled snapshot of the lock-screen state before a temporary image is applied.</summary>
@@ -130,19 +131,44 @@ internal sealed class LockScreenImageTransaction
 
     private readonly ILockScreenImageBackend _backend;
     private readonly ILockScreenRestoreStore _store;
+    private readonly Func<bool>? _isManagedByPolicy;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>Initializes the transaction coordinator.</summary>
     /// <param name="backend">The lock-screen image backend.</param>
     /// <param name="store">The restore journal store.</param>
-    internal LockScreenImageTransaction(ILockScreenImageBackend backend, ILockScreenRestoreStore store)
+    /// <param name="isManagedByPolicy">Optional policy probe consulted before a new snapshot.</param>
+    internal LockScreenImageTransaction(
+        ILockScreenImageBackend backend,
+        ILockScreenRestoreStore store,
+        Func<bool>? isManagedByPolicy = null)
     {
         _backend = backend;
         _store = store;
+        _isManagedByPolicy = isManagedByPolicy;
     }
 
     /// <summary>The restore deadline of the pending transaction, if any.</summary>
     internal DateTimeOffset? RestoreAtUtc => _store.Load()?.RestoreAtUtc;
+
+    /// <summary>True while an applied, not-yet-restored image is recorded in the journal.</summary>
+    internal bool HasActiveImage
+    {
+        get
+        {
+            try
+            {
+                LockScreenRestoreSnapshot? pending = _store.Load();
+                return pending is not null && pending.IsApplied && !pending.RestoreRequested &&
+                    DateTimeOffset.UtcNow < pending.RestoreAtUtc;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                // A session event must never fail because the journal is unreadable or quarantined.
+                return false;
+            }
+        }
+    }
 
     /// <summary>Applies the temporary image, or extends an existing application-owned transaction.</summary>
     /// <param name="imagePath">Path of the image to apply.</param>
@@ -197,6 +223,11 @@ internal sealed class LockScreenImageTransaction
 
                 ClearPending(pending);
             }
+
+            // A policy check happens before any snapshot or registry write so a managed
+            // device is refused cleanly instead of failing at every prayer time.
+            if (_isManagedByPolicy?.Invoke() == true)
+                return LockScreenTransactionResult.ManagedByPolicy;
 
             LockScreenRestoreSnapshot snapshot = _backend.CaptureSnapshot(imagePath, nowUtc.Add(duration)) with
             {

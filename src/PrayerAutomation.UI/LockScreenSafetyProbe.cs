@@ -12,7 +12,9 @@ internal sealed record LockScreenSafetyInfo(
     bool HasLocalImageFile,
     bool IsAppTemporaryImage,
     bool CanChangeTemporarily,
-    string Message);
+    string Message,
+    bool ManagedByPolicy = false,
+    string? PolicySource = null);
 
 /// <summary>Probes Windows lock-screen state to decide whether the temporary-image feature is safe to enable.</summary>
 internal static class LockScreenSafetyProbe
@@ -32,6 +34,7 @@ internal static class LockScreenSafetyProbe
         int? slideshowEnabled = ReadInteger(SlideshowRegistryPath, "SlideshowEnabled");
         int? spotlightEnabled = ReadInteger(SpotlightRegistryPath, "RotatingLockScreenEnabled");
         LockScreenBackgroundMode mode = LockScreenModeLogic.Resolve(slideshowEnabled, spotlightEnabled);
+        LockScreenPolicyInfo policy = LockScreenPolicyInspector.Inspect();
 
         Uri? originalImage = null;
         try { originalImage = LockScreen.OriginalImageFile; }
@@ -55,27 +58,31 @@ internal static class LockScreenSafetyProbe
             }
         }
 
-        bool canChangeTemporarily = profileApiSupported && (mode switch
+        bool canChangeTemporarily = !policy.ManagedByPolicy && profileApiSupported && (mode switch
         {
             LockScreenBackgroundMode.Spotlight or LockScreenBackgroundMode.Slideshow => true,
             LockScreenBackgroundMode.Picture => hasLocalImage && !isAppTemporaryImage,
             _ => false
         });
 
-        string message = !profileApiSupported
-            ? "Windows belum mengonfirmasi dukungan perubahan gambar lock screen. Fitur tetap nonaktif."
-            : mode switch
-            {
-                LockScreenBackgroundMode.Spotlight when canChangeTemporarily => "Mode Spotlight: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke Spotlight. Fitur gambar tidak mengunci komputer.",
-                LockScreenBackgroundMode.Slideshow when canChangeTemporarily => "Mode slideshow: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke slideshow. Fitur gambar tidak mengunci komputer.",
-                LockScreenBackgroundMode.Picture when isAppTemporaryImage => "Gambar sementara milik aplikasi terdeteksi. Tanpa catatan pemulihan yang sah, gambar tidak ditimpa.",
-                LockScreenBackgroundMode.Picture when hasLocalImage => "Mode Picture terdeteksi dan file gambar lokal tersedia untuk salinan pemulihan setelah durasi pilihan habis.",
-                LockScreenBackgroundMode.Picture => "File gambar lock screen lokal untuk pemulihan tidak tersedia. Fitur tetap nonaktif.",
-                LockScreenBackgroundMode.Unknown => "Mode lock screen tidak dapat dipastikan secara aman dari status Windows; fitur tetap nonaktif.",
-                _ => "Fitur lock screen tidak tersedia pada kondisi saat ini."
-            };
+        string message = policy.ManagedByPolicy
+            ? "Perangkat ini dikelola oleh kebijakan organisasi (" + (policy.PolicySource ?? "kebijakan perangkat") +
+              "). Gambar lock screen tidak dapat diubah aplikasi. Hubungi admin IT; aplikasi tidak mencoba melewati kebijakan."
+            : !profileApiSupported
+                ? "Windows belum mengonfirmasi dukungan perubahan gambar lock screen. Fitur tetap nonaktif."
+                : mode switch
+                {
+                    LockScreenBackgroundMode.Spotlight when canChangeTemporarily => "Mode Spotlight: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke Spotlight. Fitur gambar tidak mengunci komputer.",
+                    LockScreenBackgroundMode.Slideshow when canChangeTemporarily => "Mode slideshow: gambar saja bisa diganti sementara. Setelah durasi pilihan habis, aplikasi mencoba kembali ke slideshow. Fitur gambar tidak mengunci komputer.",
+                    LockScreenBackgroundMode.Picture when isAppTemporaryImage => "Gambar sementara milik aplikasi terdeteksi. Tanpa catatan pemulihan yang sah, gambar tidak ditimpa.",
+                    LockScreenBackgroundMode.Picture when hasLocalImage => "Mode Picture terdeteksi dan file gambar lokal tersedia untuk salinan pemulihan setelah durasi pilihan habis.",
+                    LockScreenBackgroundMode.Picture => "File gambar lock screen lokal untuk pemulihan tidak tersedia. Fitur tetap nonaktif.",
+                    LockScreenBackgroundMode.Unknown => "Mode lock screen tidak dapat dipastikan secara aman dari status Windows; fitur tetap nonaktif.",
+                    _ => "Fitur lock screen tidak tersedia pada kondisi saat ini."
+                };
 
-        return new LockScreenSafetyInfo(profileApiSupported, mode, hasLocalImage, isAppTemporaryImage, canChangeTemporarily, message);
+        return new LockScreenSafetyInfo(profileApiSupported, mode, hasLocalImage, isAppTemporaryImage,
+            canChangeTemporarily, message, policy.ManagedByPolicy, policy.PolicySource);
     }
 
     /// <summary>Reads a DWord flag; missing keys/values mean disabled (0), malformed or unreadable values yield null.</summary>

@@ -49,7 +49,17 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
             if (mode == LockScreenBackgroundMode.Unknown)
                 throw new InvalidOperationException("The previous lock-screen mode cannot be identified safely.");
 
-            if (mode is LockScreenBackgroundMode.Spotlight or LockScreenBackgroundMode.Slideshow)
+            string? originalImagePath = null;
+            if (mode == LockScreenBackgroundMode.Picture)
+            {
+                // Read the Picture source before preparing new managed files so a stale
+                // active transaction image is never overwritten while Windows exposes it.
+                originalImagePath = GetCurrentLocalImagePath();
+                currentLocalImagePath = originalImagePath;
+                if (Path.GetFileName(originalImagePath).StartsWith(LockScreenStatePaths.TemporaryImagePrefix, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("An unowned temporary lock-screen image is active; it will not be overwritten.");
+            }
+            else
             {
                 // A dynamic mode can retain the last Picture URI; it is not the displayed image.
                 // Keep its file protected during cleanup, but restore these modes without a Picture backup.
@@ -58,23 +68,18 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
 
             string imageExtension = RequireSupportedImageExtension(imagePath);
             temporaryImagePath = Path.Combine(_directory,
-                LockScreenStatePaths.TemporaryImagePrefix + Guid.NewGuid().ToString("N") + imageExtension);
-            CopyAndVerify(imagePath, temporaryImagePath);
-            string temporaryImageHash = ComputeSha256(temporaryImagePath);
+                LockScreenStatePaths.NewTemporaryImageName(imageExtension));
+            string temporaryImageHash = PrepareManagedImage(imagePath, temporaryImagePath, currentLocalImagePath,
+                "temporary lock-screen image");
 
             string? previousImageHash = null;
-            if (mode == LockScreenBackgroundMode.Picture)
+            if (originalImagePath is not null)
             {
-                string originalImagePath = GetCurrentLocalImagePath();
-                currentLocalImagePath = originalImagePath;
-                if (Path.GetFileName(originalImagePath).StartsWith(LockScreenStatePaths.TemporaryImagePrefix, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("An unowned temporary lock-screen image is active; it will not be overwritten.");
-
                 string originalExtension = RequireSupportedImageExtension(originalImagePath);
                 previousImagePath = Path.Combine(_directory,
-                    LockScreenStatePaths.RestoreImagePrefix + Guid.NewGuid().ToString("N") + originalExtension);
-                CopyAndVerify(originalImagePath, previousImagePath);
-                previousImageHash = ComputeSha256(previousImagePath);
+                    LockScreenStatePaths.NewRestoreImageName(originalExtension));
+                previousImageHash = PrepareManagedImage(originalImagePath, previousImagePath, originalImagePath,
+                    "previous lock-screen image");
             }
 
             var snapshot = new LockScreenRestoreSnapshot(
@@ -289,6 +294,34 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             throw new IOException("A lock-screen image snapshot did not match its source file.");
         }
+    }
+
+    /// <summary>Places a source image at a stable managed path without overwriting the active lock screen.</summary>
+    /// <param name="sourcePath">Image to copy.</param>
+    /// <param name="targetPath">Stable managed destination.</param>
+    /// <param name="currentImagePath">Currently exposed lock-screen image, or null when unavailable.</param>
+    /// <param name="role">Human-readable role used in failure messages.</param>
+    /// <returns>SHA-256 of the source image.</returns>
+    private static string PrepareManagedImage(string sourcePath, string targetPath, string? currentImagePath, string role)
+    {
+        string sourceHash = ComputeSha256(sourcePath);
+        if (File.Exists(targetPath))
+        {
+            if (currentImagePath is not null && PathsEqual(currentImagePath, targetPath))
+            {
+                if (string.Equals(ComputeSha256(targetPath), sourceHash, StringComparison.OrdinalIgnoreCase))
+                    return sourceHash;
+                throw new InvalidOperationException(
+                    $"The {role} path is still displayed by Windows with different content; refusing to overwrite it.");
+            }
+            try { File.Delete(targetPath); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new IOException($"The stale {role} file could not be replaced.", ex);
+            }
+        }
+        CopyAndVerify(sourcePath, targetPath);
+        return sourceHash;
     }
 
     /// <summary>Computes the SHA-256 hex hash of a file.</summary>

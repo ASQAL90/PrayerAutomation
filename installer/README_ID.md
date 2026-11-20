@@ -50,7 +50,9 @@ Payload tidak dibangun ulang oleh installer. Kalau portable berubah, buat receip
 
 - Target wajib tepat di lokasi per-user; ancestor junction/symlink/reparse ditolak.
 - Folder instalasi Python lama di target diblokir, bukan ditimpa.
-- Jurnal `LockScreen\lock-screen-restore.json` beserta variannya memblokir install/uninstall dan tidak dihapus installer. Pesan galat mengarahkan pengguna ke **Pulihkan lock screen sekarang** dan **Batalkan pemulihan tertunda** di pengaturan aplikasi.
+- Jurnal `LockScreen\lock-screen-restore.json` beserta variannya memblokir install/uninstall dan tidak dihapus installer. Pesan galat mengarahkan pengguna ke **Kembalikan gambar semula** dan **Hentikan pemulihan otomatis** di pengaturan aplikasi.
+- Updater internal aplikasi menahan pembaruan hingga 60 detik, mencoba ulang pemulihan tiap 5 detik, lalu membatalkan bila jurnal belum terverifikasi. Opsi **Nanti saja** menghitung mundur di tray sampai pemulihan selesai (fallback 15 menit bila tidak ada pemulihan aktif) lalu menampilkan popup konfirmasi. Menutup jendela saat menunggu juga membatalkan pembaruan dan mengembalikan penjadwalan normal tanpa menghapus jurnal. Installer manual tidak ikut menunggu dan tetap memakai guard jurnal.
+- Tombol aplikasi **Reset pengaturan awal** menghapus `config.json`, `config.json.bak`, dan file `.tmp`-nya, lalu memakai nilai awal instal baru (termasuk tabel KHGT). Log, unduhan pembaruan, dan jurnal lock screen tidak disentuh; ini bukan fungsi installer.
 - Proses produk dan interpreter yang image-nya di folder produk dideteksi lewat Toolhelp32 + session ID.
 - Mutex global produk diperiksa, ditahan selama operasi, lalu boundary diperiksa ulang.
 - File target diuji dengan `CreateFileW` read+write tanpa share.

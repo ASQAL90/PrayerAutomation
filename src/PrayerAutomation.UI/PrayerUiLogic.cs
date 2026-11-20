@@ -34,6 +34,7 @@ internal readonly record struct CalendarObservance(int Bit, string Name, string 
 /// <summary>Visual state for a calendar day cell, including colors and border thickness.</summary>
 /// <param name="IsToday">True if the cell represents today.</param>
 /// <param name="IsSelected">True if the cell is selected.</param>
+/// <param name="IsWeekend">True if the cell is Saturday or Sunday.</param>
 /// <param name="IsHoliday">True if a public-holiday or Eid observance applies.</param>
 /// <param name="HasSunnahFast">True if a sunnah-fast observance applies.</param>
 /// <param name="HasFastingProhibition">True if fasting is prohibited on the day.</param>
@@ -45,6 +46,7 @@ internal readonly record struct CalendarObservance(int Bit, string Name, string 
 internal readonly record struct CalendarMarker(
     bool IsToday,
     bool IsSelected,
+    bool IsWeekend,
     bool IsHoliday,
     bool HasSunnahFast,
     bool HasFastingProhibition,
@@ -215,6 +217,7 @@ internal static class PrayerUiLogic
         IReadOnlyCollection<CalendarObservance> observances)
     {
         bool isToday = date.Date == today.Date;
+        bool isWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
         bool isHoliday = observances.Any(item => item.Kind is CalendarObservanceKind.PublicHoliday or CalendarObservanceKind.EidNoFast);
         bool hasProhibition = observances.Any(item => item.Kind is CalendarObservanceKind.EidNoFast or CalendarObservanceKind.NoFast);
         bool hasSunnahFast = observances.Any(item => item.Kind is CalendarObservanceKind.SunnahFast or CalendarObservanceKind.FlexibleFastWindow);
@@ -235,7 +238,7 @@ internal static class PrayerUiLogic
             ? "#0067B8"
             : isSelected ? "#245B86" : markerColor;
         double thickness = isToday ? 3 : isSelected || observances.Count > 0 ? 2 : 1;
-        return new CalendarMarker(isToday, isSelected, isHoliday, hasSunnahFast, hasProhibition,
+        return new CalendarMarker(isToday, isSelected, isWeekend, isHoliday, hasSunnahFast, hasProhibition,
             hasReligiousEvent, background, border, thickness, markerColor);
     }
 }

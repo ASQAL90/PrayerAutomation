@@ -243,11 +243,11 @@ internal static class CopyHumanizeSmoke
             new GpsCase("unknown-zero", "Success", "Unknown", 0, "sumber tidak diketahui (bukan GPS terverifikasi)", "akurasi dilaporkan Windows ±0 m"),
             new GpsCase("default-invalid-accuracy", "Success", "Default", -1, "lokasi default Windows (sumber tidak dipastikan)", "akurasi tidak dilaporkan Windows"),
             new GpsCase("ocean-no-place", "Success", "Unknown", null, "sumber tidak diketahui (bukan GPS terverifikasi)", "akurasi tidak dilaporkan Windows", 0, -140),
-            new GpsCase("denied-result", "PermissionDenied", ExpectedError: "Akses lokasi ditolak. Periksa Pengaturan Windows > Privasi & keamanan > Lokasi, lalu coba lagi."),
-            new GpsCase("unspecified-result", "PermissionUnspecified", ExpectedError: "Windows belum memberi status izin lokasi. Periksa layanan lokasi Windows dan coba lagi."),
-            new GpsCase("timeout-result", "TimedOut", ExpectedError: "Lokasi belum didapat dalam 30 detik. Coba lagi di area dengan sinyal lebih baik; GPS dapat memerlukan waktu akuisisi."),
-            new GpsCase("invalid-result", "InvalidPosition", ExpectedError: "Windows mengembalikan koordinat tidak valid; form tidak diubah."),
-            new GpsCase("unavailable-default", "Unavailable", ExpectedError: "Lokasi perangkat tidak tersedia. Periksa layanan dan izin lokasi Windows atau isi secara manual."),
+            new GpsCase("denied-result", "PermissionDenied", ExpectedError: "Izin lokasi Windows ditolak."),
+            new GpsCase("unspecified-result", "PermissionUnspecified", ExpectedError: "Lokasi Windows belum tersedia."),
+            new GpsCase("timeout-result", "TimedOut", ExpectedError: "Lokasi belum didapat; coba lagi."),
+            new GpsCase("invalid-result", "InvalidPosition", ExpectedError: "Koordinat perangkat tidak valid."),
+            new GpsCase("unavailable-default", "Unavailable", ExpectedError: "Lokasi perangkat tidak tersedia."),
             new GpsCase("denied-catch", Fault: new UnauthorizedAccessException("synthetic denied awaiter"), ExpectedError: "Akses ditolak oleh pengaturan privasi lokasi Windows."),
             new GpsCase("generic-catch", Fault: new InvalidOperationException("synthetic failed awaiter"), ExpectedError: "Windows tidak dapat membaca lokasi perangkat. Periksa layanan dan izin lokasi.")
         };
@@ -298,8 +298,9 @@ internal static class CopyHumanizeSmoke
                         copyMatches = text.Text.StartsWith(expected, StringComparison.Ordinal);
                         if (!copyMatches) failures.Add("COPY_GPS_WORDING " + item.Key + ": actual compiled successful completion still uses the old jargon/privacy/timezone body; approved humanized body required.");
                         string actualBody = ActualGpsBody(text.Text);
-                        Assert(actualBody.Contains(item.SourceLabel, StringComparison.Ordinal) && actualBody.Contains(item.AccuracyLabel, StringComparison.Ordinal),
-                            "SourceLabel/AccuracyLabel interpolation results must retain their exact existing source/accuracy meanings, including unavailable/invalid accuracy.");
+                        Assert(actualBody.Contains(item.SourceLabel, StringComparison.Ordinal) &&
+                               actualBody.EndsWith("; belum disimpan.", StringComparison.Ordinal),
+                            "The actual source label must survive interpolation and the unsaved-state wording must stay exact.");
                         VerifyOfflineAppend(fixture, item, text.Text);
                         if (item.Key == "satellite") actualSatelliteBody = actualBody;
                     }
@@ -547,16 +548,21 @@ internal static class CopyHumanizeSmoke
     /// <summary>Builds the expected humanized GPS success body for a case.</summary>
     /// <param name="item">GPS case carrying source and accuracy labels.</param>
     /// <returns>The expected body text.</returns>
-    private static string ExpectedGpsBody(GpsCase item) => "Koordinat, nama, dan zona waktu terisi, belum disimpan. Sumber: " + item.SourceLabel + "; " + item.AccuracyLabel +
-        ". Koordinat tidak dikirim ke layanan lokasi jaringan atau pencarian nama online. Zona waktu dicocokkan secara offline dari koordinat GPS. Periksa sebelum simpan.";
+    private static string ExpectedGpsBody(GpsCase item) =>
+        "Lokasi perangkat diisi (" + item.SourceLabel + "); belum disimpan.";
     /// <summary>Extracts the actual product GPS body, stripping any appended offline-name suffix.</summary>
     /// <param name="actual">Full actual status text.</param>
     /// <returns>The SUT body portion.</returns>
     private static string ActualGpsBody(string actual)
     {
-        int place = actual.IndexOf(" Nama permukiman terdekat dari GeoNames lokal: ", StringComparison.Ordinal);
-        int fallback = actual.IndexOf(" Tidak ada permukiman GeoNames dalam radius 75 km;", StringComparison.Ordinal);
-        int end = place >= 0 ? place : fallback >= 0 ? fallback : actual.Length;
+        string[] suffixes =
+        [
+            " Nama terdekat: ",
+            " Nama lokal dipertahankan.",
+            " Tidak ada permukiman dalam radius 75 km;"
+        ];
+        int end = suffixes.Select(suffix => actual.IndexOf(suffix, StringComparison.Ordinal))
+            .Where(index => index >= 0).DefaultIfEmpty(actual.Length).Min();
         return actual[..end]; // Actual SUT output only; never expected-new templates used as rendered text.
     }
     /// <summary>Verifies the offline GeoNames append for a successful GPS completion matches the local dataset.</summary>
@@ -573,19 +579,23 @@ internal static class CopyHumanizeSmoke
         if (place is null)
         {
             string name = "Lokasi perangkat (" + item.SourceLabel + ") — " + item.Latitude.ToString("0.####", CultureInfo.InvariantCulture) + ", " + item.Longitude.ToString("0.####", CultureInfo.InvariantCulture);
-            Assert(actual == body + " Tidak ada permukiman GeoNames dalam radius 75 km; label lokal awal dipertahankan." &&
+            Assert(actual == body + " Nama lokal dipertahankan." &&
                 fixture.Field<TextBox>("LocationNameBox").Text == name &&
-                offline == "Tidak ada permukiman GeoNames dalam radius 75 km; label lokal awal dipertahankan. Tidak ada permintaan internet.",
-                "The actual 75-km fallback must retain local source label and its unchanged exact appended/neighboring text.");
+                offline == "Tidak ada permukiman dalam radius 75 km; label lokal awal dipertahankan. Tidak ada permintaan internet.",
+                "The actual 75-km fallback must retain the local source label and its exact appended text.");
         }
         else
         {
             string name = (string)place.GetType().GetProperty("DisplayName", I)!.GetValue(place)!;
             string distance = ((double)place.GetType().GetProperty("DistanceKm", I)!.GetValue(place)!).ToString("0.0", CultureInfo.CurrentCulture);
-            Assert(actual == body + " Nama permukiman terdekat dari GeoNames lokal: " + name + " (sekitar " + distance + " km); ini label perkiraan, bukan alamat." &&
+            bool indonesiaLayer = (bool)place.GetType().GetProperty("IsIndonesiaLayer", I)!.GetValue(place)!;
+            string source = indonesiaLayer
+                ? "Nama otomatis dari data desa/kecamatan Indonesia"
+                : "Nama otomatis dari daftar kota lokal";
+            Assert(actual == body + " Nama terdekat: " + name + "." &&
                 fixture.Field<TextBox>("LocationNameBox").Text == name &&
-                offline == "Nama lokasi perangkat dicocokkan secara lokal dengan GeoNames: " + name + ", sekitar " + distance + " km. Tidak ada permintaan internet.",
-                "Actual GeoNames local name, attribution and distance append must remain exact and match the unchanged offline result.");
+                offline == source + ": " + name + ", sekitar " + distance + " km. Tidak ada permintaan internet.",
+                "Actual offline name, dataset attribution and distance append must stay exact for the selected layer.");
         }
     }
     /// <summary>Reads the location form fields (name, latitude, longitude).</summary>

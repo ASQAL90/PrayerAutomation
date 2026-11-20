@@ -70,7 +70,8 @@ internal sealed class WindowsLockScreenNativePlatform : ILockScreenNativePlatfor
         cancellationToken.ThrowIfCancellationRequested();
         if (!canWrite())
             throw new InvalidOperationException("The lock-screen source changed while Windows prepared the image; the write was refused.");
-        // Once the native write starts, await its completion before rollback can inspect its effect.
+        // SetImageFileAsync returns an IAsyncAction (no success flag). Await completion
+        // here; the backend verifies the exposed image path and SHA256 before it commits.
         await LockScreen.SetImageFileAsync(image).AsTask().ConfigureAwait(false);
     }
 

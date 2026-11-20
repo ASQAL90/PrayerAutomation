@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.3.1"
-!define APP_VERSION_QUAD "2.3.1.0"
+!define APP_VERSION "2.4.0"
+!define APP_VERSION_QUAD "2.4.0.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -1176,7 +1176,7 @@ Function ${P}CheckPersistentRecovery
       ${EndIf}
       StrCpy $R4 $1 24
       ${If} $R4 == "lock-screen-restore.json"
-        StrCpy $SafetyProblem "Lock screen masih menampilkan gambar sholat.\r\n\r\nBuka Ayo Jama'ah! lalu ke Pengaturan tambahan, klik Pulihkan lock screen sekarang, tunggu sampai selesai, dan coba lagi. Kalau gambar sudah sesuai, klik Batalkan pemulihan tertunda."
+        StrCpy $SafetyProblem "Lock screen masih menampilkan gambar sholat.\r\n\r\nBuka Ayo Jama'ah! lalu ke Pengaturan tambahan, klik Kembalikan gambar semula, tunggu sampai selesai, dan coba lagi. Kalau gambar sudah sesuai, klik Hentikan pemulihan otomatis."
         ${ExitDo}
       ${EndIf}
     ${EndIf}

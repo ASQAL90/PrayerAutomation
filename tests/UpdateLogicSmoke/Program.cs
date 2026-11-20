@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using PrayerAutomation.UI;
+using UpdateLogicSmoke;
 
 static void Check(bool condition, string message)
 {
@@ -73,5 +74,8 @@ finally
 {
     try { Directory.Delete(root, recursive: true); } catch (IOException) { }
 }
+
+await UpdateRecoveryPolicySmoke.VerifyAllAsync();
+UpdateReminderPolicySmoke.Verify();
 
 Console.WriteLine("UpdateLogicSmoke: PASS");

@@ -56,6 +56,10 @@ public partial class MainWindow : Window
     private readonly DeviceLocationService _deviceLocationService = new();
     private int _locationRequestVersion;
     private int _locationSearchVersion;
+    /// <summary>True when the location name still holds an automatically generated value.</summary>
+    private bool _locationNameAutoFilled;
+    /// <summary>True while the location name box is being filled by the application.</summary>
+    private bool _settingLocationName;
     private readonly DispatcherTimer _locationSearchTimer = new(DispatcherPriority.Background)
     {
         Interval = TimeSpan.FromMilliseconds(180)
@@ -84,6 +88,9 @@ public partial class MainWindow : Window
     // work out of the startup path so the initially visible controls accept input
     // as soon as the window is shown.
     private bool _calendarViewsLoaded;
+    // First-open timing is measured once per process with the same data on both
+    // calendars; it never changes layout and never enters the startup path.
+    private bool _calendarTimingPending = true;
     // The year selectors are filled and moved by code as well; this keeps the
     // SelectionChanged handlers from rendering the same year twice.
     private bool _syncingYearSelectors;
@@ -535,6 +542,10 @@ public partial class MainWindow : Window
     /// <summary>Resets the calendar view state to today and re-renders both calendars.</summary>
     private void RefreshCalendarViews()
     {
+        bool measureFirstOpen = _calendarTimingPending;
+        _calendarTimingPending = false;
+        Stopwatch? total = measureFirstOpen ? Stopwatch.StartNew() : null;
+        Stopwatch? phase = measureFirstOpen ? new Stopwatch() : null;
         DateTime correctedToday = GetCalendarToday();
         _lastCalendarToday = correctedToday;
         _selectedGregorianYear = correctedToday.Year;
@@ -551,8 +562,18 @@ public partial class MainWindow : Window
         string sourceNote = CurrentCalendarSourceNote();
         GregorianCalendarNote.Text = sourceNote;
         HijriCalendarNote.Text = sourceNote;
+        phase?.Restart();
         RenderGregorianYear(_selectedGregorianYear);
+        long gregorianMs = phase?.ElapsedMilliseconds ?? 0;
+        phase?.Restart();
         RenderHijriYear(_selectedHijriYear);
+        long hijriMs = phase?.ElapsedMilliseconds ?? 0;
+        if (measureFirstOpen)
+        {
+            AppLogger.WriteInfo("calendar.first-open",
+                $"gregorianMs={gregorianMs} hijriMs={hijriMs} totalMs={total!.ElapsedMilliseconds} " +
+                $"source={_settings.CalendarSource}");
+        }
     }
 
     /// <summary>Renders the calendar views on first demand.</summary>
@@ -599,6 +620,9 @@ public partial class MainWindow : Window
                 var weekdayGrid = new UniformGrid { Columns = 7, Rows = 1 };
                 for (int weekday = 0; weekday < 7; weekday++)
                 {
+                    (string headerForeground, string headerBackground) = weekday is 5 or 6
+                        ? ThemeCatalog.WeekendHeaderColors(ThemeManager.Current)
+                        : (ThemeManager.Current.MutedText, ThemeManager.Current.SurfaceAlt);
                     var header = new TextBlock
                     {
                         Text = WeekdayShortNames[weekday],
@@ -606,8 +630,8 @@ public partial class MainWindow : Window
                         VerticalAlignment = VerticalAlignment.Center,
                         FontSize = 10,
                         FontWeight = FontWeights.SemiBold,
-                        Foreground = MakeBrush(ThemeManager.Current.MutedText),
-                        Background = MakeBrush(ThemeManager.Current.SurfaceAlt),
+                        Foreground = MakeBrush(headerForeground),
+                        Background = MakeBrush(headerBackground),
                         Margin = new Thickness(1),
                         Padding = new Thickness(2, 4, 2, 4)
                     };
@@ -779,6 +803,9 @@ public partial class MainWindow : Window
                 var weekdayGrid = new UniformGrid { Columns = 7, Rows = 1 };
                 for (int weekday = 0; weekday < 7; weekday++)
                 {
+                    (string headerForeground, string headerBackground) = weekday is 5 or 6
+                        ? ThemeCatalog.WeekendHeaderColors(ThemeManager.Current)
+                        : (ThemeManager.Current.MutedText, ThemeManager.Current.SurfaceAlt);
                     var header = new TextBlock
                     {
                         Text = WeekdayShortNames[weekday],
@@ -786,8 +813,8 @@ public partial class MainWindow : Window
                         VerticalAlignment = VerticalAlignment.Center,
                         FontSize = 10,
                         FontWeight = FontWeights.SemiBold,
-                        Foreground = MakeBrush(ThemeManager.Current.MutedText),
-                        Background = MakeBrush(ThemeManager.Current.SurfaceAlt),
+                        Foreground = MakeBrush(headerForeground),
+                        Background = MakeBrush(headerBackground),
                         Margin = new Thickness(1),
                         Padding = new Thickness(2, 4, 2, 4)
                     };
@@ -1120,6 +1147,7 @@ public partial class MainWindow : Window
         try
         {
             LocationNameBox.Text = _settings.LocationName;
+            _locationNameAutoFilled = false;
             LatitudeBox.Text = _settings.Latitude.ToString("G", CultureInfo.InvariantCulture);
             LongitudeBox.Text = _settings.Longitude.ToString("G", CultureInfo.InvariantCulture);
             ElevationBox.Text = _settings.ElevationMeters.ToString(CultureInfo.InvariantCulture);
@@ -1206,6 +1234,9 @@ public partial class MainWindow : Window
             AppSettings.CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
             ? AppSettings.CalendarSourceKhgt
             : AppSettings.CalendarSourceCivil;
+
+    /// <summary>Returns the theme currently previewed in the form, even when it is not saved yet.</summary>
+    private string SelectedThemeId => ThemeCatalog.NormalizeId((ThemeBox.SelectedItem as ComboBoxItem)?.Tag as string);
 
     /// <summary>Updates the source help text and schedule preview when the calendar source changes.</summary>
     /// <param name="sender">Event source.</param>
@@ -1302,6 +1333,11 @@ public partial class MainWindow : Window
             _savedFormBaseline = CaptureSettingsFormDraft();
         UpdateKhgtOfferPanel();
         _refreshDependentViews();
+        // RefreshDependentViews applies the saved theme. Keep an unsaved theme
+        // choice visible so changing only the calendar source cannot silently
+        // discard the preview and make the next Simpan change it a second time.
+        if (hadUnsavedChanges)
+            _applyThemePreview(SelectedThemeId);
         if (_calendarViewsLoaded)
             RefreshCalendarViews();
         RefreshSettingsSchedulePreview();
@@ -1423,20 +1459,30 @@ public partial class MainWindow : Window
 
         LockScreenTestNowButton.IsEnabled = false;
         LockScreenStatus.Text = "Memasang gambar uji selama satu menit…";
+        bool imageApplied = false;
+        bool screenLocked = false;
+        string resultText = "none";
         try
         {
             LockScreenTransactionResult result = await app.TestLockScreenNowAsync();
+            resultText = result.ToString();
             if (result is LockScreenTransactionResult.Applied or LockScreenTransactionResult.Extended)
             {
+                imageApplied = true;
                 LockScreenStatus.Text = "Gambar uji terpasang. Mengunci layar dalam dua detik…";
                 await Task.Delay(TimeSpan.FromSeconds(2));
-                LockScreenStatus.Text = WorkstationLockService.TryLock()
+                screenLocked = WorkstationLockService.TryLock();
+                LockScreenStatus.Text = screenLocked
                     ? "Layar dikunci. Setelah masuk kembali, gambar dipulihkan otomatis dalam satu menit."
                     : "Gambar uji terpasang, tetapi layar tidak dapat dikunci. Kunci Windows secara manual untuk melihatnya; gambar dipulihkan otomatis setelah satu menit.";
             }
             else if (result == LockScreenTransactionResult.ExternalChangePreserved)
             {
                 LockScreenStatus.Text = "Perubahan lock screen dari pengguna dipertahankan; gambar uji tidak dipasang.";
+            }
+            else if (result == LockScreenTransactionResult.ManagedByPolicy)
+            {
+                LockScreenStatus.Text = "Perangkat ini dikelola kebijakan organisasi; gambar lock screen tidak diubah. Hubungi admin IT.";
             }
             else
             {
@@ -1450,6 +1496,10 @@ public partial class MainWindow : Window
         }
         finally
         {
+            AppLogger.WriteInfo("lock-screen.test.lock",
+                $"result={(imageApplied && screenLocked ? "ok" : "failed")} reason={resultText} " +
+                $"image={(imageApplied ? "applied" : "not-applied")} " +
+                $"lock={(screenLocked ? "ok" : "not-confirmed")} visual=unverified");
             LockScreenTestNowButton.IsEnabled = true;
         }
     }
@@ -1497,10 +1547,16 @@ public partial class MainWindow : Window
 
         LockScreenSafetyInfo safety = _inspectLockScreenSafety();
         bool alreadyEnabled = _settings.LockScreenOptIn && _settings.LockScreenEnabled;
-        LockScreenCheckBox.IsEnabled = safety.CanChangeTemporarily || alreadyEnabled;
+        LockScreenCheckBox.IsEnabled = !safety.ManagedByPolicy && (safety.CanChangeTemporarily || alreadyEnabled);
+        if (LockScreenTestNowButton is not null)
+            LockScreenTestNowButton.IsEnabled = !safety.ManagedByPolicy && (safety.CanChangeTemporarily || alreadyEnabled);
         LockScreenSafetyText.Text = safety.Message;
         LockScreenStatus.Text = status ?? string.Empty;
         LockScreenStatus.Visibility = Visibility.Visible;
+        if (LockScreenOptOutButton is not null)
+            LockScreenOptOutButton.Visibility = safety.ManagedByPolicy || alreadyEnabled
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         if (LockScreenCancelRecoveryButton is not null)
         {
             LockScreenCancelRecoveryButton.Visibility = Visibility.Visible;
@@ -1545,6 +1601,34 @@ public partial class MainWindow : Window
         RefreshLockScreenSafety("Pemulihan lock screen dibatalkan; catatan pemulihan dihapus dan fitur gambar dimatikan.");
     }
 
+    /// <summary>Stops installing and trying the lock-screen image without touching any registry policy.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private void LockScreenOptOut_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDialog.Ask(this, "Matikan gambar lock screen",
+            "Hentikan pemasangan gambar lock screen di perangkat ini?\n\n" +
+            "Aplikasi berhenti mencoba pada setiap waktu sholat dan tidak mengubah kebijakan perangkat. " +
+            "Gambar yang sedang aktif akan dikembalikan oleh pemulihan otomatis bila catatannya masih sah.",
+            "Matikan gambar"))
+            return;
+
+        _settings.LockScreenEnabled = false;
+        _settings.LockScreenOptIn = false;
+        try
+        {
+            _saveSettings(_settings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            _logSettingsError("settings.lock-screen-opt-out", ex);
+            RefreshLockScreenSafety("Fitur dimatikan untuk sesi ini, tetapi pengaturan gagal disimpan. Periksa izin dan ruang penyimpanan.");
+            return;
+        }
+        LockScreenCheckBox.IsChecked = false;
+        RefreshLockScreenSafety("Gambar lock screen dimatikan. Aplikasi tidak akan mencoba memasang gambar sampai fitur dinyalakan lagi.");
+    }
+
     /// <summary>Opens the update window for an explicit check.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Event arguments.</param>
@@ -1560,11 +1644,14 @@ public partial class MainWindow : Window
         long log = StorageMaintenance.GetLogBytes();
         long update = StorageMaintenance.GetFolderBytes(StorageMaintenance.UpdateFolder);
         long images = StorageMaintenance.GetFolderBytes(StorageMaintenance.LockScreenFolder);
+        string backupStatus = File.Exists(SettingsStore.BackupPath) ? "ada" : "belum ada";
         StorageSummaryText.Text =
             "Total " + StorageMaintenance.FormatBytes(log + update + images) +
             " · Log " + StorageMaintenance.FormatBytes(log) +
             " · Unduhan pembaruan " + StorageMaintenance.FormatBytes(update) +
-            " · Gambar lock screen " + StorageMaintenance.FormatBytes(images) + ".";
+            " · Gambar lock screen " + StorageMaintenance.FormatBytes(images) +
+            " · Cadangan pengaturan " + backupStatus + "." +
+            (string.IsNullOrWhiteSpace(SettingsStore.BackupWarning) ? "" : " " + SettingsStore.BackupWarning);
     }
 
     /// <summary>Opens the per-user data folder in Explorer.</summary>
@@ -1626,6 +1713,36 @@ public partial class MainWindow : Window
         StorageStatusText.Text = StorageMaintenance.HasPendingLockScreenRecovery
             ? "Cache dibersihkan (" + StorageMaintenance.FormatBytes(freed) + "). Gambar lock screen dilewati karena pemulihan masih tertunda."
             : "Cache dibersihkan; sekitar " + StorageMaintenance.FormatBytes(freed) + " ruang dibebaskan.";
+    }
+
+    /// <summary>Resets all settings to factory defaults after confirmation.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void ResetConfig_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ConfirmDialog.Ask(this, "Reset pengaturan awal",
+            "Hapus semua pengaturan aplikasi dan mulai lagi seperti instal baru?\n\n" +
+            "Pengaturan dan cadangannya dihapus; perubahan form yang belum disimpan dibatalkan. " +
+            "Log, unduhan, dan catatan pemulihan lock screen tidak diubah.",
+            "Reset pengaturan"))
+            return;
+        try
+        {
+            AppSettings fresh = SettingsStore.Reset();
+            CopySettings(fresh, _settings);
+            _refreshDependentViews();
+            PopulateSettingsForm();
+            if (_calendarViewsLoaded)
+                RefreshCalendarViews();
+            RefreshStorageSummary();
+            SettingsStatusLabel.Text = "Pengaturan kembali ke nilai awal pabrik.";
+            StorageStatusText.Text = "Pengaturan dan cadangannya dihapus. Nilai awal berlaku untuk sesi ini.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            _logSettingsError("settings.reset-factory", ex);
+            StorageStatusText.Text = "Reset gagal: " + ex.Message;
+        }
     }
 
     /// <summary>Saves a sanitized diagnostics report chosen by the user.</summary>
@@ -1718,46 +1835,86 @@ public partial class MainWindow : Window
     /// <summary>Schedules a save-free schedule preview refresh when a settings input changes.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Text changed event arguments.</param>
-    private void SettingsPreviewInput_Changed(object sender, TextChangedEventArgs e)
+    private async void SettingsPreviewInput_Changed(object sender, TextChangedEventArgs e)
     {
-        if (!_loadingSettings)
+        if (_loadingSettings) return;
+
+        if (sender == ElevationBox && !_settingAutoElevation)
+            _elevationManuallyEdited = true;
+        if (sender == LocationNameBox && !_settingLocationName)
+            _locationNameAutoFilled = false;
+        if (sender == LocationNameBox || sender == LatitudeBox || sender == LongitudeBox || sender == TimeZoneBox)
+            _locationRequestVersion++;
+        if (sender == LocationNameBox)
+            QueueLocationSearch();
+        else if (sender == LatitudeBox || sender == LongitudeBox || sender == TimeZoneBox)
+            CloseLocationSuggestions();
+        if ((sender == LatitudeBox || sender == LongitudeBox)
+            && TryDouble(LatitudeBox.Text, out double latitude) && double.IsFinite(latitude) && latitude is >= -90 and <= 90
+            && TryDouble(LongitudeBox.Text, out double longitude) && double.IsFinite(longitude) && longitude is >= -180 and <= 180)
         {
-            if (sender == ElevationBox && !_settingAutoElevation)
-                _elevationManuallyEdited = true;
-            if (sender == LocationNameBox || sender == LatitudeBox || sender == LongitudeBox || sender == TimeZoneBox)
-                _locationRequestVersion++;
-            if (sender == LocationNameBox)
-                QueueLocationSearch();
-            else if (sender == LatitudeBox || sender == LongitudeBox || sender == TimeZoneBox)
-                CloseLocationSuggestions();
-            if ((sender == LatitudeBox || sender == LongitudeBox)
-                && TryDouble(LatitudeBox.Text, out double latitude) && double.IsFinite(latitude) && latitude is >= -90 and <= 90
-                && TryDouble(LongitudeBox.Text, out double longitude) && double.IsFinite(longitude) && longitude is >= -180 and <= 180)
+            int requestVersion = _locationRequestVersion;
+            _loadingSettings = true;
+            try
             {
-                _loadingSettings = true;
-                try
-                {
-                    TimeZoneBox.Text = GeoTimeZone.TimeZoneLookup.GetTimeZone(latitude, longitude).Result;
-                    try
-                    {
-                        OfflineLocationResult? place = OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude);
-                        LocationNameBox.Text = place?.DisplayName ?? "Lokasi manual";
-                        ApplyAutoElevation(place?.ElevationMeters);
-                        OfflineReverseGeocodeStatus.Text = place is null
-                            ? "Tidak ada permukiman dalam radius 75 km. Isi nama sendiri; koordinat tetap lokal dan belum disimpan."
-                            : $"Nama otomatis dari daftar kota lokal: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
-                    }
-                    catch (Exception)
-                    {
-                        LocationNameBox.Text = "Lokasi manual";
-                        OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Isi nama sendiri; koordinat dan zona waktu tetap di draf, tidak dikirim ke internet.";
-                    }
-                }
-                finally { _loadingSettings = false; }
+                TimeZoneBox.Text = GeoTimeZone.TimeZoneLookup.GetTimeZone(latitude, longitude).Result;
             }
-            RefreshSettingsSchedulePreview();
+            finally { _loadingSettings = false; }
+            await UpdateLocationNameFromCoordinatesAsync(latitude, longitude, requestVersion);
+        }
+        RefreshSettingsSchedulePreview();
+    }
+
+    /// <summary>Fills the location name from the offline datasets without overwriting a typed name.</summary>
+    /// <param name="latitude">Latitude in degrees.</param>
+    /// <param name="longitude">Longitude in degrees.</param>
+    /// <param name="requestVersion">Request generation captured before the lookup.</param>
+    private async Task UpdateLocationNameFromCoordinatesAsync(double latitude, double longitude, int requestVersion)
+    {
+        try
+        {
+            OfflineLocationResult? place = await Task.Run(
+                () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
+            if (requestVersion != _locationRequestVersion) return;
+            bool mayOverwrite = LocationNameBox.Text.Trim().Length == 0 || _locationNameAutoFilled;
+            ApplyAutoElevation(place?.ElevationMeters);
+            if (mayOverwrite)
+            {
+                SetAutoLocationName(place?.DisplayName ?? "Lokasi manual");
+                _locationNameAutoFilled = place is not null;
+            }
+            OfflineReverseGeocodeStatus.Text = place is null
+                ? "Tidak ada permukiman dalam radius 75 km. Isi nama sendiri; koordinat tetap lokal dan belum disimpan."
+                : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+        }
+        catch (Exception)
+        {
+            if (requestVersion != _locationRequestVersion) return;
+            if (LocationNameBox.Text.Trim().Length == 0 || _locationNameAutoFilled)
+            {
+                SetAutoLocationName("Lokasi manual");
+                _locationNameAutoFilled = false;
+            }
+            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Isi nama sendiri; koordinat dan zona waktu tetap di draf, tidak dikirim ke internet.";
         }
     }
+
+    /// <summary>Sets the location name from an automatic source without treating it as user input.</summary>
+    /// <param name="name">Generated display name.</param>
+    private void SetAutoLocationName(string name)
+    {
+        _settingLocationName = true;
+        try { LocationNameBox.Text = name; }
+        finally { _settingLocationName = false; }
+    }
+
+    /// <summary>Describes which offline dataset produced the automatic name.</summary>
+    /// <param name="place">The lookup result.</param>
+    /// <returns>A short Indonesian description.</returns>
+    private static string AutoLocationSourceLabel(OfflineLocationResult place) =>
+        place.IsIndonesiaLayer
+            ? "Nama otomatis dari data desa/kecamatan Indonesia"
+            : "Nama otomatis dari daftar kota lokal";
 
     /// <summary>
     /// Fills the elevation field from the nearest settlement, unless the user has
@@ -1859,6 +2016,7 @@ public partial class MainWindow : Window
         try
         {
             LocationNameBox.Text = suggestion.DisplayName;
+            _locationNameAutoFilled = true;
             LatitudeBox.Text = suggestion.Latitude.ToString("G", CultureInfo.InvariantCulture);
             LongitudeBox.Text = suggestion.Longitude.ToString("G", CultureInfo.InvariantCulture);
             _elevationManuallyEdited = false;
@@ -2082,36 +2240,51 @@ public partial class MainWindow : Window
                 return;
             }
 
-            string locationName = CombineLocationName(result.IpApi, result.IpWho);
+            string providerName = CombineLocationName(result.IpApi, result.IpWho);
             (double latitude, double longitude) = LocationDetectionService.Midpoint(result.IpApi, result.IpWho);
             bool wasLoading = _loadingSettings;
             _loadingSettings = true;
             try
             {
-                LocationNameBox.Text = locationName;
+                SetAutoLocationName(providerName);
+                _locationNameAutoFilled = true;
                 LatitudeBox.Text = latitude.ToString("G", CultureInfo.InvariantCulture);
                 LongitudeBox.Text = longitude.ToString("G", CultureInfo.InvariantCulture);
                 TimeZoneBox.Text = result.IpApi.TimeZoneId!;
             }
             finally { _loadingSettings = wasLoading; }
 
+            OfflineLocationResult? offlinePlace = null;
+            bool offlineLookupFailed = false;
             try
             {
-                OfflineLocationResult? offlinePlace = await Task.Run(
+                offlinePlace = await Task.Run(
                     () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
-                if (requestVersion != _locationRequestVersion) return;
-                if (offlinePlace is not null)
-                {
-                    _elevationManuallyEdited = false;
-                    ApplyAutoElevation(offlinePlace.ElevationMeters);
-                }
             }
             catch (Exception)
             {
-                // Height is optional; keep the existing value when the dataset is unreadable.
+                offlineLookupFailed = true;
             }
 
-            NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); belum disimpan.";
+            if (requestVersion != _locationRequestVersion) return;
+            if (offlinePlace is not null)
+            {
+                SetAutoLocationName(offlinePlace.DisplayName);
+                _locationNameAutoFilled = true;
+                _elevationManuallyEdited = false;
+                ApplyAutoElevation(offlinePlace.ElevationMeters);
+                OfflineReverseGeocodeStatus.Text =
+                    $"{AutoLocationSourceLabel(offlinePlace)}: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Nama jaringan diganti dengan nama lokal; belum disimpan.";
+                NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); nama dicocokkan lokal; belum disimpan.";
+            }
+            else if (offlineLookupFailed)
+            {
+                NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); data lokal tidak terbaca, nama jaringan dipertahankan; belum disimpan.";
+            }
+            else
+            {
+                NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); tidak ada nama lokal dalam radius, nama jaringan dipertahankan; belum disimpan.";
+            }
             RefreshSettingsSchedulePreview();
         }
         catch (LocationLookupException ex)
@@ -2167,8 +2340,9 @@ public partial class MainWindow : Window
             {
                 TimeZoneBox.Text = GeoTimeZone.TimeZoneLookup.GetTimeZone(
                     result.Latitude!.Value, result.Longitude!.Value).Result;
-                LocationNameBox.Text = DeviceLocationLogic.FormatLocalLocationName(
-                    result.Source, result.Latitude!.Value, result.Longitude!.Value);
+                SetAutoLocationName(DeviceLocationLogic.FormatLocalLocationName(
+                    result.Source, result.Latitude!.Value, result.Longitude!.Value));
+                _locationNameAutoFilled = true;
                 LatitudeBox.Text = result.Latitude!.Value.ToString("G", CultureInfo.InvariantCulture);
                 LongitudeBox.Text = result.Longitude!.Value.ToString("G", CultureInfo.InvariantCulture);
             }
@@ -2191,11 +2365,12 @@ public partial class MainWindow : Window
             if (requestVersion != _locationRequestVersion) return;
             if (offlinePlace is not null)
             {
-                LocationNameBox.Text = offlinePlace.DisplayName;
+                SetAutoLocationName(offlinePlace.DisplayName);
+                _locationNameAutoFilled = true;
                 _elevationManuallyEdited = false;
                 ApplyAutoElevation(offlinePlace.ElevationMeters);
                 GpsLocationStatus.Text += $" Nama terdekat: {offlinePlace.DisplayName}.";
-                OfflineReverseGeocodeStatus.Text = $"Nama lokasi perangkat dicocokkan secara lokal dengan data lokasi lokal: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
+                OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(offlinePlace)}: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
             }
             else if (offlineLookupFailed)
             {

@@ -232,6 +232,18 @@ internal static partial class StorageMaintenance
         builder.AppendLine("- Kunci otomatis: " + (settings.AutoLockEnabled ? "aktif" : "nonaktif"));
         builder.AppendLine("- Gambar lock screen: " + (settings.LockScreenEnabled && settings.LockScreenOptIn ? "aktif" : "nonaktif"));
         builder.AppendLine("- Pemulihan lock screen tertunda: " + (HasPendingLockScreenRecovery ? "ya" : "tidak"));
+        try
+        {
+            LockScreenSafetyInfo safety = LockScreenSafetyProbe.Inspect();
+            builder.AppendLine("- Kebijakan lock screen: " + (safety.ManagedByPolicy ? "dikelola perangkat" : "tidak terdeteksi"));
+            builder.AppendLine("- Sumber kebijakan lock screen: " + (string.IsNullOrWhiteSpace(safety.PolicySource) ? "tidak ada" : safety.PolicySource));
+            builder.AppendLine("- Mode lock screen: " + safety.BackgroundMode);
+            builder.AppendLine("- Dukungan API profil: " + (safety.ProfileApiSupported ? "ya" : "tidak"));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            builder.AppendLine("- Kebijakan lock screen: tidak dapat dibaca");
+        }
         builder.AppendLine();
         builder.AppendLine("Penyimpanan:");
         builder.AppendLine("- Log: " + FormatBytes(GetLogBytes()));

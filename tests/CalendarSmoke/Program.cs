@@ -66,7 +66,8 @@ Check(xaml.Contains("AutomationProperties.AutomationId=\"GregorianCalendarTab\""
 Check(HasAccessibleEventNames(codeBehind, "private Button CreateGregorianDateButton", "private void RenderHijriYear") &&
       HasAccessibleEventNames(codeBehind, "private Button CreateHijriDateButton", "private void SelectGregorianDate"),
     "both calendar views must expose observance names in their accessible button descriptions");
-Check(codeBehind.Contains("tanggal resmi dapat berbeda menurut rukyat", StringComparison.OrdinalIgnoreCase),
+Check(codeBehind.Contains("Ikuti hasil rukyat atau otoritas setempat", StringComparison.OrdinalIgnoreCase) &&
+      codeBehind.Contains("penetapan resmi tetap milik otoritas", StringComparison.OrdinalIgnoreCase),
     "the Hijri calendar must state that civil dates can differ from local rukyat/authority");
 
 Console.WriteLine("PASS: Gregorian/Hijri round-trip, 1500 H month lengths, observance/no-fast markers, correction offset, and accessible names in both source views; no UI input automation used.");

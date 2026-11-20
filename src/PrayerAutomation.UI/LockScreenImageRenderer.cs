@@ -25,10 +25,13 @@ internal static class LockScreenImageRenderer
     private const double DomeTopFraction = 706.0 / 1080.0;
     private const double DomeWidthFraction = (1255.0 - 664.0) / 1920.0;
     private const double DomeHeightFraction = (839.0 - 706.0) / 1080.0;
-    // The logo and brand keep their original top-left position; the system clock
-    // sits top centre, so this corner never overlaps it.
-    private const double LogoFractionOfWidth = 0.027;
-    private const double LogoTopFraction = 0.016;
+    // Windows fills the lock screen by cropping the 16:9 artwork to the monitor's
+    // aspect ratio (and Win11 adds a slight zoom/pan). A logo at 2.7%/1.6% sat
+    // inside that crop and arrived clipped on non-16:9 displays. ~12%/15% adds
+    // extra margin beyond the 10%/13% trial while staying in the upper left and
+    // clear of the top-centre system clock and the dome text.
+    private const double LogoFractionOfWidth = 0.12;
+    private const double LogoTopFraction = 0.15;
     private const double LogoFractionOfHeight = 0.077;
     private const double BrandTextFractionOfHeight = 0.0165;
     private const double BrandGapFractionOfHeight = 0.006;

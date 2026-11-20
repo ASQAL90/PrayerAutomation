@@ -29,20 +29,27 @@ internal partial class ConfirmDialog : Window
     }
 
     /// <summary>Shows the dialog modally and returns true when the user confirmed.</summary>
-    /// <param name="owner">Owner window used for centering.</param>
+    /// <param name="owner">Owner window used for centering; null when the main window is hidden.</param>
     /// <param name="heading">Heading shown in the window and title bar.</param>
     /// <param name="message">Body text.</param>
     /// <param name="confirmText">Label of the primary button.</param>
     /// <param name="cancelText">Label of the cancel button.</param>
     /// <param name="confirmIsDefault">True when Enter should confirm instead of cancel.</param>
     /// <returns>True when the user pressed the primary button.</returns>
-    internal static bool Ask(Window owner, string heading, string message, string confirmText,
+    internal static bool Ask(Window? owner, string heading, string message, string confirmText,
         string cancelText = "Batal", bool confirmIsDefault = false)
     {
-        var dialog = new ConfirmDialog(heading, message, confirmText, cancelText, confirmIsDefault)
+        var dialog = new ConfirmDialog(heading, message, confirmText, cancelText, confirmIsDefault);
+        if (owner is not null)
         {
-            Owner = owner
-        };
+            dialog.Owner = owner;
+        }
+        else
+        {
+            // The main window can be hidden to the tray; keep the reminder reachable.
+            dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            dialog.ShowInTaskbar = true;
+        }
         return dialog.ShowDialog() == true;
     }
 

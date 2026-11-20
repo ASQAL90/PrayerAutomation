@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using Microsoft.Win32;
 using Application = System.Windows.Application;
 
 namespace PrayerAutomation.UI;
@@ -102,13 +104,17 @@ public partial class App : Application
             Path.Combine(AppContext.BaseDirectory, "sedang_sholat.png"),
             new LockScreenImageTransaction(
                 new WindowsLockScreenImageBackend(AppLogger.Write, trace: AppLogger.WriteInfo),
-                new FileLockScreenRestoreStore()),
+                new FileLockScreenRestoreStore(),
+                () => LockScreenSafetyProbe.Inspect().ManagedByPolicy),
             AppLogger.Write,
             () => Settings.LockScreenDurationMinutes,
             new WindowsLockScreenExecutionRequest(AppLogger.WriteInfo),
             AppLogger.WriteInfo,
             imagePathProvider: LockScreenImageRenderer.RenderPrayerImage);
         _lockScreenScheduler.StatusChanged += message => _mainWindow?.SetLockScreenStatus(message);
+        // Session events are only interesting while a temporary image is active;
+        // outside a transaction they would flood the log on every lock/unlock.
+        SystemEvents.SessionSwitch += OnSessionSwitch;
         try
         {
             await _lockScreenScheduler.StartAsync(DateTimeOffset.UtcNow);
@@ -390,6 +396,8 @@ public partial class App : Application
     /// <summary>Releases windows, tray, schedulers, and the single-instance mutex, then exits.</summary>
     private void ReleaseAndShutdown()
     {
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
+        _updateReminderTimer?.Stop();
         _lockScreenScheduler?.Dispose();
         _mainWindow?.AllowClose();
         _widget?.Close();
@@ -407,6 +415,8 @@ public partial class App : Application
     /// <param name="e">Exit event arguments.</param>
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
+        _updateReminderTimer?.Stop();
         _taskbarPanel?.Dispose();
         _taskbarPanel = null;
         _taskbarWidget?.ClosePermanently();
@@ -437,6 +447,20 @@ public partial class App : Application
 
     /// <summary>True when a pending lock-screen restore journal is blocking install/uninstall.</summary>
     internal bool HasPendingLockScreenRecovery => _lockScreenScheduler?.HasPendingRecovery == true;
+
+    /// <summary>Logs session lock/unlock only while a temporary lock-screen image is active.</summary>
+    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (_isShuttingDown || _lockScreenScheduler?.HasActiveImage != true) return;
+        string context = e.Reason switch
+        {
+            SessionSwitchReason.SessionLock => "lock-screen.session.lock",
+            SessionSwitchReason.SessionUnlock => "lock-screen.session.unlock",
+            _ => string.Empty
+        };
+        if (context.Length > 0)
+            AppLogger.WriteInfo(context, "transaction=active visual=unverified");
+    }
 
     /// <summary>Restores the previous lock-screen state immediately, without waiting for the scheduled restore.</summary>
     internal async Task RestoreLockScreenNowAsync()
@@ -477,7 +501,72 @@ public partial class App : Application
             "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; catatan pemulihan dihapus.");
     }
 
+    /// <summary>Holds an update until the lock-screen restore journal is verified clear.</summary>
+    /// <remarks>
+    /// The first attempt stops scheduling and forces a restore; later attempts retry the restore.
+    /// A timeout deliberately keeps recovery-only intent and the journal intact.
+    /// </remarks>
+    /// <param name="progress">Optional callback used by the update window.</param>
+    /// <param name="cancellationToken">Cancels the wait when the update window closes.</param>
+    /// <returns>True when the update may continue; false when the 60-second wait timed out.</returns>
+    internal async Task<bool> EnsureLockScreenReadyForUpdateAsync(
+        Action<LockScreenRecoveryProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        LockScreenImageScheduler? scheduler = _lockScreenScheduler;
+        if (scheduler is null) return true;
+        bool firstAttempt = true;
+        LockScreenUpdateReadiness readiness;
+        try
+        {
+            readiness = await UpdateRecoveryPolicy.WaitForRecoveryAsync(
+                async token =>
+                {
+                    try
+                    {
+                        if (firstAttempt)
+                        {
+                            firstAttempt = false;
+                            return await scheduler.StopAndRestoreAsync();
+                        }
+                        return await scheduler.RequestRestoreNowAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Write("update.lock-screen-restore", ex);
+                        throw;
+                    }
+                },
+                cancellationToken,
+                restoreDeadline: () => scheduler.RestoreDeadlineUtc,
+                progress: progress);
+
+            if (readiness == LockScreenUpdateReadiness.Ready)
+            {
+                // Close the race where the window closes just as the wait succeeds.
+                cancellationToken.ThrowIfCancellationRequested();
+                return true;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing the update window must not leave the scheduler in restore-only mode.
+            await ResumeLockScreenAfterUpdateCancelAsync();
+            throw;
+        }
+
+        // Do not resume normal scheduling while verification is unresolved: that
+        // could apply a new image over a journal we are still trying to clear.
+        _isShuttingDown = false;
+        _mainWindow?.SetLockScreenStatus(
+            "Pemulihan lock screen belum selesai; pembaruan dibatalkan dan catatan pemulihan dipertahankan.");
+        return false;
+    }
+
     private UpdateWindow? _updateWindow;
+    private DispatcherTimer? _updateReminderTimer;
+    private UpdateRelease? _snoozedUpdate;
+    private DateTimeOffset _updateReminderDueUtc;
 
     /// <summary>Checks GitHub quietly at startup and opens the update window only when something new exists.</summary>
     internal async Task AutoCheckForUpdatesAsync()
@@ -501,18 +590,126 @@ public partial class App : Application
 
     /// <summary>Opens (or focuses) the update window.</summary>
     /// <param name="info">Known release to display, or null to check first.</param>
-    internal void ShowUpdateWindow(UpdateRelease? info = null)
+    /// <param name="autoInstall">True to start the download immediately after a confirmed reminder.</param>
+    internal void ShowUpdateWindow(UpdateRelease? info = null, bool autoInstall = false)
     {
         if (_isShuttingDown) return;
+        StopUpdateReminder();
         if (_updateWindow is not null)
         {
             _updateWindow.Activate();
+            if (autoInstall) _updateWindow.BeginInstall();
             return;
         }
         _updateWindow = new UpdateWindow(this, info);
         _updateWindow.Closed += (_, _) => _updateWindow = null;
         _updateWindow.Show();
+        if (autoInstall) _updateWindow.BeginInstall();
     }
+
+    /// <summary>Defers the update offer and counts down until lock-screen recovery is finished.</summary>
+    /// <param name="release">Release to remind the user about.</param>
+    internal void SnoozeUpdate(UpdateRelease release)
+    {
+        if (_isShuttingDown) return;
+        _snoozedUpdate = release;
+        _updateReminderDueUtc = ResolveUpdateReminderDueUtc();
+        if (_updateReminderTimer is null)
+        {
+            _updateReminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _updateReminderTimer.Tick += OnUpdateReminderTick;
+        }
+        _updateReminderTimer.Start();
+        UpdateUpdateReminderTooltip();
+    }
+
+    /// <summary>Uses the journal deadline while recovery is active; otherwise falls back to 15 minutes.</summary>
+    /// <returns>UTC time when the reminder popup may appear.</returns>
+    private DateTimeOffset ResolveUpdateReminderDueUtc()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        LockScreenImageScheduler? scheduler = _lockScreenScheduler;
+        return UpdateReminderPolicy.ResolveDue(
+            now,
+            scheduler?.HasActiveImage == true,
+            scheduler?.HasPendingRecovery == true,
+            scheduler?.RestoreDeadlineUtc);
+    }
+
+    /// <summary>Updates the tray countdown and opens the app-styled reminder when recovery is clear.</summary>
+    /// <param name="sender">Timer source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void OnUpdateReminderTick(object? sender, EventArgs e)
+    {
+        if (_isShuttingDown || _snoozedUpdate is null)
+        {
+            StopUpdateReminder();
+            return;
+        }
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        LockScreenImageScheduler? scheduler = _lockScreenScheduler;
+        if (scheduler?.HasPendingRecovery == true)
+        {
+            _updateReminderDueUtc = now + UpdateReminderPolicy.RecoveryPollDelay;
+            _tray?.SetTooltip($"Pembaruan {_snoozedUpdate.Tag}: menunggu pemulihan lock screen");
+            return;
+        }
+        if (scheduler?.HasActiveImage == true)
+        {
+            DateTimeOffset? deadline = scheduler.RestoreDeadlineUtc;
+            if (deadline is { } value && value > now)
+            {
+                _updateReminderDueUtc = value;
+                _tray?.SetTooltip($"Pembaruan {_snoozedUpdate.Tag}: pemulihan lock screen {UpdateReminderPolicy.FormatRemaining(value - now)}");
+            }
+            else
+            {
+                _updateReminderDueUtc = now + UpdateReminderPolicy.RecoveryPollDelay;
+                _tray?.SetTooltip($"Pembaruan {_snoozedUpdate.Tag}: menunggu pemulihan lock screen");
+            }
+            return;
+        }
+
+        if (now < _updateReminderDueUtc)
+        {
+            _tray?.SetTooltip($"Pembaruan {_snoozedUpdate.Tag} diingatkan dalam {UpdateReminderPolicy.FormatRemaining(_updateReminderDueUtc - now)}");
+            return;
+        }
+
+        UpdateRelease release = _snoozedUpdate;
+        StopUpdateReminder();
+        ShowUpdateReminder(release);
+    }
+
+    /// <summary>Paints the current countdown into the tray tooltip.</summary>
+    private void UpdateUpdateReminderTooltip()
+    {
+        if (_snoozedUpdate is null) return;
+        _tray?.SetTooltip($"Pembaruan {_snoozedUpdate.Tag} diingatkan dalam {UpdateReminderPolicy.FormatRemaining(_updateReminderDueUtc - DateTimeOffset.UtcNow)}");
+    }
+
+    /// <summary>Asks again with the app-styled dialog, then installs or snoozes once more.</summary>
+    /// <param name="release">Release to offer.</param>
+    private void ShowUpdateReminder(UpdateRelease release)
+    {
+        if (_isShuttingDown || _mainWindow is null) return;
+        Window? owner = _mainWindow.IsVisible ? _mainWindow : null;
+        bool install = ConfirmDialog.Ask(owner, "Pembaruan tersedia",
+            $"Waktu tunggu selesai. Versi {release.Tag} sudah menunggu. Mau memasang sekarang?",
+            "Pasang sekarang", "Nanti lagi", confirmIsDefault: true);
+        if (install) ShowUpdateWindow(release, autoInstall: true);
+        else SnoozeUpdate(release);
+    }
+
+    /// <summary>Stops the tray countdown and restores the default tooltip.</summary>
+    private void StopUpdateReminder()
+    {
+        _updateReminderTimer?.Stop();
+        _snoozedUpdate = null;
+        _tray?.SetTooltip(AppBranding.DisplayName);
+    }
+
 
     /// <summary>Remembers a release the user chose not to be offered again.</summary>
     /// <param name="tag">Release tag, e.g. v2.2.2.</param>
@@ -524,45 +721,25 @@ public partial class App : Application
 
     /// <summary>Launches the downloaded installer after this process exits so files are not locked.</summary>
     /// <param name="installerPath">Downloaded installer executable.</param>
-    /// <returns><c>true</c> when the installer was started; <c>false</c> when the user cancelled.</returns>
+    /// <param name="progress">Optional lock-screen restore progress callback.</param>
+    /// <param name="cancellationToken">Cancels the restore wait when the update window closes.</param>
+    /// <returns>Started, Cancelled, or LockScreenPending.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the update cannot be prepared or started.</exception>
-    internal async Task<bool> InstallUpdateAsync(string installerPath)
+    internal async Task<UpdateLaunchResult> InstallUpdateAsync(
+        string installerPath,
+        Action<LockScreenRecoveryProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(installerPath))
             throw new FileNotFoundException("Pemasang tidak ditemukan.", installerPath);
-        if (_isShuttingDown) return false;
+        if (_isShuttingDown) return UpdateLaunchResult.Cancelled;
 
         // Resolve prompts and pending lock-screen recovery before starting the
         // installer: it waits only briefly for this process to exit.
-        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return false;
+        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return UpdateLaunchResult.Cancelled;
+        if (!await EnsureLockScreenReadyForUpdateAsync(progress, cancellationToken))
+            return UpdateLaunchResult.LockScreenPending;
         _isShuttingDown = true;
-        try
-        {
-            if (_lockScreenScheduler is not null)
-            {
-                LockScreenTransactionResult restore = await _lockScreenScheduler.StopAndRestoreAsync();
-                if (restore == LockScreenTransactionResult.PendingVerification)
-                {
-                    _isShuttingDown = false;
-                    _mainWindow?.SetLockScreenStatus(
-                        "Pemulihan lock screen belum terverifikasi; pembaruan ditunda agar tampilan tidak tertinggal.");
-                    throw new InvalidOperationException(
-                        "Pemulihan lock screen belum terverifikasi. Pulihkan atau batalkan pemulihan tertunda, lalu coba lagi.");
-                }
-            }
-        }
-        catch (Exception ex) when (ex is not InvalidOperationException)
-        {
-            _isShuttingDown = false;
-            AppLogger.Write("update.prepare", ex);
-            if (_lockScreenScheduler is not null)
-            {
-                try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
-                catch (Exception resumeEx) { AppLogger.Write("update.prepare-resume", resumeEx); }
-            }
-            throw new InvalidOperationException(
-                "Pembaruan ditunda karena lock screen belum bisa dipulihkan.", ex);
-        }
 
         // The installer waits for this process to exit (see /UPDATEMODE in the
         // NSIS script), so no PowerShell helper or console window is needed.
@@ -577,55 +754,35 @@ public partial class App : Application
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
         {
-            _isShuttingDown = false;
             AppLogger.Write("update.launch", ex);
-            if (_lockScreenScheduler is not null)
-            {
-                try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
-                catch (Exception resumeEx) { AppLogger.Write("update.launch-resume", resumeEx); }
-            }
+            await AbortUpdatePreparationAsync();
             throw new InvalidOperationException("Pemasang tidak bisa dijalankan: " + ex.Message, ex);
         }
         ReleaseAndShutdown();
-        return true;
+        return UpdateLaunchResult.Started;
     }
 
     /// <summary>Stages a verified delta, writes its job, and hands it to the updater helper.</summary>
     /// <param name="plan">Verified update plan.</param>
     /// <param name="deltaZipPath">Downloaded and hash-checked delta zip.</param>
-    /// <returns><c>true</c> when the helper was started.</returns>
+    /// <param name="progress">Optional lock-screen restore progress callback.</param>
+    /// <param name="cancellationToken">Cancels the restore wait when the update window closes.</param>
+    /// <returns>Started, Cancelled, or LockScreenPending.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the delta cannot be prepared.</exception>
-    internal async Task<bool> InstallDeltaAsync(UpdatePlan plan, string deltaZipPath)
+    internal async Task<UpdateLaunchResult> InstallDeltaAsync(
+        UpdatePlan plan,
+        string deltaZipPath,
+        Action<LockScreenRecoveryProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(deltaZipPath))
             throw new FileNotFoundException("Berkas pembaruan tidak ditemukan.", deltaZipPath);
-        if (plan.Needed.Count == 0) return false;
-        if (_isShuttingDown) return false;
-        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return false;
+        if (plan.Needed.Count == 0) return UpdateLaunchResult.Cancelled;
+        if (_isShuttingDown) return UpdateLaunchResult.Cancelled;
+        if (_mainWindow?.ConfirmUnsavedSettingsChanges() == false) return UpdateLaunchResult.Cancelled;
+        if (!await EnsureLockScreenReadyForUpdateAsync(progress, cancellationToken))
+            return UpdateLaunchResult.LockScreenPending;
         _isShuttingDown = true;
-
-        try
-        {
-            if (_lockScreenScheduler is not null)
-            {
-                LockScreenTransactionResult restore = await _lockScreenScheduler.StopAndRestoreAsync();
-                if (restore == LockScreenTransactionResult.PendingVerification)
-                {
-                    _isShuttingDown = false;
-                    _mainWindow?.SetLockScreenStatus(
-                        "Pemulihan lock screen belum terverifikasi; pembaruan ditunda agar tampilan tidak tertinggal.");
-                    throw new InvalidOperationException(
-                        "Pemulihan lock screen belum terverifikasi. Pulihkan atau batalkan pemulihan tertunda, lalu coba lagi.");
-                }
-            }
-        }
-        catch (Exception ex) when (ex is not InvalidOperationException)
-        {
-            await AbortUpdatePreparationAsync().ConfigureAwait(false);
-            AppLogger.Write("update.prepare-delta", ex);
-            throw new InvalidOperationException(
-                "Pembaruan ditunda karena lock screen belum bisa dipulihkan.", ex);
-        }
 
         string executable = Environment.ProcessPath
             ?? throw new InvalidOperationException("Path aplikasi tidak dapat ditentukan.");
@@ -692,7 +849,17 @@ public partial class App : Application
             throw new InvalidOperationException("Pembaruan tidak bisa disiapkan: " + ex.Message, ex);
         }
         ReleaseAndShutdown();
-        return true;
+        return UpdateLaunchResult.Started;
+    }
+
+    /// <summary>Resumes normal lock-screen scheduling after the user cancels a blocked update.</summary>
+    internal async Task ResumeLockScreenAfterUpdateCancelAsync()
+    {
+        if (_isShuttingDown) return;
+        LockScreenImageScheduler? scheduler = _lockScreenScheduler;
+        if (scheduler is null) return;
+        try { await scheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
+        catch (Exception ex) { AppLogger.Write("update.cancel-resume", ex); }
     }
 
     /// <summary>Restores scheduling after a cancelled update preparation.</summary>

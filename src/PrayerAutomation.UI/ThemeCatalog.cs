@@ -1,4 +1,6 @@
 // Built-in theme palettes and calendar theming derived from markers and palettes.
+using System;
+
 namespace PrayerAutomation.UI;
 
 /// <summary>Full set of colors and metrics for one application theme.</summary>
@@ -104,6 +106,22 @@ internal static class ThemeCatalog
         return palette.PrayerColors[index >= 0 && index < palette.PrayerColors.Count ? index : 0];
     }
 
+    /// <summary>Blends two #RRGGBB colors; the second color contributes <paramref name="secondWeight"/>.</summary>
+    private static string BlendHex(string first, string second, double secondWeight)
+    {
+        static int Channel(string hex, int offset) => Convert.ToInt32(hex.Substring(offset, 2), 16);
+        int r = (int)Math.Round(Channel(first, 1) * (1 - secondWeight) + Channel(second, 1) * secondWeight);
+        int g = (int)Math.Round(Channel(first, 3) * (1 - secondWeight) + Channel(second, 3) * secondWeight);
+        int b = (int)Math.Round(Channel(first, 5) * (1 - secondWeight) + Channel(second, 5) * secondWeight);
+        return $"#{r:X2}{g:X2}{b:X2}";
+    }
+
+    /// <summary>Header colors for Saturday and Sunday, derived from the active palette.</summary>
+    /// <param name="palette">Palette to derive colors from.</param>
+    /// <returns>Foreground and background hex colors for weekend day headers.</returns>
+    public static (string Foreground, string Background) WeekendHeaderColors(ThemePalette palette) =>
+        (palette.PrimaryText, BlendHex(palette.SurfaceAlt, palette.MutedText, 0.18));
+
     /// <summary>Resolves the calendar cell colors for a marker against the given palette.</summary>
     /// <param name="palette">Palette to derive colors from.</param>
     /// <param name="marker">Marker visual state of the calendar cell.</param>
@@ -116,9 +134,12 @@ internal static class ThemeCatalog
             : marker.HasSunnahFast ? palette.SuccessText
             : marker.HasReligiousEvent ? palette.NoteText
             : palette.Border;
+        string weekendBackground = BlendHex(palette.Surface, palette.MutedText, 0.12);
+        string weekendBorder = BlendHex(palette.Border, palette.Accent, 0.35);
         string background = marker.IsSelected ? palette.Accent
             : marker.IsToday ? palette.TodayBackground
             : hasObservance ? palette.SurfaceAlt
+            : marker.IsWeekend ? weekendBackground
             : palette.Surface;
         string foreground = marker.IsSelected ? palette.AccentText
             : marker.IsHoliday ? palette.ErrorText
@@ -129,6 +150,7 @@ internal static class ThemeCatalog
             : palette.PrimaryText;
         string border = marker.IsToday || marker.IsSelected ? palette.Accent
             : hasObservance ? categoryColor
+            : marker.IsWeekend ? weekendBorder
             : palette.Border;
         string markerColor = marker.IsSelected ? palette.AccentText : categoryColor;
         return new CalendarThemeColors(background, foreground, border, marker.BorderThickness, markerColor);

@@ -1,8 +1,8 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.3.1
+## Mulai di sini — ringkasan 2.4.0
 
-> **Catatan 2.3.1:** 2.3.0 sudah lolos uji dan tersimpan sebagai commit, tetapi belum dirilis. 2.3.1 menambahkan pembaruan delta zip bertanda tangan untuk portable maupun instalasi, fallback ke installer bila delta tidak tersedia, dan perbaikan otomatis entri startup portable. Tag, rilis GitHub, dan installer baru dibuat setelah rilis 2.3.1 disetujui; rujukan unduhan di bawah masih menyebut artefak publik terakhir 2.2.1.
+> **Catatan 2.4.0:** menambah deteksi/kejujuran kebijakan lock screen, lapisan nama lokasi Indonesia dari GeoNames + poligon Natural Earth, cadangan `config.json` saat Simpan, tombol **Reset pengaturan awal** yang menghapus pengaturan/cadangan sampai seperti instal baru, dan instrumentasi first-open kalender. Rilis publik terakhir tetap v2.3.1. Tag, rilis GitHub, installer, serta artefak pembaruan (receipt/delta) dibuat hanya setelah instruksi; rujukan unduhan di bawah masih menyebut artefak publik terakhir 2.2.1.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
@@ -10,7 +10,7 @@
 - [Paket distribusi lokal](DISTRIBUTION_ID.md): lokasi installer/portable terbaru dan status unsigned.
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
-- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset rilis 2.3.1.
+- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset rilis 2.3.1; artefak 2.4.0 belum dibuat.
 - [Audit repository lokal](REPOSITORY_AUDIT_ID.md): source/history, output build, catatan internal, dan batas pemeriksaan.
 - [Batas pemulihan lock screen](LOCKSCREEN_LIMITATIONS_ID.md): keterbatasan yang belum diselesaikan; bukan panduan bypass keamanan Windows.
 

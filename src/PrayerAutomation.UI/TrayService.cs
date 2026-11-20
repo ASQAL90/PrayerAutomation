@@ -38,6 +38,13 @@ internal sealed class TrayService : IDisposable
         _icon.DoubleClick += (_, _) => Dispatch(() => _app.ShowMainWindow());
     }
 
+    /// <summary>Updates the tray tooltip used by the deferred-update countdown.</summary>
+    /// <param name="text">Tooltip text; long text is truncated to the Windows limit.</param>
+    internal void SetTooltip(string text)
+    {
+        Dispatch(() => _icon.Text = text.Length <= 63 ? text : text[..60] + "…");
+    }
+
     /// <summary>Shows the widget entry only when the feature is on, and labels it by current visibility.</summary>
     private void RefreshWidgetItem()
     {

@@ -10,6 +10,14 @@ internal static class LockScreenStatePaths
 {
     internal const string TemporaryImagePrefix = "PrayerAutomation-LockScreen-Temporary-";
     internal const string RestoreImagePrefix = "PrayerAutomation-Restore-Original-";
+    // Windows keys its derived lock-screen image cache by the source path. A reused
+    // path can keep a stale (or empty) cache slot and render black or an old picture,
+    // so each transaction gets a fresh managed name. The prefix still keeps
+    // ownership checks and orphan cleanup intact.
+    internal static string NewTemporaryImageName(string extension) =>
+        TemporaryImagePrefix + Guid.NewGuid().ToString("N") + extension;
+    internal static string NewRestoreImageName(string extension) =>
+        RestoreImagePrefix + Guid.NewGuid().ToString("N") + extension;
     internal const string JournalFileName = "lock-screen-restore.json";
 
     /// <summary>Default per-user directory used to store lock-screen restore state.</summary>

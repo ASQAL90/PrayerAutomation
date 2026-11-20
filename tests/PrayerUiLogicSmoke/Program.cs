@@ -237,16 +237,22 @@ foreach (object palette in themePalettes)
 DateTime themeToday = new(2026, 10, 19);
 CalendarMarker themeSelection = PrayerUiLogic.CalendarMarkerFor(themeToday.AddDays(1), themeToday, isSelected: true, isHoliday: false);
 CalendarMarker themeHoliday = PrayerUiLogic.CalendarMarkerFor(themeToday.AddDays(2), themeToday, isSelected: false, isHoliday: true);
+CalendarMarker themeWeekend = PrayerUiLogic.CalendarMarkerFor(themeToday.AddDays(5), themeToday, isSelected: false, isHoliday: false);
 string[] themePrayerKeys = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
 foreach (ThemePalette palette in ThemeCatalog.All)
 {
     CalendarThemeColors selectedColors = ThemeCatalog.CalendarColorsFor(palette, themeSelection);
     CalendarThemeColors holidayColors = ThemeCatalog.CalendarColorsFor(palette, themeHoliday);
+    CalendarThemeColors weekendColors = ThemeCatalog.CalendarColorsFor(palette, themeWeekend);
     Assert(selectedColors.Background == palette.Accent && selectedColors.Foreground == palette.AccentText && selectedColors.Border == palette.Accent,
         $"Selected calendar dates must use the active '{palette.Id}' theme accent.");
     Assert(holidayColors.Background == palette.SurfaceAlt && holidayColors.Foreground == palette.ErrorText &&
            holidayColors.Border == palette.ErrorText && holidayColors.Marker == palette.ErrorText,
         $"Holiday calendar markers must use the active '{palette.Id}' theme error palette.");
+    Assert(themeWeekend.IsWeekend && weekendColors.Background != palette.Surface &&
+           weekendColors.Border != palette.Border && weekendColors.Foreground == palette.PrimaryText &&
+           ContrastRatio(weekendColors.Foreground, weekendColors.Background) >= 4.5,
+        $"Weekend calendar cells must use a theme-derived shade with readable text in '{palette.Id}'.");
     for (int index = 0; index < themePrayerKeys.Length; index++)
     {
         Assert(ThemeCatalog.PrayerColor(palette, themePrayerKeys[index]) == palette.PrayerColors[index],
@@ -287,8 +293,8 @@ string[] settingsSections = settingsStack?.Elements().Select(element =>
     .ToArray() ?? [];
 Assert(settingsSections.SequenceEqual(new[]
        {
-           "LocationAndEstimateRow", "CorrectionsRow", "Deteksi lokasi jaringan dan perangkat (GPS)",
-           "Pengingat dan widget", "Tampilan live widget aktual", "Tampilan aplikasi", "Windows dan batas keselamatan"
+           "Estimasi waktu sholat hari ini", "Lokasi dan standar perhitungan", "CorrectionsRow",
+           "Tema, Pengingat dan Tampilan Widget", "Pengaturan tambahan", "Penyimpanan & diagnostik"
        }),
     "Settings sections must be grouped in the requested order.");
 var globalButtonStyle = xaml.Descendants(presentation + "Style")
@@ -298,10 +304,15 @@ Assert(globalButtonStyle?.Elements(presentation + "Setter").Any(element =>
            (string?)element.Attribute("Property") == "Margin" && (string?)element.Attribute("Value") == "4") == true,
     "Standard buttons must retain a visible, consistent margin.");
 
-var locationEstimate = xaml.Descendants(presentation + "Grid")
-    .SingleOrDefault(element => (string?)element.Attribute("Name") == "LocationAndEstimateRow");
-Assert(locationEstimate?.Element(presentation + "Grid.ColumnDefinitions")?.Elements(presentation + "ColumnDefinition").Count() == 2,
-    "Location/calculation controls and today's estimate must be side-by-side.");
+var estimateSection = xaml.Descendants(presentation + "GroupBox")
+    .SingleOrDefault(element => (string?)element.Attribute("Header") == "Estimasi waktu sholat hari ini");
+var locationSection = xaml.Descendants(presentation + "GroupBox")
+    .SingleOrDefault(element => (string?)element.Attribute("Header") == "Lokasi dan standar perhitungan");
+Assert(estimateSection is not null && locationSection is not null &&
+       estimateSection.ElementsBeforeSelf().Contains(locationSection) == false &&
+       locationSection.Element(presentation + "Grid")?.Element(presentation + "Grid.ColumnDefinitions")?
+           .Elements(presentation + "ColumnDefinition").Count() == 2,
+    "Today's estimate and location/calculation controls must stay in separate, ordered sections.");
 var correctionRow = xaml.Descendants(presentation + "Grid")
     .SingleOrDefault(element => (string?)element.Attribute("Name") == "CorrectionsRow");
 Assert(correctionRow?.Element(presentation + "Grid.ColumnDefinitions")?.Elements(presentation + "ColumnDefinition").Count() == 2,
@@ -324,7 +335,7 @@ foreach (string prayerKey in new[] { "Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr",
 }
 foreach ((string editorName, string decreaseName, string increaseName, string decreaseLabel, string increaseLabel) in new[]
          {
-             ("HijriDateCorrectionBox", "HijriDateCorrectionDecreaseButton", "HijriDateCorrectionIncreaseButton", "Kurangi koreksi tanggal Hijriyah", "Tambah koreksi tanggal Hijriyah")
+             ("HijriDateCorrectionBox", "HijriDateCorrectionDecreaseButton", "HijriDateCorrectionIncreaseButton", "Kurangi geser tanggal Hijriyah", "Tambah geser tanggal Hijriyah")
          })
 {
     var editor = xaml.Descendants(presentation + "TextBox").SingleOrDefault(element =>
@@ -437,6 +448,41 @@ Assert(autoLock is not null &&
            .Contains("lima waktu", StringComparison.OrdinalIgnoreCase),
     "Auto-lock must be exposed as a separate, accessible five-prayer opt-in control.");
 
+var lockScreenButtonGrid = xaml.Descendants(presentation + "Grid")
+    .SingleOrDefault(element => element.Elements(presentation + "Button").Count() == 4 &&
+        element.Elements(presentation + "Button").Any(button =>
+            (string?)button.Attribute("Name") == "LockScreenTestNowButton"));
+Assert(lockScreenButtonGrid is not null &&
+       lockScreenButtonGrid.Element(presentation + "Grid.ColumnDefinitions")?
+           .Elements(presentation + "ColumnDefinition").Count() == 2 &&
+       lockScreenButtonGrid.Element(presentation + "Grid.RowDefinitions")?
+           .Elements(presentation + "RowDefinition").Count() == 2,
+    "The four lock-screen actions must share one aligned two-column grid.");
+foreach ((string name, string row, string column) in new[]
+         {
+             ("LockScreenTestNowButton", "0", "0"),
+             ("LockScreenRestoreNowButton", "0", "1"),
+             ("LockScreenCancelRecoveryButton", "1", "0"),
+             ("LockScreenOptOutButton", "1", "1")
+         })
+{
+    var button = lockScreenButtonGrid!.Elements(presentation + "Button").SingleOrDefault(element =>
+        (string?)element.Attribute("Name") == name);
+    Assert(button is not null &&
+           (string?)button.Attribute("Grid.Row") == row &&
+           (string?)button.Attribute("Grid.Column") == column,
+        $"Lock-screen button '{name}' must stay aligned in row {row}, column {column}.");
+}
+var resetButton = xaml.Descendants(presentation + "Button")
+    .SingleOrDefault(element => (string?)element.Attribute("AutomationProperties.AutomationId") == "ResetConfigButton");
+Assert(resetButton is not null &&
+       (string?)resetButton.Attribute("Content") == "Reset pengaturan awal" &&
+       (string?)resetButton.Attribute("Click") == "ResetConfig_Click" &&
+       ((string?)resetButton.Attribute("ToolTip"))?.Contains("nilai awal", StringComparison.Ordinal) == true,
+    "Storage settings must expose a factory reset instead of one-click backup restore.");
+Assert(AppSettings.CreateFreshInstall().UsesKhgtCalendar,
+    "A factory reset must start on the official KHGT calendar like a new installation.");
+
 string codeBehind = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml.cs"));
 Assert(codeBehind.Contains("CorrectionInputBehavior.Attach", StringComparison.Ordinal) &&
        codeBehind.Contains("CorrectionInputBehavior.TryParseCorrection", StringComparison.Ordinal),
@@ -448,6 +494,21 @@ Assert(codeBehind.Contains("AutoLockEnabledCheckBox.IsChecked = _settings.AutoLo
        codeBehind.Contains("candidate.AutoLockEnabled = AutoLockEnabledCheckBox.IsChecked == true", StringComparison.Ordinal) &&
        codeBehind.Contains("destination.AutoLockEnabled = source.AutoLockEnabled", StringComparison.Ordinal),
     "The auto-lock opt-in must load, persist, and copy independently of reminders and lock-screen images.");
+Assert(codeBehind.Contains("private void ResetConfig_Click", StringComparison.Ordinal) &&
+       codeBehind.Contains("SettingsStore.Reset()", StringComparison.Ordinal) &&
+       codeBehind.Contains("settings.reset-factory", StringComparison.Ordinal) &&
+       !codeBehind.Contains("RestoreConfig_Click", StringComparison.Ordinal),
+    "Factory reset must delete saved settings through SettingsStore.Reset and replace the old restore handler.");
+int applyCalendarStart = codeBehind.IndexOf("private void ApplyCalendarSource", StringComparison.Ordinal);
+int themeHandlerStart = codeBehind.IndexOf("private void ThemeBox_SelectionChanged", StringComparison.Ordinal);
+Assert(applyCalendarStart >= 0 && themeHandlerStart > applyCalendarStart,
+    "Calendar-source application must be inspectable between its declaration and the theme handler.");
+string applyCalendarBody = codeBehind[applyCalendarStart..themeHandlerStart];
+int dependentRefreshIndex = applyCalendarBody.IndexOf("_refreshDependentViews()", StringComparison.Ordinal);
+int previewRestoreIndex = applyCalendarBody.IndexOf("_applyThemePreview(SelectedThemeId)", StringComparison.Ordinal);
+Assert(applyCalendarBody.Contains("hadUnsavedChanges", StringComparison.Ordinal) &&
+       dependentRefreshIndex >= 0 && previewRestoreIndex > dependentRefreshIndex,
+    "A calendar-source change must restore the unsaved theme preview after refreshing dependent views.");
 int constructorStart = codeBehind.IndexOf("internal MainWindow(AppSettings settings)", StringComparison.Ordinal);
 int initializeComponent = codeBehind.IndexOf("InitializeComponent();", constructorStart, StringComparison.Ordinal);
 int loadingGuard = codeBehind.IndexOf("_loadingSettings = true;", constructorStart, StringComparison.Ordinal);
@@ -487,8 +548,9 @@ Assert(!xaml.Descendants().Attributes().Any(attribute =>
 Assert(codeBehind.Contains("LockScreenCheckBox.IsChecked = _settings.LockScreenEnabled && _settings.LockScreenOptIn", StringComparison.Ordinal) &&
        codeBehind.Contains("candidate.LockScreenEnabled = lockScreenOptIn", StringComparison.Ordinal) &&
        codeBehind.Contains("candidate.LockScreenOptIn = lockScreenOptIn", StringComparison.Ordinal) &&
-       codeBehind.Contains("LockScreenCheckBox.IsEnabled = safety.CanChangeTemporarily || alreadyEnabled", StringComparison.Ordinal) &&
-       codeBehind.Contains("LockScreenSafetyProbe.Inspect().CanChangeTemporarily", StringComparison.Ordinal),
+       codeBehind.Contains("LockScreenCheckBox.IsEnabled = !safety.ManagedByPolicy && (safety.CanChangeTemporarily || alreadyEnabled)", StringComparison.Ordinal) &&
+       codeBehind.Contains("_inspectLockScreenSafety().CanChangeTemporarily", StringComparison.Ordinal) &&
+       codeBehind.Contains("LockScreenSafetyProbe.Inspect", StringComparison.Ordinal),
     "The explicit lock-screen opt-in must persist only when preflight indicates a safe snapshot and restore path.");
 string lockScreenProbe = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "LockScreenSafetyProbe.cs"));
 Assert(lockScreenProbe.Contains("UserProfilePersonalizationSettings.IsSupported", StringComparison.Ordinal) &&
@@ -654,7 +716,7 @@ Assert(appSource.Split("ThemeManager.Apply(this, Settings.ThemeId)", StringSplit
        codeBehind.Contains("internal void RestoreSavedSettingsPreview()", StringComparison.Ordinal) &&
        codeBehind.Contains("RestoreWidgetAppearancePreview();", StringComparison.Ordinal) &&
        codeBehind.Contains("ThemeBox_SelectionChanged", StringComparison.Ordinal) &&
-       codeBehind.Contains("ApplyThemePreview(themeId)", StringComparison.Ordinal) &&
+       codeBehind.Contains("_applyThemePreview(themeId)", StringComparison.Ordinal) &&
        codeBehind.Contains("RestoreSavedThemePreview();", StringComparison.Ordinal) &&
        appSource.Contains("_widget?.RefreshSchedule()", StringComparison.Ordinal) &&
        codeBehind.Contains("RefreshCalendarViews();", StringComparison.Ordinal),

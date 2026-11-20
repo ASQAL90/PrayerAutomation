@@ -16,7 +16,9 @@ internal partial class UpdateWindow : Window
     private readonly App _app;
     private readonly UpdateService _service = new();
     private UpdateRelease? _release;
+    private UpdatePreparation? _prepared;
     private bool _busy;
+    private bool _waitingForRecovery;
     private CancellationTokenSource? _downloadCts;
 
     /// <summary>Creates the window, optionally showing a release that was already found.</summary>
@@ -27,7 +29,13 @@ internal partial class UpdateWindow : Window
         InitializeComponent();
         _app = app;
         InstalledVersionText.Text = $"Versi terpasang: {AppBranding.VersionLabel}";
-        Closed += (_, _) => _downloadCts?.Cancel();
+        Closed += (_, _) =>
+        {
+            _downloadCts?.Cancel();
+            if (!_waitingForRecovery) return;
+            _waitingForRecovery = false;
+            _ = _app.ResumeLockScreenAfterUpdateCancelAsync();
+        };
         if (info is not null) ShowAvailable(info);
         else Loaded += async (_, _) => await CheckAsync();
     }
@@ -39,7 +47,11 @@ internal partial class UpdateWindow : Window
         _busy = true;
         SetBusy(true);
         _release = null;
+        _prepared = null;
+        _waitingForRecovery = false;
+        RecoveryPanel.Visibility = Visibility.Collapsed;
         InstallButton.Visibility = Visibility.Collapsed;
+        LaterButton.Visibility = Visibility.Collapsed;
         IgnoreButton.Visibility = Visibility.Collapsed;
         DownloadProgress.Visibility = Visibility.Collapsed;
         ProgressText.Text = string.Empty;
@@ -87,16 +99,41 @@ internal partial class UpdateWindow : Window
     private void ShowAvailable(UpdateRelease release)
     {
         _release = release;
+        _prepared = null;
+        _waitingForRecovery = false;
+        RecoveryPanel.Visibility = Visibility.Collapsed;
         bool delta = release.Manifest is not null && release.Signature is not null;
         StatusText.Text = $"Versi {release.Tag} tersedia; Anda memakai {AppBranding.VersionLabel}.\r\n\r\n" +
             (delta
                 ? "Aplikasi akan memeriksa berkas lokal Anda, lalu mengunduh hanya bagian yang berubah. " +
                   "Jika pembaruan kecil tidak tersedia, aplikasi mengunduh versi lengkap."
                 : "Rilis ini belum menyediakan pembaruan kecil, jadi aplikasi akan mengunduh versi lengkap.") +
-            "\r\n\r\nPengaturan, jadwal, dan data Anda tetap disimpan.";
+            "\r\n\r\nPengaturan, jadwal, dan data Anda tetap disimpan." +
+            "\r\n\r\nTekan Nanti saja bila ingin diingatkan lagi setelah pemulihan lock screen selesai.";
         ProgressText.Text = string.Empty;
         InstallButton.Visibility = Visibility.Visible;
+        LaterButton.Visibility = Visibility.Visible;
         IgnoreButton.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Starts installing a release that the reminder popup already confirmed.</summary>
+    internal void BeginInstall()
+    {
+        if (!IsLoaded)
+        {
+            Loaded += OnBeginInstallLoaded;
+            return;
+        }
+        _ = InstallAsync();
+    }
+
+    /// <summary>Runs the confirmed installation after the window finishes loading.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private async void OnBeginInstallLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnBeginInstallLoaded;
+        await InstallAsync();
     }
 
     /// <summary>Downloads, verifies, and installs the smallest available payload.</summary>
@@ -106,6 +143,7 @@ internal partial class UpdateWindow : Window
         _busy = true;
         SetBusy(true);
         InstallButton.IsEnabled = false;
+        LaterButton.IsEnabled = false;
         IgnoreButton.IsEnabled = false;
         DownloadProgress.Visibility = Visibility.Visible;
         DownloadProgress.Value = 0;
@@ -135,19 +173,10 @@ internal partial class UpdateWindow : Window
                 return;
             }
 
+            _prepared = prepared;
             DownloadProgress.Value = 100;
             ProgressText.Text = prepared.Summary;
-            StatusText.Text = prepared.Mode == UpdateInstallMode.Installer
-                ? "Aplikasi ditutup sebentar, lalu pemasang lengkap dijalankan otomatis."
-                : "Aplikasi ditutup sebentar agar berkas bisa diganti. Jangan matikan komputer sampai selesai.";
-            bool started = prepared.Mode == UpdateInstallMode.Installer
-                ? await _app.InstallUpdateAsync(prepared.LocalPath).ConfigureAwait(true)
-                : await _app.InstallDeltaAsync(prepared.Plan!, prepared.LocalPath).ConfigureAwait(true);
-            if (started && IsVisible)
-            {
-                StatusText.Text = "Pembaruan ditunda. Tidak ada berkas yang diubah.";
-                ProgressText.Text = string.Empty;
-            }
+            await LaunchPreparedAsync().ConfigureAwait(true);
         }
         catch (OperationCanceledException) when (_downloadCts?.IsCancellationRequested == true)
         {
@@ -165,12 +194,104 @@ internal partial class UpdateWindow : Window
         }
         finally
         {
-            if (IsVisible)
+            if (!_waitingForRecovery && IsVisible)
             {
                 _busy = false;
                 SetBusy(false);
             }
         }
+    }
+
+    /// <summary>Runs the already-downloaded payload through the lock-screen readiness gate.</summary>
+    private async Task LaunchPreparedAsync()
+    {
+        if (_prepared is null || _downloadCts is null) return;
+        _busy = true;
+        SetBusy(true);
+        InstallButton.IsEnabled = false;
+        LaterButton.IsEnabled = false;
+        IgnoreButton.IsEnabled = false;
+        DownloadProgress.Visibility = Visibility.Collapsed;
+        RetryRecoveryButton.IsEnabled = false;
+        CancelRecoveryButton.IsEnabled = true;
+        StatusText.Text = "Memeriksa kesiapan lock screen sebelum memasang pembaruan…";
+        try
+        {
+            UpdateLaunchResult result = _prepared.Mode == UpdateInstallMode.Installer
+                ? await _app.InstallUpdateAsync(_prepared.LocalPath, ReportRecoveryProgress, _downloadCts.Token)
+                : await _app.InstallDeltaAsync(_prepared.Plan!, _prepared.LocalPath, ReportRecoveryProgress, _downloadCts.Token);
+            if (result == UpdateLaunchResult.LockScreenPending)
+            {
+                ShowRecoveryPrompt();
+                return;
+            }
+            _waitingForRecovery = false;
+            RecoveryPanel.Visibility = Visibility.Collapsed;
+            if (IsVisible)
+            {
+                StatusText.Text = result == UpdateLaunchResult.Started
+                    ? "Pembaruan dimulai. Aplikasi akan ditutup sebentar."
+                    : "Pembaruan dibatalkan. Tidak ada berkas yang diubah.";
+                ProgressText.Text = string.Empty;
+            }
+        }
+        catch (OperationCanceledException) when (_downloadCts.IsCancellationRequested)
+        {
+            _waitingForRecovery = false;
+            if (IsVisible)
+            {
+                StatusText.Text = "Pembaruan dibatalkan. Tidak ada berkas yang diubah.";
+                ProgressText.Text = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            _waitingForRecovery = false;
+            AppLogger.Write("update.install", ex);
+            if (IsVisible)
+            {
+                StatusText.Text = DescribeDownloadFailure(ex);
+                ProgressText.Text = string.Empty;
+            }
+        }
+        finally
+        {
+            if (!_waitingForRecovery && IsVisible)
+            {
+                _busy = false;
+                SetBusy(false);
+            }
+        }
+    }
+
+    /// <summary>Shows a bounded restore countdown; the journal deadline is informational only.</summary>
+    /// <param name="progress">Latest restore wait progress.</param>
+    private void ReportRecoveryProgress(LockScreenRecoveryProgress progress)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => ReportRecoveryProgress(progress));
+            return;
+        }
+        if (!IsVisible) return;
+        RecoveryPanel.Visibility = Visibility.Visible;
+        string schedule = progress.RestoreAtUtc is { } deadline
+            ? $" Jadwal otomatis: {deadline.ToLocalTime():HH:mm}."
+            : string.Empty;
+        RecoveryText.Text = $"Sedang memulihkan gambar lock screen… sisa {progress.RemainingSeconds} detik.{schedule}";
+        ProgressText.Text = string.Empty;
+    }
+
+    /// <summary>Offers another restore attempt after the wait budget expired.</summary>
+    private void ShowRecoveryPrompt()
+    {
+        _waitingForRecovery = true;
+        if (!IsVisible) return;
+        RecoveryPanel.Visibility = Visibility.Visible;
+        RecoveryText.Text = "Pemulihan lock screen belum selesai dalam 60 detik. Pembaruan dibatalkan dan catatan pemulihan " +
+            "dibiarkan utuh. Tekan Pulihkan sekarang untuk mencoba lagi, atau Batal.";
+        RetryRecoveryButton.IsEnabled = true;
+        CancelRecoveryButton.IsEnabled = true;
     }
 
     /// <summary>Enables or disables the action buttons while work is in progress.</summary>
@@ -179,6 +300,7 @@ internal partial class UpdateWindow : Window
     {
         CheckAgainButton.IsEnabled = !busy;
         InstallButton.IsEnabled = !busy;
+        LaterButton.IsEnabled = !busy;
         IgnoreButton.IsEnabled = !busy;
     }
 
@@ -223,6 +345,40 @@ internal partial class UpdateWindow : Window
     /// <param name="sender">Event source.</param>
     /// <param name="e">Event arguments.</param>
     private async void OnInstallClick(object sender, RoutedEventArgs e) => await InstallAsync();
+
+    /// <summary>Retries the restore with the same downloaded payload.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private async void OnRetryRecoveryClick(object sender, RoutedEventArgs e)
+    {
+        if (_prepared is null) return;
+        _waitingForRecovery = false;
+        await LaunchPreparedAsync();
+    }
+
+    /// <summary>Closes the window without changing installed files or the restore journal.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private async void OnCancelRecoveryClick(object sender, RoutedEventArgs e)
+    {
+        bool needsResume = _waitingForRecovery;
+        _waitingForRecovery = false;
+        _prepared = null;
+        RecoveryPanel.Visibility = Visibility.Collapsed;
+        _downloadCts?.Cancel();
+        if (needsResume) await _app.ResumeLockScreenAfterUpdateCancelAsync();
+        Close();
+    }
+
+    /// <summary>Closes the window and starts the tray countdown until lock-screen recovery finishes.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void OnLaterClick(object sender, RoutedEventArgs e)
+    {
+        if (_release is null) return;
+        _app.SnoozeUpdate(_release);
+        Close();
+    }
 
     /// <summary>Remembers the release as ignored and closes the window.</summary>
     /// <param name="sender">Event source.</param>

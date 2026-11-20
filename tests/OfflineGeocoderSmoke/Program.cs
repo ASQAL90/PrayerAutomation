@@ -10,6 +10,9 @@ static void Require(bool condition, string message)
         throw new InvalidOperationException(message);
 }
 
+static OfflineLocationResult? Lookup(double latitude, double longitude) =>
+    OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude);
+
 string cities = string.Join(Environment.NewLine, new[]
 {
     string.Join('\t', new[] { "Near Town", "Sample State", "Sample Country", "10.01", "20.01", "ZZ", "640" }),
@@ -25,11 +28,58 @@ Require(result.ElevationMeters == 640, "the optional DEM column should surface a
 OfflineLocationSuggestion[] suggestions = geocoder.Search("Near").ToArray();
 Require(suggestions.Length == 1 && suggestions[0].ElevationMeters == 640, "search suggestions should keep the height");
 Console.WriteLine("PASS: offline nearest-city selection, locality formatting, and elevation.");
-OfflineLocationResult? jakarta = OfflineReverseGeocoder.Bundled.FindNearest(-6.21462, 106.84513);
-Require(jakarta is not null && jakarta.CityName == "Jakarta", "the bundled GeoNames data should resolve Jakarta offline");
-Require(jakarta!.DisplayName.Contains("Indonesia", StringComparison.Ordinal), "the bundled dataset should supply a country label");
+OfflineLocationResult? cicendo = Lookup(-6.91139, 107.60528);
+Require(cicendo is not null && cicendo.IsIndonesiaLayer, "Cicendo should use the detailed Indonesian layer");
+Require(cicendo!.DisplayName == "Cicendo, Kota Bandung, Jawa Barat, Indonesia",
+    "the Indonesian layer should use Indonesian regency and province names");
+Require(cicendo.ElevationMeters == 720, "the Indonesian layer should keep its DEM height");
+
+OfflineLocationResult? jakarta = Lookup(-6.21462, 106.84513);
+Require(jakarta is not null && jakarta.CityName == "Jakarta" && jakarta.IsIndonesiaLayer,
+    "the bundled Indonesian layer should resolve Jakarta offline");
+Require(jakarta!.DisplayName == "Jakarta, Daerah Khusus Ibukota Jakarta, Indonesia",
+    "Jakarta's display name should use the Indonesian province label");
 Require(jakarta.ElevationMeters == 16, "the bundled dataset should carry the Jakarta DEM height");
-Console.WriteLine("PASS: bundled GeoNames data resolves Jakarta and its elevation without network access.");
+Console.WriteLine("PASS: bundled GeoNames data resolves Indonesian localities, provinces, and elevation offline.");
+
+foreach (var point in new[]
+{
+    (Latitude: -9.10611, Longitude: 124.8925, Province: "Nusa Tenggara Timur"),
+    (Latitude: 3.9384, Longitude: 108.38401, Province: "Kepulauan Riau"),
+    (Latitude: 4.09, Longitude: 117.81, Province: "Kalimantan Utara"),
+    (Latitude: 3.61099, Longitude: 125.4858, Province: "Sulawesi Utara")
+})
+{
+    OfflineLocationResult? border = Lookup(point.Latitude, point.Longitude);
+    Require(border is not null && border.IsIndonesiaLayer && border.CountryName == "Indonesia" &&
+            border.RegionName == point.Province,
+        $"Indonesian border point {point.Latitude},{point.Longitude} should stay on the Indonesian layer");
+}
+
+OfflineLocationResult? makkah = Lookup(21.4225, 39.8262);
+Require(makkah is not null && makkah.CountryName == "Arab Saudi" && !makkah.IsIndonesiaLayer,
+    "global country names should be translated to Indonesian");
+OfflineLocationResult? amsterdam = Lookup(52.374, 4.88969);
+Require(amsterdam is not null && amsterdam.CountryName == "Belanda",
+    "the Netherlands should be translated to Indonesian");
+OfflineLocationResult? sarawak = Lookup(1.55, 110.35);
+Require(sarawak is not null && sarawak.CountryName == "Malaysia" && !sarawak.IsIndonesiaLayer,
+    "Sarawak must not be labelled Indonesia");
+OfflineLocationResult? dili = Lookup(-8.56, 125.57);
+Require(dili is not null && dili.CountryName == "Timor-Leste",
+    "Dili must be labelled Timor-Leste");
+OfflineLocationResult? singapore = Lookup(1.35, 103.85);
+Require(singapore is not null && singapore.CountryName == "Singapura",
+    "Singapore must use the Indonesian country label");
+OfflineLocationResult? papuaNewGuinea = Lookup(-2.6, 141.0);
+Require(papuaNewGuinea is not null && papuaNewGuinea.CountryCode != "ID" &&
+        papuaNewGuinea.DisplayName.Contains("Papua New Guinea", StringComparison.Ordinal),
+    "a point across the Papua border must not borrow the nearest Indonesian city name");
+OfflineLocationResult? sebatikMalaysia = Lookup(4.25, 117.75);
+Require(sebatikMalaysia is not null && sebatikMalaysia.CountryName == "Malaysia",
+    "the Malaysian side of Sebatik must stay Malaysia");
+Require(Lookup(-20.0, 80.0) is null, "the middle of the Indian Ocean should have no settlement label");
+Console.WriteLine("PASS: border points, translated countries, and out-of-range coordinates are handled honestly.");
 
 var handler = new RecordingHandler("""
     {"licence":"Data © OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright","address":{"city":"Sample City","state":"Sample State","country":"Sample Country","road":"Private Road","house_number":"17"},"display_name":"17, Private Road, Sample City, Sample State, Sample Country"}
