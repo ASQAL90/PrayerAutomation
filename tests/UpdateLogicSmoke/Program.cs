@@ -78,4 +78,54 @@ finally
 await UpdateRecoveryPolicySmoke.VerifyAllAsync();
 UpdateReminderPolicySmoke.Verify();
 
+// Recovery progress runs after ConfigureAwait(false), so a DispatcherObject must
+// never be asked for its Dispatcher from that worker thread: the getter itself
+// calls VerifyAccess and throws "different thread owns it".
+string updateWindowSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateWindow.xaml.cs"));
+string appSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "App.xaml.cs"));
+string mainWindowSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MainWindow.xaml.cs"));
+string traySource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TrayService.cs"));
+Check(updateWindowSource.Contains("_uiDispatcher = Dispatcher", StringComparison.Ordinal) &&
+      updateWindowSource.Contains("if (!_uiDispatcher.CheckAccess())", StringComparison.Ordinal) &&
+      !updateWindowSource.Contains("!Dispatcher.CheckAccess()", StringComparison.Ordinal) &&
+      !updateWindowSource.Contains("if (!_waitingForRecovery && IsVisible)", StringComparison.Ordinal),
+    "UpdateWindow harus memakai Dispatcher UI dan mengaktifkan kembali tombol setelah gagal.");
+Check(mainWindowSource.Contains("_uiDispatcher = Dispatcher", StringComparison.Ordinal) &&
+      mainWindowSource.Contains("if (!_uiDispatcher.CheckAccess())", StringComparison.Ordinal) &&
+      !mainWindowSource.Contains("!Dispatcher.CheckAccess()", StringComparison.Ordinal),
+    "Status setter MainWindow harus memakai Dispatcher yang ditangkap di thread UI.");
+Check(traySource.Contains("_uiDispatcher = WpfApplication.Current.Dispatcher", StringComparison.Ordinal) &&
+      !traySource.Contains("WpfApplication.Current.Dispatcher.CheckAccess()", StringComparison.Ordinal),
+    "TrayService tidak boleh membaca Dispatcher Application.Current dari thread latar.");
+Check(appSource.Contains("Dispatcher ui = Dispatcher;", StringComparison.Ordinal) &&
+      appSource.Contains("ui.BeginInvoke(() => ShowUpdateWindow(release))", StringComparison.Ordinal) &&
+      !appSource.Contains("_ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(release))", StringComparison.Ordinal),
+    "Auto-check harus memakai Dispatcher yang ditangkap sebelum ConfigureAwait(false).");
+int deltaStart = appSource.IndexOf("internal async Task<UpdateLaunchResult> InstallDeltaAsync", StringComparison.Ordinal);
+int deltaEnd = appSource.IndexOf("/// <summary>Resumes normal lock-screen scheduling", StringComparison.Ordinal);
+Check(deltaStart >= 0 && deltaEnd > deltaStart &&
+      !System.Text.RegularExpressions.Regex.IsMatch(
+          appSource[deltaStart..deltaEnd],
+          @"ComputeSha256Async\(source[^\n]*\n\s*\.ConfigureAwait\(false\)"),
+    "InstallDeltaAsync harus tetap di thread UI sampai ReleaseAndShutdown memakai jendela dan tray.");
+int abortStart = appSource.IndexOf("private async Task AbortUpdatePreparationAsync", StringComparison.Ordinal);
+Check(abortStart >= 0 &&
+      !appSource[abortStart..].Contains("ResumeSchedulingAsync(DateTimeOffset.UtcNow).ConfigureAwait(false)", StringComparison.Ordinal),
+    "Pemulihan jadwal setelah update gagal harus di thread UI agar DispatcherTimer tidak terikat thread keliru.");
+int showStart = appSource.IndexOf("internal void ShowMainWindow()", StringComparison.Ordinal);
+int showEnd = appSource.IndexOf("/// <summary>Shows the main window and selects the calendar tab", StringComparison.Ordinal);
+Check(showStart >= 0 && showEnd > showStart &&
+      appSource[showStart..showEnd].Contains("_mainWindow ??= CreateMainWindow()", StringComparison.Ordinal) &&
+      appSource.Contains("private MainWindow CreateMainWindow()", StringComparison.Ordinal),
+    "ShowMainWindow harus membuat ulang jendela utama yang sudah ditutup, bukan Show() pada window closed.");
+int releaseStart = appSource.IndexOf("private void ReleaseAndShutdown()", StringComparison.Ordinal);
+int releaseEnd = appSource.IndexOf("/// <summary>Releases taskbar panel", StringComparison.Ordinal);
+string releaseSource = releaseStart >= 0 && releaseEnd > releaseStart
+    ? appSource[releaseStart..releaseEnd]
+    : string.Empty;
+Check(System.Text.RegularExpressions.Regex.IsMatch(releaseSource, @"finally\s*\{\s*Shutdown\(\);"),
+    "ReleaseAndShutdown harus tetap memanggil Shutdown walau satu langkah cleanup gagal.");
+Check(traySource.Contains("catch (Exception ex) { AppLogger.Write(\"tray.action\", ex); }", StringComparison.Ordinal),
+    "Aksi tray tidak boleh melempar dialog unhandled ke pengguna.");
+
 Console.WriteLine("UpdateLogicSmoke: PASS");

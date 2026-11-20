@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace PrayerAutomation.UI;
@@ -14,6 +15,9 @@ namespace PrayerAutomation.UI;
 internal partial class UpdateWindow : Window
 {
     private readonly App _app;
+    // Captured on the UI thread: reading Dispatcher from a worker thread calls
+    // VerifyAccess and throws "different thread owns it".
+    private readonly Dispatcher _uiDispatcher;
     private readonly UpdateService _service = new();
     private UpdateRelease? _release;
     private UpdatePreparation? _prepared;
@@ -28,6 +32,7 @@ internal partial class UpdateWindow : Window
     {
         InitializeComponent();
         _app = app;
+        _uiDispatcher = Dispatcher;
         InstalledVersionText.Text = $"Versi terpasang: {AppBranding.VersionLabel}";
         Closed += (_, _) =>
         {
@@ -194,7 +199,7 @@ internal partial class UpdateWindow : Window
         }
         finally
         {
-            if (!_waitingForRecovery && IsVisible)
+            if (!_waitingForRecovery)
             {
                 _busy = false;
                 SetBusy(false);
@@ -256,7 +261,7 @@ internal partial class UpdateWindow : Window
         }
         finally
         {
-            if (!_waitingForRecovery && IsVisible)
+            if (!_waitingForRecovery)
             {
                 _busy = false;
                 SetBusy(false);
@@ -268,9 +273,9 @@ internal partial class UpdateWindow : Window
     /// <param name="progress">Latest restore wait progress.</param>
     private void ReportRecoveryProgress(LockScreenRecoveryProgress progress)
     {
-        if (!Dispatcher.CheckAccess())
+        if (!_uiDispatcher.CheckAccess())
         {
-            Dispatcher.Invoke(() => ReportRecoveryProgress(progress));
+            _uiDispatcher.Invoke(() => ReportRecoveryProgress(progress));
             return;
         }
         if (!IsVisible) return;

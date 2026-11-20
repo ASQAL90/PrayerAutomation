@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     ];
 
     private readonly AppSettings _settings;
+    // Captured on the UI thread; status setters are also called from restore retries.
+    private readonly Dispatcher _uiDispatcher;
     private readonly Action<AppSettings> _saveSettings;
     private readonly Action<string, Exception> _logSettingsError;
     private readonly Action<bool, bool> _setStartupEnabled;
@@ -134,6 +136,7 @@ public partial class MainWindow : Window
         Func<LockScreenSafetyInfo>? inspectLockScreenSafety, Action<string, Exception>? logSettingsError)
     {
         _settings = settings;
+        _uiDispatcher = Dispatcher;
         _logSettingsError = logSettingsError ?? AppLogger.Write;
         _promptUnsavedChanges = ShowUnsavedChangesDialog;
         _saveSettings = saveSettings ?? throw new ArgumentNullException(nameof(saveSettings));
@@ -1775,9 +1778,9 @@ public partial class MainWindow : Window
     /// <param name="message">Status message to display.</param>
     internal void SetStorageStatus(string message)
     {
-        if (!Dispatcher.CheckAccess())
+        if (!_uiDispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(() => SetStorageStatus(message));
+            _uiDispatcher.BeginInvoke(() => SetStorageStatus(message));
             return;
         }
         StorageStatusText.Text = message;
@@ -1787,9 +1790,9 @@ public partial class MainWindow : Window
     /// <param name="message">Status message to display.</param>
     internal void SetLockScreenStatus(string message)
     {
-        if (!Dispatcher.CheckAccess())
+        if (!_uiDispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(() => SetLockScreenStatus(message));
+            _uiDispatcher.BeginInvoke(() => SetLockScreenStatus(message));
             return;
         }
         RefreshLockScreenSafety(message);

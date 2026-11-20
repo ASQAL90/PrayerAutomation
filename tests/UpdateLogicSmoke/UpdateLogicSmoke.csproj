@@ -13,5 +13,9 @@
     <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageWorkflow.cs" Link="LockScreenImageWorkflow.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateRecoveryPolicy.cs" Link="UpdateRecoveryPolicy.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateReminderPolicy.cs" Link="UpdateReminderPolicy.cs" />
+    <None Include="../../src/PrayerAutomation.UI/UpdateWindow.xaml.cs" Link="UpdateWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/TrayService.cs" Link="TrayService.cs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

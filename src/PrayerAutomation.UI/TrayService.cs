@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
 
 namespace PrayerAutomation.UI;
@@ -12,6 +13,8 @@ internal sealed class TrayService : IDisposable
     private readonly NotifyIcon _icon;
     private readonly ToolStripMenuItem _widgetItem;
     private readonly App _app;
+    // Captured on the UI thread; menu and update-reminder callbacks may run elsewhere.
+    private readonly Dispatcher _uiDispatcher;
     private readonly AboutPopupController _about = new();
 
     /// <summary>Creates the tray icon, loads the application icon, and wires menu actions.</summary>
@@ -19,6 +22,7 @@ internal sealed class TrayService : IDisposable
     public TrayService(App app)
     {
         _app = app;
+        _uiDispatcher = WpfApplication.Current.Dispatcher;
         string iconPath = Path.Combine(AppContext.BaseDirectory, "AyoJamaah.ico");
         Icon icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
         var menu = new ContextMenuStrip();
@@ -56,10 +60,15 @@ internal sealed class TrayService : IDisposable
 
     /// <summary>Runs an action on the WPF dispatcher, marshaling to it when called off the UI thread.</summary>
     /// <param name="action">Action to execute on the UI thread.</param>
-    private static void Dispatch(Action action)
+    private void Dispatch(Action action)
     {
-        if (WpfApplication.Current.Dispatcher.CheckAccess()) action();
-        else WpfApplication.Current.Dispatcher.BeginInvoke(action);
+        void Run()
+        {
+            try { action(); }
+            catch (Exception ex) { AppLogger.Write("tray.action", ex); }
+        }
+        if (_uiDispatcher.CheckAccess()) Run();
+        else _uiDispatcher.BeginInvoke(Run);
     }
 
     /// <summary>Closes the about popup and removes and disposes the tray icon.</summary>

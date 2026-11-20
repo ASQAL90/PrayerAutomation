@@ -85,11 +85,7 @@ public partial class App : Application
         ThemeManager.Apply(this, Settings.ThemeId);
         _widgetSettingEnabled = Settings.WidgetEnabled;
         _tray = new TrayService(this);
-        _mainWindow = new MainWindow(Settings);
-        string? updateFailure = UpdateApplier.FindLastFailure();
-        if (updateFailure is not null)
-            _mainWindow.SetStorageStatus("Pembaruan terakhir gagal dan sudah dikembalikan: " + updateFailure + ".");
-        MainWindow = _mainWindow;
+        _mainWindow = CreateMainWindow();
         if (!StartupRegistration.ShouldStartHidden(e.Args, Settings.StartHidden))
             _mainWindow.Show();
         _reminders = new ReminderScheduler(Settings);
@@ -153,17 +149,36 @@ public partial class App : Application
         if (Settings.WidgetEnabled && _widget is null) ShowWidget();
     }
 
-    /// <summary>Shows, restores, and activates the main window.</summary>
+    /// <summary>Creates the main window and tracks its closure so a tray action can recreate it.</summary>
+    /// <returns>The new main window.</returns>
+    private MainWindow CreateMainWindow()
+    {
+        var window = new MainWindow(Settings);
+        string? updateFailure = UpdateApplier.FindLastFailure();
+        if (updateFailure is not null)
+            window.SetStorageStatus("Pembaruan terakhir gagal dan sudah dikembalikan: " + updateFailure + ".");
+        window.Closed += (_, _) =>
+        {
+            // WPF forbids Show() on a closed Window; drop the reference instead.
+            if (ReferenceEquals(_mainWindow, window)) _mainWindow = null;
+            if (ReferenceEquals(MainWindow, window)) MainWindow = null;
+        };
+        MainWindow = window;
+        return window;
+    }
+
+    /// <summary>Shows, restores, and activates the main window, recreating it after a real close.</summary>
     internal void ShowMainWindow()
     {
-        if (_mainWindow is null) return;
-        if (!_mainWindow.IsVisible)
+        if (_isShuttingDown) return;
+        MainWindow? window = _mainWindow ??= CreateMainWindow();
+        if (!window.IsVisible)
         {
-            _mainWindow.RestoreSavedSettingsPreview();
-            _mainWindow.Show();
+            window.RestoreSavedSettingsPreview();
+            window.Show();
         }
-        if (_mainWindow.WindowState == WindowState.Minimized) _mainWindow.WindowState = WindowState.Normal;
-        _mainWindow.Activate();
+        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        window.Activate();
     }
 
     /// <summary>Shows the main window and selects the calendar tab.</summary>
@@ -396,19 +411,32 @@ public partial class App : Application
     /// <summary>Releases windows, tray, schedulers, and the single-instance mutex, then exits.</summary>
     private void ReleaseAndShutdown()
     {
-        SystemEvents.SessionSwitch -= OnSessionSwitch;
-        _updateReminderTimer?.Stop();
-        _lockScreenScheduler?.Dispose();
-        _mainWindow?.AllowClose();
-        _widget?.Close();
-        _taskbarPanel?.Dispose();
-        _taskbarPanel = null;
-        _taskbarWidget?.ClosePermanently();
-        _taskbarWidget = null;
-        _tray?.Dispose();
-        _reminders?.Dispose();
-        _autoLock?.Dispose();
-        Shutdown();
+        try
+        {
+            // Allow the real close first: Shutdown() must not be blocked by a
+            // later cleanup failure leaving the window in hide-to-tray mode.
+            _mainWindow?.AllowClose();
+            SystemEvents.SessionSwitch -= OnSessionSwitch;
+            _updateReminderTimer?.Stop();
+            _lockScreenScheduler?.Dispose();
+            _widget?.Close();
+            _taskbarPanel?.Dispose();
+            _taskbarPanel = null;
+            _taskbarWidget?.ClosePermanently();
+            _taskbarWidget = null;
+            _tray?.Dispose();
+            _reminders?.Dispose();
+            _autoLock?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            // A cleanup failure must not leave a half-shut app whose window can no longer be shown.
+            AppLogger.Write("app.shutdown-cleanup", ex);
+        }
+        finally
+        {
+            Shutdown();
+        }
     }
 
     /// <summary>Releases taskbar panel, tray, schedulers, lock-screen scheduler, and the single-instance mutex on exit.</summary>
@@ -572,6 +600,9 @@ public partial class App : Application
     internal async Task AutoCheckForUpdatesAsync()
     {
         if (_isShuttingDown) return;
+        // Capture before ConfigureAwait(false): the Dispatcher getter itself
+        // calls VerifyAccess and throws when read from the worker thread.
+        Dispatcher ui = Dispatcher;
         try
         {
             bool installed = StartupRegistration.IsInstalledPath(
@@ -579,7 +610,7 @@ public partial class App : Application
             UpdateRelease? release = await new UpdateService()
                 .CheckAsync(AppBranding.Version, installed, CancellationToken.None).ConfigureAwait(false);
             if (release is null || release.Tag == Settings.IgnoredUpdateVersion || _isShuttingDown) return;
-            _ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(release));
+            _ = ui.BeginInvoke(() => ShowUpdateWindow(release));
         }
         catch (Exception ex)
         {
@@ -768,6 +799,7 @@ public partial class App : Application
     /// <param name="progress">Optional lock-screen restore progress callback.</param>
     /// <param name="cancellationToken">Cancels the restore wait when the update window closes.</param>
     /// <returns>Started, Cancelled, or LockScreenPending.</returns>
+    /// <remarks>Staging must stay on the UI thread: ReleaseAndShutdown touches windows and the tray.</remarks>
     /// <exception cref="InvalidOperationException">Thrown when the delta cannot be prepared.</exception>
     internal async Task<UpdateLaunchResult> InstallDeltaAsync(
         UpdatePlan plan,
@@ -799,8 +831,8 @@ public partial class App : Application
             {
                 string source = Path.Combine(stage, file.Path.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(source) || new FileInfo(source).Length != file.Size ||
-                    !string.Equals(await UpdatePlanner.ComputeSha256Async(source, CancellationToken.None)
-                            .ConfigureAwait(false), file.Sha256, StringComparison.OrdinalIgnoreCase))
+                    !string.Equals(await UpdatePlanner.ComputeSha256Async(source, CancellationToken.None),
+                        file.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Isi pembaruan tidak lolos pemeriksaan keutuhan.");
             }
 
@@ -867,7 +899,8 @@ public partial class App : Application
     {
         _isShuttingDown = false;
         if (_lockScreenScheduler is null) return;
-        try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow).ConfigureAwait(false); }
+        // Keep the resume on the UI thread; the scheduler recreates its DispatcherTimer there.
+        try { await _lockScreenScheduler.ResumeSchedulingAsync(DateTimeOffset.UtcNow); }
         catch (Exception ex) { AppLogger.Write("update.prepare-resume", ex); }
     }
 
