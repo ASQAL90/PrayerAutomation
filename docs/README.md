@@ -2,15 +2,15 @@
 
 ## Mulai di sini — ringkasan 2.4.0
 
-> **Catatan 2.4.0:** menambah deteksi/kejujuran kebijakan lock screen, lapisan nama lokasi Indonesia dari GeoNames + poligon Natural Earth, cadangan `config.json` saat Simpan, tombol **Reset pengaturan awal** yang menghapus pengaturan/cadangan sampai seperti instal baru, dan instrumentasi first-open kalender. Rilis publik terakhir tetap v2.3.1. Tag, rilis GitHub, installer, serta artefak pembaruan (receipt/delta) dibuat hanya setelah instruksi; rujukan unduhan di bawah masih menyebut artefak publik terakhir 2.2.1.
+> **Catatan 2.4.0:** menambah deteksi/kejujuran kebijakan lock screen, lapisan nama lokasi Indonesia dari GeoNames + poligon Natural Earth, cadangan `config.json` saat Simpan, tombol **Reset pengaturan awal** yang menghapus pengaturan/cadangan sampai seperti instal baru, dan instrumentasi first-open kalender. **Rilis publik v2.4.0 sudah dipublish** dari tag `v2.4.0` dengan installer, portable x64/x86, checksum, dan aset pembaruan delta bertanda tangan; lihat [GitHub Release](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.0). Tautan unduhan di README root sudah memakai 2.4.0; angka 2.2.1/2.3.1 di dokumen lain adalah riwayat.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
 - [Penghargaan dan asal source](SOURCE_ORIGINS_ID.md): referensi teknis dan algoritma lintas bahasa yang dipakai source sekarang.
-- [Paket distribusi lokal](DISTRIBUTION_ID.md): lokasi installer/portable terbaru dan status unsigned.
+- [Paket distribusi lokal](DISTRIBUTION_ID.md): riwayat paket lokal dan status unsigned; unduhan terbaru memakai aset rilis v2.4.0.
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
-- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset rilis 2.3.1; artefak 2.4.0 belum dibuat.
+- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset pembaruan rilis 2.4.0.
 - [Audit repository lokal](REPOSITORY_AUDIT_ID.md): source/history, output build, catatan internal, dan batas pemeriksaan.
 - [Batas pemulihan lock screen](LOCKSCREEN_LIMITATIONS_ID.md): keterbatasan yang belum diselesaikan; bukan panduan bypass keamanan Windows.
 
@@ -19,7 +19,7 @@
 Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.2.1**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): jalur NSIS 2.2.1.
+- [Installer](INSTALLER_ID.md): jalur NSIS; snapshot lokal 2.2.1, rilis terbaru 2.4.0 dibangun CI.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.

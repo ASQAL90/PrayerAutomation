@@ -1,6 +1,6 @@
 # Distribusi lokal — Ayo Jama'ah!
 
-> **Status 2.2.1:** portable 2.2.1 sudah dipublish di luar repo (x64 482 file, x86 481 file). Installer 2.2.1 sekarang dibangun dengan **NSIS** (`installer/build_installer_nsis.py`) sehingga compile dan validasi payload dapat dilakukan di perangkat ini; output default `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.1.exe`. Uji install/upgrade/uninstall dan verifikasi visual tetap harus di Windows. Artefak 2.1.0 di bawah adalah paket lokal terakhir yang sudah tersedia sebelumnya.
+> **Status 2.4.0:** rilis publik [v2.4.0](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.0) sudah dipublish dari tag `v2.4.0`; asetnya (installer NSIS dual-arch, portable x64/x86, `SHA256SUMS.txt`, dan manifest/delta pembaruan bertanda tangan) dibangun oleh workflow `Release` di GitHub Actions. Uji install/upgrade/uninstall dan verifikasi visual tetap wajib di Windows. Catatan 2.2.1/2.1.0 di bawah adalah riwayat paket lokal, bukan rujukan unduhan terbaru.
 
 Paket di bawah disiapkan lokal untuk pemeriksaan pengguna. **Unsigned: signing belum selesai.** CompanyName/AppPublisher `Ayo Jama'ah!` hanya metadata, bukan publisher Authenticode terverifikasi. SmartScreen/Smart App Control masih dapat memperingatkan atau memblokir. Tidak ada pemasangan sertifikat self-signed, pengecualian Defender, atau perubahan trust Windows.
 
@@ -11,7 +11,7 @@ Paket di bawah disiapkan lokal untuk pemeriksaan pengguna. **Unsigned: signing b
 - Portable hasil ekstrak: `dist/portable/AyoJamaah.Portable-win-x64-2.1.0-unsigned/`.
 - Checksum SHA256 masing-masing tersedia sebagai file `.sha256` di samping EXE/ZIP.
 
-Folder `/dist/` diabaikan Git agar runtime dan installer tidak ikut tercampur ke source. Tidak ada commit, push, integrasi GitHub atau tautan unduhan publik dari pekerjaan ini. Paket terdahulu dipertahankan sebagai baseline dan tidak ditimpa.
+Folder `/dist/` diabaikan Git agar runtime dan installer tidak ikut tercampur ke source. Catatan lokal ini bukan tautan unduhan; rilis publik memakai aset GitHub Release v2.4.0. Paket terdahulu dipertahankan sebagai baseline dan tidak ditimpa.
 
 ## Isi dan batas
 

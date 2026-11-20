@@ -1,4 +1,4 @@
-# Penandatanganan pembaruan 2.3.1
+# Penandatanganan pembaruan 2.4.0
 
 Pembaruan delta memakai manifest JSON kecil yang ditandatangani dengan RSA-SHA256. Aplikasi menyimpan **public key** di `src/PrayerAutomation.UI/UpdateManifest.cs`; private key tidak pernah ikut dikirim.
 
@@ -29,6 +29,6 @@ Tiap rilis dengan dukungan delta mengunggah, per arsitektur:
 - `AyoJamaah-update-<versi>-<arch>.sig` — tanda tangan base64 atas **byte persis** file manifest.
 - `AyoJamaah-delta-<versi>-<arch>.zip` — hanya berkas yang berubah sejak baseline.
 
-Baseline 2.3.0 disimpan sebagai `installer/update/baseline-2.3.0-<arch>.json`, sehingga CI tidak perlu mengunduh zip lama. Jika secret tidak diisi atau manifest gagal diverifikasi, aplikasi jatuh ke zip penuh (portable) atau installer NSIS (instalasi).
+Baseline 2.3.0 disimpan sebagai `installer/update/baseline-2.3.0-<arch>.json`, sehingga CI tidak perlu mengunduh zip lama. Jika secret tidak diisi atau manifest gagal diverifikasi, aplikasi jatuh ke zip penuh (portable) atau installer NSIS (instalasi). Rilis v2.4.0 sudah mengunggah manifest, `.sig`, dan delta untuk kedua arsitektur memakai baseline 2.3.0 serta kunci yang sama dengan `PublicKeyBase64` di `UpdateManifest.cs`.
 
-Workflow `Release` hanya mempublikasikan rilis bila dijalankan dari tag `v2.3.1`, bukan dari cabang `master`.
+Workflow `Release` mempublikasikan rilis bila dijalankan dari tag `v*`; v2.4.0 dipublish dari tag `v2.4.0`, bukan dari cabang `master`.
