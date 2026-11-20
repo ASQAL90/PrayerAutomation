@@ -1,16 +1,16 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.4.1
+## Mulai di sini — ringkasan 2.4.2
 
-> **Catatan 2.4.1:** hotfix untuk kegagalan update 2.4.0. Dispatcher WPF kini ditangkap di thread UI sebelum callback pemulihan, auto-check, status jendela, dan aksi tray; `InstallDeltaAsync` tetap di thread UI sampai `ReleaseAndShutdown`; shutdown selalu selesai lewat `finally`; dan jendela utama dibuat ulang bila tray membukanya setelah tertutup. **Rilis publik v2.4.1** dibangun dari tag `v2.4.1` dengan aset yang sama seperti 2.4.0: installer, portable x64/x86, checksum, serta manifest/delta pembaruan bertanda tangan. Tautan unduhan di README root memakai 2.4.1; angka 2.2.1/2.3.1/2.4.0 di dokumen lain adalah riwayat.
+> **Catatan 2.4.2:** ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1 di dokumen lain adalah riwayat.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
 - [Penghargaan dan asal source](SOURCE_ORIGINS_ID.md): referensi teknis dan algoritma lintas bahasa yang dipakai source sekarang.
-- [Paket distribusi lokal](DISTRIBUTION_ID.md): riwayat paket lokal dan status unsigned; unduhan terbaru memakai aset rilis v2.4.1.
+- [Paket distribusi lokal](DISTRIBUTION_ID.md): riwayat paket lokal dan status unsigned; unduhan terbaru memakai aset rilis v2.4.2.
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
-- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset pembaruan rilis 2.4.1.
+- [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset pembaruan rilis 2.4.2.
 - [Audit repository lokal](REPOSITORY_AUDIT_ID.md): source/history, output build, catatan internal, dan batas pemeriksaan.
 - [Batas pemulihan lock screen](LOCKSCREEN_LIMITATIONS_ID.md): keterbatasan yang belum diselesaikan; bukan panduan bypass keamanan Windows.
 
@@ -19,7 +19,7 @@
 Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.2.1**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): jalur NSIS; snapshot lokal 2.2.1, rilis terbaru 2.4.1 dibangun CI.
+- [Installer](INSTALLER_ID.md): jalur NSIS; snapshot lokal 2.2.1, rilis terbaru 2.4.2 dibangun CI.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.

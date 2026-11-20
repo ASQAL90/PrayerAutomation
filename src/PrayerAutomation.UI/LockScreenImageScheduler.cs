@@ -311,6 +311,31 @@ internal sealed class LockScreenImageScheduler : IDisposable
         }
     }
 
+    /// <summary>Forces the restore journal closed before an update, then continues regardless of verification.</summary>
+    /// <returns>The forced-restore result.</returns>
+    internal async Task<LockScreenTransactionResult> ForceRestoreForUpdateAsync()
+    {
+        ThrowIfDisposed();
+        _restoreOnly = true;
+        StopTimer();
+        ClearExecutionRequest();
+        try
+        {
+            Trace("force-restore-start", DateTimeOffset.UtcNow, "visual=unverified");
+            LockScreenTransactionResult result = await _transaction.ForceRestoreForUpdateAsync(CancellationToken.None);
+            _recoveryPending = false;
+            PublishRecoveryStatus(result);
+            Trace("force-restore-result", DateTimeOffset.UtcNow, $"result={result} verification=forced visual=unverified");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Trace("force-restore-error", DateTimeOffset.UtcNow, $"category={ErrorCategory(ex)} visual=unverified");
+            _recoveryPending = false;
+            return LockScreenTransactionResult.ForcedRestored;
+        }
+    }
+
     /// <summary>Gap from a prayer time to the next prayer trigger today or tomorrow.</summary>
     /// <param name="localDate">Today's local date.</param>
     /// <param name="after">Prayer time that must be excluded from the search.</param>
@@ -539,6 +564,10 @@ internal sealed class LockScreenImageScheduler : IDisposable
         else if (result == LockScreenTransactionResult.Active)
         {
             SetStatus("Gambar lock screen sementara masih aktif; pemulihan otomatis tetap berjalan.");
+        }
+        else if (result == LockScreenTransactionResult.ForcedRestored)
+        {
+            SetStatus("Pemulihan lock screen diselesaikan secara paksa; catatan pemulihan dihapus.");
         }
     }
 

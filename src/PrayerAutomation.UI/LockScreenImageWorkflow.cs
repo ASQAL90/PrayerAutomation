@@ -55,7 +55,8 @@ internal enum LockScreenTransactionResult
     ExternalChangePreserved,
     NoActiveTransaction,
     PendingVerification,
-    ManagedByPolicy
+    ManagedByPolicy,
+    ForcedRestored
 }
 
 /// <summary>Journaled snapshot of the lock-screen state before a temporary image is applied.</summary>
@@ -106,6 +107,12 @@ internal interface ILockScreenImageBackend
     /// <summary>Deletes managed files associated with a snapshot.</summary>
     /// <param name="snapshot">The snapshot whose files are removed.</param>
     void Cleanup(LockScreenRestoreSnapshot snapshot);
+    /// <summary>Best-effort restore used by the update preflight; verification failures are tolerated.</summary>
+    /// <param name="snapshot">The snapshot to restore.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous force restore.</returns>
+    Task ForceRestoreAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken) =>
+        RestoreAsync(snapshot, cancellationToken);
 }
 
 /// <summary>Persistence abstraction for the restore journal.</summary>
@@ -297,6 +304,35 @@ internal sealed class LockScreenImageTransaction
         try
         {
             return await RestoreUnderGateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Forces the journal to a closed state so an update can proceed without a 60-second hold.</summary>
+    /// <param name="cancellationToken">Token to cancel the gate wait.</param>
+    /// <returns><see cref="LockScreenTransactionResult.ForcedRestored"/> after best-effort cleanup.</returns>
+    internal async Task<LockScreenTransactionResult> ForceRestoreForUpdateAsync(CancellationToken cancellationToken)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            LockScreenRestoreSnapshot? pending;
+            try { pending = _store.Load(); }
+            catch (Exception) { pending = null; }
+
+            if (pending is not null)
+            {
+                try { await _backend.ForceRestoreAsync(pending, cancellationToken).ConfigureAwait(false); }
+                catch (Exception) { }
+                try { ClearPending(pending); }
+                catch (Exception) { }
+            }
+            try { _store.ClearAll(); }
+            catch (Exception) { }
+            return LockScreenTransactionResult.ForcedRestored;
         }
         finally
         {

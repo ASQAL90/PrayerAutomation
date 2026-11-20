@@ -227,6 +227,22 @@ internal sealed class WindowsLockScreenImageBackend : ILockScreenImageBackend
     }
 
     /// <inheritdoc/>
+    public async Task ForceRestoreAsync(LockScreenRestoreSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        ValidateSnapshotPaths(snapshot);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (snapshot.PreviousMode == LockScreenBackgroundMode.Picture &&
+            snapshot.PreviousImagePath is not null && File.Exists(snapshot.PreviousImagePath) &&
+            string.Equals(ComputeSha256(snapshot.PreviousImagePath), snapshot.PreviousImageSha256,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            await _native.SetImageAsync(snapshot.PreviousImagePath, () => true, cancellationToken).ConfigureAwait(false);
+        }
+        _native.WriteModeFlags(snapshot.PreviousSlideshowEnabled, snapshot.PreviousSpotlightEnabled);
+    }
+
+    /// <inheritdoc/>
     public bool IsRestored(LockScreenRestoreSnapshot snapshot)
     {
         try

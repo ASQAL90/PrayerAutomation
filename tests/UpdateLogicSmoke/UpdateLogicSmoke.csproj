@@ -13,7 +13,16 @@
     <Compile Include="../../src/PrayerAutomation.UI/LockScreenImageWorkflow.cs" Link="LockScreenImageWorkflow.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateRecoveryPolicy.cs" Link="UpdateRecoveryPolicy.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/UpdateReminderPolicy.cs" Link="UpdateReminderPolicy.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ReleaseNotesParser.cs" Link="ReleaseNotesParser.cs" />
     <None Include="../../src/PrayerAutomation.UI/UpdateWindow.xaml.cs" Link="UpdateWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/UpdateWindow.xaml" Link="UpdateWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/ReleaseNotesWindow.xaml" Link="ReleaseNotesWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/ReleaseNotesWindow.xaml.cs" Link="ReleaseNotesWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/AboutWindow.xaml" Link="AboutWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../.github/workflows/release.yml" Link="release.yml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../installer/nsis/AyoJamaah.nsi" Link="AyoJamaah.nsi" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../docs/CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../docs/release-notes/2.4.2.md" Link="release-notes-2.4.2.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/TrayService.cs" Link="TrayService.cs" CopyToOutputDirectory="PreserveNewest" />

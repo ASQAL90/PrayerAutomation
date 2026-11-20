@@ -29,8 +29,11 @@ internal sealed record ReleaseAsset(string Name, string Url, long Size, string? 
 /// <param name="Signature">Manifest signature asset.</param>
 /// <param name="Assets">All assets of the release by name.</param>
 /// <param name="IsInstalled">True for the NSIS-installed copy.</param>
+/// <param name="ReleaseNotes">Release body used for the "what's new" panel.</param>
+/// <param name="ReleaseUrl">Browser URL of the release page.</param>
 internal sealed record UpdateRelease(string Tag, string Version, ReleaseAsset? Manifest,
-    ReleaseAsset? Signature, IReadOnlyDictionary<string, ReleaseAsset> Assets, bool IsInstalled);
+    ReleaseAsset? Signature, IReadOnlyDictionary<string, ReleaseAsset> Assets, bool IsInstalled,
+    string? ReleaseNotes, string? ReleaseUrl);
 
 /// <summary>How the prepared update will be applied.</summary>
 internal enum UpdateInstallMode
@@ -79,6 +82,12 @@ internal sealed class UpdateService
             !UpdateVersion.TryParse(currentVersion, out Version? current) || latest <= current) return null;
 
         string version = UpdateVersion.AssetText(latest);
+        string? notes = null;
+        if (root.TryGetProperty("body", out JsonElement bodyElement)) notes = bodyElement.GetString();
+        if (notes is not null && notes.Length > 32000) notes = notes[..32000];
+        string? releaseUrl = root.TryGetProperty("html_url", out JsonElement urlElement)
+            ? urlElement.GetString()
+            : null;
         string arch = Environment.Is64BitProcess ? "x64" : "x86";
         var assets = new Dictionary<string, ReleaseAsset>(StringComparer.OrdinalIgnoreCase);
         foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
@@ -101,7 +110,7 @@ internal sealed class UpdateService
             ReleaseAsset? installer = FindInstaller(assets, version);
             if (installer is null) return null;
         }
-        return new UpdateRelease(tag, version, manifest, signature, assets, isInstalled);
+        return new UpdateRelease(tag, version, manifest, signature, assets, isInstalled, notes, releaseUrl);
     }
 
     /// <summary>Downloads and verifies the manifest, then plans the smallest safe update.</summary>

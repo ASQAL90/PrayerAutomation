@@ -19,6 +19,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Validasi catatan rilis
+        shell: pwsh
+        run: |
+          $version = (Select-Xml -Path src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -XPath '//Version').Node.InnerText
+          $notes = "docs/release-notes/$version.md"
+          if (-not (Test-Path $notes)) { throw "Catatan rilis $notes tidak ditemukan." }
+          $text = Get-Content $notes -Raw
+          if ($text -notmatch '(?m)^## (Fitur baru|Perbaikan|Perubahan|Catatan)' -or $text -notmatch '(?m)^- ') {
+            throw "Catatan rilis $notes tidak memuat bagian dan poin yang dikenali."
+          }
+          "NOTES_PATH=$notes" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc, i686-pc-windows-msvc
@@ -103,6 +115,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          body_path: ${{ env.NOTES_PATH }}
           files: |
             AyoJamaah-win-x64.zip
             AyoJamaah-win-x86.zip
@@ -112,4 +125,3 @@ jobs:
             out\update\AyoJamaah-*.sig
             out\update\AyoJamaah-delta-*.zip
             SHA256SUMS.txt
-          generate_release_notes: true

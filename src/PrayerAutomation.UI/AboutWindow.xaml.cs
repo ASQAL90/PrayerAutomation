@@ -50,6 +50,11 @@ internal partial class AboutWindow : Window
         }
     }
 
+    /// <summary>Opens the embedded changelog for every released version.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private void OnShowReleaseNotesClick(object sender, RoutedEventArgs e) => new ReleaseNotesWindow().Show();
+
     /// <summary>Closes the window when the close button is clicked.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>

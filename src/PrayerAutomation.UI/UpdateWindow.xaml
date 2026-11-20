@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PrayerAutomation.UI"
-        Title="Pembaruan Ayo Jama'ah!" Width="560" Height="470"
+        Title="Pembaruan Ayo Jama'ah!" Width="560" Height="620"
         WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen" Background="{DynamicResource SurfaceBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}" FontFamily="Segoe UI"
@@ -46,7 +46,7 @@
                            Foreground="{DynamicResource MutedTextBrush}" />
                 <TextBlock Style="{StaticResource UpdateHelpText}" Name="StatusText"
                            AutomationProperties.AutomationId="UpdateStatusText"
-                           MinHeight="96" Margin="0,10,0,0"
+                           MinHeight="72" Margin="0,8,0,0"
                            TextWrapping="Wrap" VerticalAlignment="Top" />
                 <ProgressBar Name="DownloadProgress" Height="6" Minimum="0" Maximum="100"
                              Visibility="Collapsed" Margin="0,8,0,0"
@@ -54,6 +54,39 @@
                 <TextBlock Style="{StaticResource UpdateHelpText}" Name="ProgressText"
                            AutomationProperties.AutomationId="UpdateProgressText"
                            Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0" />
+                <Border Name="ReleaseNotesPanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="10"
+                        BorderThickness="1" BorderBrush="{DynamicResource AppBorderBrush}"
+                        AutomationProperties.AutomationId="UpdateReleaseNotesPanel">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Name="ReleaseNotesTitle" FontWeight="SemiBold" FontSize="14"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"
+                                   AutomationProperties.AutomationId="UpdateReleaseNotesTitle" />
+                        <ScrollViewer Grid.Row="1" Name="ReleaseNotesScroll" MaxHeight="180" Margin="0,8,0,0"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      AutomationProperties.AutomationId="UpdateReleaseNotesScroll">
+                            <ItemsControl Name="ReleaseNotesList" Margin="0,0,8,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" Margin="{Binding Margin}"
+                                                   FontWeight="{Binding Weight}" FontSize="13"
+                                                   LineHeight="18" LineStackingStrategy="BlockLineHeight"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Button Grid.Row="2" Name="ReleaseNotesLinkButton" Content="Buka halaman rilis"
+                                Click="OnOpenReleasePageClick" Visibility="Collapsed"
+                                HorizontalAlignment="Left" Margin="0,10,0,0" Padding="10,4"
+                                AutomationProperties.AutomationId="UpdateReleaseNotesLink" />
+                    </Grid>
+                </Border>
                 <Border Name="RecoveryPanel" Visibility="Collapsed" Margin="0,12,0,0" Padding="10"
                         BorderThickness="1" BorderBrush="{DynamicResource AppBorderBrush}"
                         Background="{DynamicResource SurfaceBrush}"

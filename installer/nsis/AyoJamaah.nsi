@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.4.1"
-!define APP_VERSION_QUAD "2.4.1.0"
+!define APP_VERSION "2.4.2"
+!define APP_VERSION_QUAD "2.4.2.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -38,6 +38,7 @@ Unicode true
 !include "FileFunc.nsh"
 !include "x64.nsh"
 !include "nsDialogs.nsh"
+!include "VersionCompare.nsh"
 
 ; Read-only multiline text that wraps word-wise and only shows a vertical scrollbar.
 !define __NSD_MLWrap_CLASS EDIT
@@ -118,6 +119,8 @@ Var DesktopShortcutCheck
 Var DesktopShortcutSelected
 Var UpdateMode
 Var UpdateWait
+Var InstalledVersion
+Var VersionResult
 
 Section "Aplikasi" SEC_INSTALL_MAIN
   SectionIn RO
@@ -255,7 +258,9 @@ Function .onInit
 
   ; The application launches this installer with /UPDATEMODE after it exits.
   ; That switch allows a silent, page-less update; ordinary silent installs are
-  ; still refused because they would skip the safety review.
+  ; still refused because they would skip the safety review. The installed
+  ; version confirmation below is for manual installs only: /UPDATEMODE runs
+  ; silently and must never wait on a modal dialog.
   ${GetParameters} $0
   System::Call 'shlwapi::StrStrIW(w r0, w "/UPDATEMODE") p .r1'
   ${If} $1 != 0
@@ -277,6 +282,44 @@ Function .onInit
     SetErrorLevel 2
     Quit
   ${EndIf}
+
+  ; Confirm duplicate installs and downgrades for manual runs only. /UPDATEMODE
+  ; is the app's silent, page-less updater, where a modal question would hang
+  ; with nobody to answer it. An unreadable installed version skips the prompt.
+  ${If} $UpdateMode != 0
+    Goto version_check_done
+  ${EndIf}
+  IfSilent version_check_done
+  ReadRegStr $InstalledVersion HKCU "${APP_UNINSTALL_KEY}" "DisplayVersion"
+  ${If} $InstalledVersion == ""
+    IfFileExists "$INSTDIR\${APP_EXE}" 0 version_check_done
+    ${GetFileVersion} "$INSTDIR\${APP_EXE}" $InstalledVersion
+    ${IfErrors}
+      ClearErrors
+      StrCpy $InstalledVersion ""
+    ${EndIf}
+  ${EndIf}
+  ${If} $InstalledVersion != ""
+    ; Version 1 is this installer, version 2 is the installed build, so
+    ; result 2 means the installed build is newer (continuing is a downgrade).
+    ${AyoVersionCompare} "${APP_VERSION}" "$InstalledVersion" $VersionResult
+    ${If} $VersionResult == 0
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+        "Versi ${APP_VERSION} sudah terpasang. Melanjutkan akan menimpa pemasangan yang ada.$\r$\nTetap lanjutkan?" \
+        IDNO version_check_declined
+    ${ElseIf} $VersionResult == 2
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+        "Versi $InstalledVersion lebih baru daripada pemasang ini (${APP_VERSION}). Melanjutkan akan menurunkan versi.$\r$\nTetap lanjutkan?" \
+        IDNO version_check_declined
+    ${EndIf}
+  ${EndIf}
+  Goto version_check_done
+
+  version_check_declined:
+    SetErrorLevel 3
+    Quit
+
+  version_check_done:
 
   ; Elevated is allowed on single-account administrator machines. The
   ; installation target stays per-user; the token only changes privileges for

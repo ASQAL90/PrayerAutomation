@@ -15,6 +15,7 @@ internal static class UpdateRecoveryPolicySmoke
                UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.NoActiveTransaction) &&
                UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.ExternalChangePreserved) &&
                UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.ManagedByPolicy) &&
+               UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.ForcedRestored) &&
                !UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.PendingVerification) &&
                !UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.Applied) &&
                !UpdateRecoveryPolicy.IsReady(LockScreenTransactionResult.Active),

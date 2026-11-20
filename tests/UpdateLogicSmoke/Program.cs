@@ -128,4 +128,61 @@ Check(System.Text.RegularExpressions.Regex.IsMatch(releaseSource, @"finally\s*\{
 Check(traySource.Contains("catch (Exception ex) { AppLogger.Write(\"tray.action\", ex); }", StringComparison.Ordinal),
     "Aksi tray tidak boleh melempar dialog unhandled ke pengguna.");
 
+// Ringkasan rilis: parser murni, panel popup vertikal, changelog About, rilis, dan installer.
+var parsedNotes = ReleaseNotesParser.Parse(
+    "## Fitur baru\n- Panel **ringkasan** [perubahan](https://example.invalid)\n" +
+    "## Perbaikan\n- Perbaikan lintas-thread\n" +
+    "## Lainnya\n- Bagian yang tidak dikenali\n" +
+    "**Full Changelog**: https://example.invalid");
+Check(parsedNotes.Count == 2 && parsedNotes[0].Heading == "Fitur baru" &&
+      parsedNotes[0].Items.Count == 1 && parsedNotes[0].Items[0] == "Panel ringkasan perubahan" &&
+      parsedNotes[1].Heading == "Perbaikan",
+    "Parser harus membersihkan Markdown, membuang noise Full Changelog, dan hanya membaca bagian dikenali.");
+Check(ReleaseNotesParser.Parse(null).Count == 0 && ReleaseNotesParser.Parse("- tanpa heading").Count == 0,
+    "Catatan kosong atau tanpa heading tidak boleh menampilkan panel.");
+
+string updateXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateWindow.xaml"));
+string notesWindowXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ReleaseNotesWindow.xaml"));
+string notesWindowSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ReleaseNotesWindow.xaml.cs"));
+string aboutXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "AboutWindow.xaml"));
+string releaseWorkflow = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release.yml"));
+string nsisSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "AyoJamaah.nsi"));
+string changelog = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CHANGELOG.md"));
+string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.4.2.md"));
+
+Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal) &&
+      updateXaml.Contains("Name=\"ReleaseNotesScroll\"", StringComparison.Ordinal) &&
+      updateXaml.Contains("VerticalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) &&
+      updateXaml.Contains("HorizontalScrollBarVisibility=\"Disabled\"", StringComparison.Ordinal) &&
+      !updateXaml.Contains("TargetType=\"{x:Type ScrollBar}\"", StringComparison.Ordinal) &&
+      !updateXaml.Contains("TargetType=\"ScrollBar\"", StringComparison.Ordinal) &&
+      updateWindowSource.Contains("ReleaseNotesParser.Parse", StringComparison.Ordinal),
+    "Panel catatan rilis memakai ScrollViewer vertikal dan style global, tanpa style scrollbar baru.");
+Check(notesWindowXaml.Contains("VerticalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) &&
+      notesWindowXaml.Contains("HorizontalScrollBarVisibility=\"Disabled\"", StringComparison.Ordinal) &&
+      notesWindowSource.Contains("GetManifestResourceStream", StringComparison.Ordinal) &&
+      aboutXaml.Contains("AboutReleaseNotesButton", StringComparison.Ordinal),
+    "Riwayat perubahan dibuka dari About, bersumber resource lokal, dan bergulir vertikal saja.");
+Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordinal) &&
+      releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
+      !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),
+    "Workflow rilis harus memvalidasi dan memakai catatan rilis sebagai body.");
+Check(nsisSource.Contains("!define APP_VERSION \"2.4.2\"", StringComparison.Ordinal) &&
+      nsisSource.Contains("AyoVersionCompare", StringComparison.Ordinal) &&
+      nsisSource.Contains("MB_YESNO", StringComparison.Ordinal) &&
+      nsisSource.Contains("IfSilent version_check_done", StringComparison.Ordinal) &&
+      nsisSource.Contains("/UPDATEMODE", StringComparison.Ordinal),
+    "Installer harus mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+Check(appSource.Contains("ForceRestoreForUpdateAsync()", StringComparison.Ordinal) &&
+      !appSource.Contains("WaitForRecoveryAsync(", StringComparison.Ordinal) &&
+      appSource.Contains("pembaruan tetap dilanjutkan", StringComparison.Ordinal),
+    "Preflight update tidak boleh menunggu 60 detik dan harus memaksa pemulihan lalu melanjutkan.");
+Check(changelog.Contains("## v2.4.2", StringComparison.Ordinal) &&
+      changelog.Contains("## v2.1.2", StringComparison.Ordinal) &&
+      newestNotes.Contains("## Fitur baru", StringComparison.Ordinal) &&
+      !newestNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase) &&
+      !newestNotes.Contains("diminta", StringComparison.OrdinalIgnoreCase) &&
+      !newestNotes.Contains("dibantu", StringComparison.OrdinalIgnoreCase),
+    "Changelog memuat semua versi dan catatan rilis memakai bahasa pihak ketiga.");
+
 Console.WriteLine("UpdateLogicSmoke: PASS");

@@ -37,7 +37,8 @@ internal static class UpdateRecoveryPolicy
         LockScreenTransactionResult.Restored or
         LockScreenTransactionResult.NoActiveTransaction or
         LockScreenTransactionResult.ExternalChangePreserved or
-        LockScreenTransactionResult.ManagedByPolicy;
+        LockScreenTransactionResult.ManagedByPolicy or
+        LockScreenTransactionResult.ForcedRestored;
 
     /// <summary>Retries a restore until it is verified or the wait budget is exhausted.</summary>
     /// <param name="restore">Performs one restore attempt.</param>

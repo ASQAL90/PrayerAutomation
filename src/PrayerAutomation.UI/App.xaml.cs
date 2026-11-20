@@ -529,52 +529,29 @@ public partial class App : Application
             "Pemulihan lock screen dibatalkan. Gambar lock screen dibiarkan seperti saat ini; catatan pemulihan dihapus.");
     }
 
-    /// <summary>Holds an update until the lock-screen restore journal is verified clear.</summary>
+    /// <summary>Closes the lock-screen restore journal before an update without blocking it.</summary>
     /// <remarks>
-    /// The first attempt stops scheduling and forces a restore; later attempts retry the restore.
-    /// A timeout deliberately keeps recovery-only intent and the journal intact.
+    /// One normal restore attempt runs first. An unresolved or failed verification is forced
+    /// closed immediately; the update continues even when verification cannot be proven.
     /// </remarks>
     /// <param name="progress">Optional callback used by the update window.</param>
-    /// <param name="cancellationToken">Cancels the wait when the update window closes.</param>
-    /// <returns>True when the update may continue; false when the 60-second wait timed out.</returns>
+    /// <param name="cancellationToken">Cancels the preflight when the update window closes.</param>
+    /// <returns>Always true unless the preflight was cancelled.</returns>
     internal async Task<bool> EnsureLockScreenReadyForUpdateAsync(
         Action<LockScreenRecoveryProgress>? progress,
         CancellationToken cancellationToken)
     {
         LockScreenImageScheduler? scheduler = _lockScreenScheduler;
         if (scheduler is null) return true;
-        bool firstAttempt = true;
-        LockScreenUpdateReadiness readiness;
         try
         {
-            readiness = await UpdateRecoveryPolicy.WaitForRecoveryAsync(
-                async token =>
-                {
-                    try
-                    {
-                        if (firstAttempt)
-                        {
-                            firstAttempt = false;
-                            return await scheduler.StopAndRestoreAsync();
-                        }
-                        return await scheduler.RequestRestoreNowAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.Write("update.lock-screen-restore", ex);
-                        throw;
-                    }
-                },
-                cancellationToken,
-                restoreDeadline: () => scheduler.RestoreDeadlineUtc,
-                progress: progress);
-
-            if (readiness == LockScreenUpdateReadiness.Ready)
+            LockScreenTransactionResult result = await scheduler.StopAndRestoreAsync();
+            if (UpdateRecoveryPolicy.IsReady(result))
             {
-                // Close the race where the window closes just as the wait succeeds.
                 cancellationToken.ThrowIfCancellationRequested();
                 return true;
             }
+            progress?.Invoke(new LockScreenRecoveryProgress(0, scheduler.RestoreDeadlineUtc));
         }
         catch (OperationCanceledException)
         {
@@ -582,13 +559,28 @@ public partial class App : Application
             await ResumeLockScreenAfterUpdateCancelAsync();
             throw;
         }
+        catch (Exception ex)
+        {
+            AppLogger.Write("update.lock-screen-restore", ex);
+        }
 
-        // Do not resume normal scheduling while verification is unresolved: that
-        // could apply a new image over a journal we are still trying to clear.
-        _isShuttingDown = false;
-        _mainWindow?.SetLockScreenStatus(
-            "Pemulihan lock screen belum selesai; pembaruan dibatalkan dan catatan pemulihan dipertahankan.");
-        return false;
+        try
+        {
+            await scheduler.ForceRestoreForUpdateAsync();
+            _mainWindow?.SetLockScreenStatus(
+                "Pemulihan lock screen diselesaikan secara paksa; pembaruan tetap dilanjutkan.");
+        }
+        catch (OperationCanceledException)
+        {
+            await ResumeLockScreenAfterUpdateCancelAsync();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("update.lock-screen-force", ex);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        return true;
     }
 
     private UpdateWindow? _updateWindow;

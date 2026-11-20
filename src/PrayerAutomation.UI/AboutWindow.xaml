@@ -46,8 +46,13 @@
                     <TextBlock Text="Tentang Ayo Jama'ah!" FontSize="20" FontWeight="SemiBold"
                                TextWrapping="Wrap" VerticalAlignment="Center" />
                 </StackPanel>
-                <Button Grid.Column="1" Content="Tutup" Click="OnCloseClick"
-                        AutomationProperties.AutomationId="AboutClose" AutomationProperties.Name="Tutup tentang aplikasi" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Riwayat perubahan" Click="OnShowReleaseNotesClick" Margin="0,0,8,0" Padding="10,4"
+                            AutomationProperties.AutomationId="AboutReleaseNotesButton"
+                            AutomationProperties.Name="Buka riwayat perubahan semua versi" />
+                    <Button Content="Tutup" Click="OnCloseClick" Padding="10,4"
+                            AutomationProperties.AutomationId="AboutClose" AutomationProperties.Name="Tutup tentang aplikasi" />
+                </StackPanel>
             </Grid>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           AutomationProperties.AutomationId="AboutCreditsScroll">

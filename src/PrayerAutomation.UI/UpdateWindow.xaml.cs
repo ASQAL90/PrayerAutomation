@@ -1,5 +1,8 @@
 // Small window that always gives visible feedback when updates are checked or downloaded.
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -18,6 +21,8 @@ internal partial class UpdateWindow : Window
     // Captured on the UI thread: reading Dispatcher from a worker thread calls
     // VerifyAccess and throws "different thread owns it".
     private readonly Dispatcher _uiDispatcher;
+    private const string ReleasesFallbackUrl = "https://github.com/ASQAL90/PrayerAutomation/releases";
+
     private readonly UpdateService _service = new();
     private UpdateRelease? _release;
     private UpdatePreparation? _prepared;
@@ -55,6 +60,7 @@ internal partial class UpdateWindow : Window
         _prepared = null;
         _waitingForRecovery = false;
         RecoveryPanel.Visibility = Visibility.Collapsed;
+        ClearReleaseNotesPanel();
         InstallButton.Visibility = Visibility.Collapsed;
         LaterButton.Visibility = Visibility.Collapsed;
         IgnoreButton.Visibility = Visibility.Collapsed;
@@ -77,6 +83,7 @@ internal partial class UpdateWindow : Window
                 StatusText.Text = $"Versi {release.Tag} tersedia, tetapi sudah Anda pilih untuk diabaikan. " +
                     "Gunakan Periksa lagi bila ingin melihatnya kembali.";
                 ProgressText.Text = $"Diperiksa pukul {DateTime.Now:HH:mm:ss}.";
+                ClearReleaseNotesPanel();
             }
             else
             {
@@ -88,6 +95,7 @@ internal partial class UpdateWindow : Window
             AppLogger.Write("update.check", ex);
             StatusText.Text = DescribeFailure(ex);
             ProgressText.Text = $"Diperiksa pukul {DateTime.Now:HH:mm:ss}.";
+            ClearReleaseNotesPanel();
         }
         finally
         {
@@ -107,6 +115,7 @@ internal partial class UpdateWindow : Window
         _prepared = null;
         _waitingForRecovery = false;
         RecoveryPanel.Visibility = Visibility.Collapsed;
+        RenderReleaseNotes(release);
         bool delta = release.Manifest is not null && release.Signature is not null;
         StatusText.Text = $"Versi {release.Tag} tersedia; Anda memakai {AppBranding.VersionLabel}.\r\n\r\n" +
             (delta
@@ -119,6 +128,60 @@ internal partial class UpdateWindow : Window
         InstallButton.Visibility = Visibility.Visible;
         LaterButton.Visibility = Visibility.Visible;
         IgnoreButton.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Fills the release-note panel; a missing body leaves only the release-page link.</summary>
+    /// <param name="release">Release currently offered to the user.</param>
+    private void RenderReleaseNotes(UpdateRelease release)
+    {
+        IReadOnlyList<ReleaseNotesSection> sections = ReleaseNotesParser.Parse(release.ReleaseNotes);
+        var lines = new List<ReleaseNoteDisplay>();
+        foreach (ReleaseNotesSection section in sections)
+        {
+            if (lines.Count >= 40) break;
+            lines.Add(new ReleaseNoteDisplay(section.Heading, new Thickness(0, lines.Count == 0 ? 0 : 8, 0, 2),
+                FontWeights.SemiBold));
+            foreach (string item in section.Items)
+            {
+                if (lines.Count >= 40) break;
+                lines.Add(new ReleaseNoteDisplay("• " + item, new Thickness(12, 0, 0, 2), FontWeights.Normal));
+            }
+        }
+
+        ReleaseNotesList.ItemsSource = lines.Count == 0 ? null : lines;
+        ReleaseNotesTitle.Text = lines.Count == 0
+            ? "Catatan rilis tidak tersedia"
+            : $"Apa yang baru di {release.Tag}";
+        ReleaseNotesPanel.Visibility = Visibility.Visible;
+        ReleaseNotesLinkButton.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Clears the release-note panel before a new check or a failure.</summary>
+    private void ClearReleaseNotesPanel()
+    {
+        ReleaseNotesList.ItemsSource = null;
+        ReleaseNotesTitle.Text = string.Empty;
+        ReleaseNotesPanel.Visibility = Visibility.Collapsed;
+        ReleaseNotesLinkButton.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Opens the release page; the generic releases page is the fallback.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Event arguments.</param>
+    private void OnOpenReleasePageClick(object sender, RoutedEventArgs e)
+    {
+        string target = _release?.ReleaseUrl ?? ReleasesFallbackUrl;
+        if (!Uri.TryCreate(target, UriKind.Absolute, out Uri? uri) ||
+            !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            target = ReleasesFallbackUrl;
+        try
+        {
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or NotSupportedException)
+        {
+            ProgressText.Text = "Halaman rilis tidak dapat dibuka. Periksa aplikasi browser bawaan Windows.";
+        }
     }
 
     /// <summary>Starts installing a release that the reminder popup already confirmed.</summary>
@@ -269,8 +332,8 @@ internal partial class UpdateWindow : Window
         }
     }
 
-    /// <summary>Shows a bounded restore countdown; the journal deadline is informational only.</summary>
-    /// <param name="progress">Latest restore wait progress.</param>
+    /// <summary>Shows a brief restore status; no countdown is used by the update preflight.</summary>
+    /// <param name="progress">Latest restore status.</param>
     private void ReportRecoveryProgress(LockScreenRecoveryProgress progress)
     {
         if (!_uiDispatcher.CheckAccess())
@@ -280,10 +343,9 @@ internal partial class UpdateWindow : Window
         }
         if (!IsVisible) return;
         RecoveryPanel.Visibility = Visibility.Visible;
-        string schedule = progress.RestoreAtUtc is { } deadline
-            ? $" Jadwal otomatis: {deadline.ToLocalTime():HH:mm}."
-            : string.Empty;
-        RecoveryText.Text = $"Sedang memulihkan gambar lock screen… sisa {progress.RemainingSeconds} detik.{schedule}";
+        RecoveryText.Text = "Memulihkan gambar lock screen sebelum pembaruan dipasang…";
+        RetryRecoveryButton.Visibility = Visibility.Collapsed;
+        CancelRecoveryButton.Visibility = Visibility.Collapsed;
         ProgressText.Text = string.Empty;
     }
 
@@ -293,8 +355,10 @@ internal partial class UpdateWindow : Window
         _waitingForRecovery = true;
         if (!IsVisible) return;
         RecoveryPanel.Visibility = Visibility.Visible;
-        RecoveryText.Text = "Pemulihan lock screen belum selesai dalam 60 detik. Pembaruan dibatalkan dan catatan pemulihan " +
+        RecoveryText.Text = "Pemulihan lock screen belum bisa diselesaikan. Pembaruan dibatalkan dan catatan pemulihan " +
             "dibiarkan utuh. Tekan Pulihkan sekarang untuk mencoba lagi, atau Batal.";
+        RetryRecoveryButton.Visibility = Visibility.Visible;
+        CancelRecoveryButton.Visibility = Visibility.Visible;
         RetryRecoveryButton.IsEnabled = true;
         CancelRecoveryButton.IsEnabled = true;
     }
