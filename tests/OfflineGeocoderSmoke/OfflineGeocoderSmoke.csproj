@@ -10,7 +10,7 @@
     <Compile Include="../../src/PrayerAutomation.UI/IndonesiaBoundary.cs" Link="IndonesiaBoundary.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/DeviceLocationLogic.cs" Link="DeviceLocationLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/NominatimReverseGeocodingService.cs" Link="NominatimReverseGeocodingService.cs" />
-    <Content Include="../../src/PrayerAutomation.UI/Data/geonames/cities1000.tsv.gz" Link="geonames/cities1000.tsv.gz" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../src/PrayerAutomation.UI/Data/geonames/cities500.tsv.gz" Link="geonames/cities500.tsv.gz" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../src/PrayerAutomation.UI/Data/geonames/indonesia.tsv.gz" Link="geonames/indonesia.tsv.gz" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../src/PrayerAutomation.UI/Data/geonames/indonesia.boundary.bin" Link="geonames/indonesia.boundary.bin" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

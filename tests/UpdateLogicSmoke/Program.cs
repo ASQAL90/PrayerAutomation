@@ -149,7 +149,7 @@ string releaseWorkflow = File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
 string nsisSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "AyoJamaah.nsi"));
 string uiProject = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "PrayerAutomation.UI.csproj"));
 string changelog = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CHANGELOG.md"));
-string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.4.3.md"));
+string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.0.md"));
 
 Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal) &&
       updateXaml.Contains("Name=\"ReleaseNotesScroll\"", StringComparison.Ordinal) &&
@@ -168,13 +168,13 @@ Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordina
       releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
       !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),
     "Workflow rilis harus memvalidasi dan memakai catatan rilis sebagai body.");
-Check(uiProject.Contains("<Version>2.4.3</Version>", StringComparison.Ordinal) &&
-      nsisSource.Contains("!define APP_VERSION \"2.4.3\"", StringComparison.Ordinal) &&
+Check(uiProject.Contains("<Version>2.5.0</Version>", StringComparison.Ordinal) &&
+      nsisSource.Contains("!define APP_VERSION \"2.5.0\"", StringComparison.Ordinal) &&
       nsisSource.Contains("AyoVersionCompare", StringComparison.Ordinal) &&
       nsisSource.Contains("MB_YESNO", StringComparison.Ordinal) &&
       nsisSource.Contains("IfSilent version_check_done", StringComparison.Ordinal) &&
       nsisSource.Contains("/UPDATEMODE", StringComparison.Ordinal),
-    "Versi aplikasi dan installer harus 2.4.3; installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+    "Versi aplikasi dan installer harus 2.5.0; installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
 Check(!nsisSource.Contains("\\r\\n", StringComparison.Ordinal) &&
       !nsisSource.Contains("\u2192", StringComparison.Ordinal) &&
       nsisSource.Contains("$\\r$\\n$\\r$\\n", StringComparison.Ordinal),
@@ -183,15 +183,15 @@ Check(appSource.Contains("ForceRestoreForUpdateAsync()", StringComparison.Ordina
       !appSource.Contains("WaitForRecoveryAsync(", StringComparison.Ordinal) &&
       appSource.Contains("pembaruan tetap dilanjutkan", StringComparison.Ordinal),
     "Preflight update tidak boleh menunggu 60 detik dan harus memaksa pemulihan lalu melanjutkan.");
-Check(changelog.Contains("## v2.4.3", StringComparison.Ordinal) &&
-      changelog.Contains("## v2.4.2", StringComparison.Ordinal) &&
+Check(changelog.Contains("## v2.5.0", StringComparison.Ordinal) &&
+      changelog.Contains("## v2.4.3", StringComparison.Ordinal) &&
       changelog.Contains("## v2.1.2", StringComparison.Ordinal) &&
       newestNotes.Contains("## Perbaikan", StringComparison.Ordinal) &&
-      newestNotes.Contains("DisplayVersion", StringComparison.OrdinalIgnoreCase) &&
+      newestNotes.Contains("cities500", StringComparison.OrdinalIgnoreCase) &&
       !newestNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase) &&
       !newestNotes.Contains("diminta", StringComparison.OrdinalIgnoreCase) &&
       !newestNotes.Contains("dibantu", StringComparison.OrdinalIgnoreCase),
-    "Changelog memuat semua versi dan catatan rilis 2.4.3 memakai bahasa pihak ketiga.");
+    "Changelog memuat semua versi dan catatan rilis 2.5.0 memakai bahasa pihak ketiga.");
 
 string updateServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateService.cs"));
 Check(updateServiceSource.Contains("AYOJAMAAH_UPDATE_URL") &&

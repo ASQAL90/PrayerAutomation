@@ -109,6 +109,27 @@ Uji workflow `Release` dari branch `master`: run `44834408908` gagal di `Build N
 
 - **Eksekusi rilis 2.4.3:** setelah perintah eksplisit, `master` dan tag annotated `v2.4.3` di-push ke `github`, lalu workflow `Release` di-dispatch dari ref tag tersebut. Run [`44950529529`](https://github.com/ASQAL90/PrayerAutomation/actions/runs/44950529529) selesai `success` (`head_branch=v2.4.3`, `workflow_dispatch`). Rilis [`v2.4.3`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.3) terbit `2026-11-21T21:20:24Z` sebagai `draft=false`, `prerelease=false`, dan menjadi `/releases/latest`; 11 aset diunggah (portable x64/x86, installer exe/zip, manifest+signature+delta x64/x86, dan `SHA256SUMS.txt`). Catatan rilis memakai `docs/release-notes/2.4.3.md` lewat `body_path`. Draft `v2.4.2` tetap `draft=true` dengan 11 aset dan tidak diubah. Belum ada uji update `2.4.3` yang dijalankan.
 
+### Persiapan 2.5.0 — lokal, belum dirilis
+
+Perubahan berikut berada pada branch lokal `feature/location-data-2.5.0` dan belum di-push.
+
+- Dataset v2 dibangun dari GeoNames `cities500`/`ID`/`alternateNamesV2` dan Kemendagri lewat `cahyadsn/wilayah`: global `237330` baris, Indonesia `257738` baris, dan `246211` kecocokan kabupaten/kota resmi. Sampel mdpl Copernicus GLO-90 memakai median jendela `3×3` untuk `303` baris global dan `305` baris Indonesia (300 terbesar tiap dataset plus delapan titik fokus); baris lain memakai `dem` GeoNames dengan `elevation_source`/`elevation_quality` yang sesuai. Aplikasi tidak memanggil layanan ketinggian saat berjalan.
+- Pemeriksaan Python pada delapan titik contoh lolos: `Cibarusa`, `Cibarusah`, `Cileungsi`, `Cileungsir`, `Cicendo`, Jakarta, titik jaringan, dan titik GPS. Nama mirip tetap berdiri sendiri; GPS tetap memilih permukiman terdekat, bukan dipaksa menjadi `Cibarusa`.
+- Aset final disalin ke `src/PrayerAutomation.UI/Data/geonames/` (`cities500.tsv.gz`, `indonesia.tsv.gz`, `indonesia.boundary.bin`, `NOTICE.txt`). Manifest paket opsional ada di `data/offline-data-manifest.json` dengan `schema=1`, `dataset_version=2`, snapshot `2026-11-22`, serta SHA-256 untuk `global.tsv.gz`, `indonesia.tsv.gz`, dan `indonesia.boundary.bin`.
+- Kode baru/ubah: parser skema v2 dan peringkat nama pada `OfflineReverseGeocoder`, katalog `LocationDefaults`, unduhan terverifikasi `OfflineDataDownloadService`, checkbox izin/progres/pembatalan di Pengaturan, serta versi aplikasi/installer `2.5.0`. Daftar payload NSIS mengikuti nama `cities500.tsv.gz`.
+- Verifikasi lokal memakai `proot-distro login debian` dengan `/opt/dotnet`: build WPF Release `win-x64` dan `win-x86` masing-masing `0 Warning(s)` / `0 Error(s)`; `OfflineGeocoderSmoke`, `LocationDefaultsSmoke`, dan `UpdateLogicSmoke` exit `0`. MSBuild sesekali memunculkan `ThreadStateException: Unable to set thread priority` pada proot; percobaan ulang dengan flag `-m:1`, `-p:BuildInParallel=false`, `-p:UseSharedCompilation=false`, `-p:EnableWindowsTargeting=true`, `MSBUILDDISABLENODEREUSE=1`, dan `DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1` berhasil. Ini bukan build installer dan bukan uji Windows nyata.
+- Belum dijalankan: enam smoke visual/PC, uji manual lima kota plus jaringan/GPS, uji unduh/batal/cache di Windows, dan uji pembaruan `2.4.3`. Tag data `data-v2`, tag `v2.5.0`, push, workflow `Release`, edit rilis, dan publish juga belum dilakukan.
+
+Perintah PC untuk mengulang bagian lokal sebelum menerima handoff:
+
+```bash
+dotnet build src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x64 -p:EnableWindowsTargeting=true
+dotnet build src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 -p:EnableWindowsTargeting=true
+dotnet tests/OfflineGeocoderSmoke/bin/Release/net10.0/OfflineGeocoderSmoke.dll
+dotnet tests/LocationDefaultsSmoke/bin/Release/net10.0/LocationDefaultsSmoke.dll
+dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
+```
+
 ### Instrumentasi first-open kalender (2.4.0)
 
 - Titik ukur ada di `MainWindow.RefreshCalendarViews()` saat pemanggilan pertama dari `EnsureCalendarViewsLoaded()`. Stopwatch terpisah untuk `RenderGregorianYear` dan `RenderHijriYear`, lalu satu baris `AppLogger.WriteInfo("calendar.first-open", "gregorianMs=… hijriMs=… totalMs=… source=civil|khgt")` per proses. Tidak ada perubahan layout atau area kalender 12 bulan.

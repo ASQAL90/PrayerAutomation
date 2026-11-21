@@ -87,7 +87,22 @@ Ulangi satu mode per siklus; jangan mengganti mode di tengah restore normal. Jik
 
 Failure scheduler dan interruption sudah diuji memakai backend/native platform terisolasi. Itu tidak berarti fault injection/force-close pada lock screen pengguna sudah diuji. Jangan menyimulasikan failure dengan memblokir file, merusak Registry, atau menghapus gambar asal pada PC harian.
 
-## E. Jika hasil tidak sesuai
+## E. Uji data lokasi 2.5.0 — belum dijalankan
+
+Bagian ini untuk build `2.5.0`. Kolom **Hasil Anda** belum diisi; menjalankan checklist ini tidak berarti rilis atau uji pembaruan `2.4.3` sudah diperintahkan.
+
+| ID | Tindakan | Hasil yang diharapkan | Hasil Anda |
+|---|---|---|---|
+| F01 | Buka Pengaturan tanpa menyentuh opsi paket data. | Checkbox paket data lokasi lengkap tidak dicentang dan tombol unduh nonaktif. Tidak ada unduhan otomatis; data bawaan tetap dipakai. | Belum diuji |
+| F02 | Centang izin, klik unduh, lalu amati progres; klik **Batalkan unduhan** sebelum selesai. | Progres/status bergerak tanpa UI membeku; tombol berubah menjadi batal. Pembatalan menghentikan unduhan, membereskan berkas sementara, dan data bawaan tetap dipakai. | Belum diuji |
+| F03 | Centang lagi, unduh sampai selesai, tutup aplikasi, putuskan internet, lalu buka kembali. | Status menyebut paket tersedia dari cache; pencarian tetap memakai data terverifikasi tanpa internet. Bila hash tidak cocok, aplikasi kembali ke data bawaan dan status menjelaskannya. | Belum diuji |
+| F04 | Cari `Cibarusa`, `Cibarusah`, `Cileungsi`, `Cileungsir`, dan `Cicendo` satu per satu; pilih hasil yang sesuai. | Kelima nama tetap merupakan tempat berbeda, kabupaten/kota sesuai, dan tidak ada alias yang menimpa nama resmi. | Belum diuji |
+| F05 | Isi lokasi lewat koordinat manual, pilihan nama lokal, perkiraan jaringan, dan GPS. | Enam kolom — nama, mdpl, zona waktu, lintang, bujur, dan metode — terisi di semua jalur. Pilihan Muhammadiyah 99 di Indonesia tidak ditimpa. | Belum diuji |
+| F06 | Gunakan titik `-6.4106170,107.0961768` dan `-6.23489335,106.98961635`. | GPS menghasilkan permukiman terdekat yang benar-benar dekat, bukan dipaksa menjadi `Cibarusa`; jaringan menghasilkan `Bekasi, Kota Bekasi`. Nilai mdpl tidak kosong dan sumber ketinggian tercatat pada data. | Belum diuji |
+
+Uji F02–F03 memakai jaringan yang tersedia di PC uji; jangan mengirim kredensial atau data pribadi. F05–F06 memakai koordinat contoh di atas, bukan lokasi nyata bila tidak diperlukan.
+
+## F. Jika hasil tidak sesuai
 
 1. Catat ID checklist, versi/folder portable, mode awal, waktu event, tindakan, dan teks status.
 2. Jangan mengaktifkan administrator, menghapus jurnal, atau menambahkan helper EXE sebagai workaround.

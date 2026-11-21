@@ -23,7 +23,7 @@ Section "Berkas aplikasi (bersama)" SEC_PAYLOAD_SHARED
   File "${PAYLOAD_X64}/sedang_sholat.png"
   SetOutPath "$INSTDIR\geonames"
   File "${PAYLOAD_X64}/geonames/NOTICE.txt"
-  File "${PAYLOAD_X64}/geonames/cities1000.tsv.gz"
+  File "${PAYLOAD_X64}/geonames/cities500.tsv.gz"
 SectionEnd
 
 Section "Berkas aplikasi 64-bit" SEC_PAYLOAD_X64
@@ -1323,7 +1323,7 @@ SectionEnd
   FileWrite $0 "fr/WindowsBase.resources.dll$\r$\n"
   FileWrite $0 "fr/WindowsFormsIntegration.resources.dll$\r$\n"
   FileWrite $0 "geonames/NOTICE.txt$\r$\n"
-  FileWrite $0 "geonames/cities1000.tsv.gz$\r$\n"
+  FileWrite $0 "geonames/cities500.tsv.gz$\r$\n"
   FileWrite $0 "hostfxr.dll$\r$\n"
   FileWrite $0 "hostpolicy.dll$\r$\n"
   FileWrite $0 "it/Microsoft.VisualBasic.Forms.resources.dll$\r$\n"
@@ -1810,7 +1810,7 @@ SectionEnd
   FileWrite $0 "fr/WindowsBase.resources.dll$\r$\n"
   FileWrite $0 "fr/WindowsFormsIntegration.resources.dll$\r$\n"
   FileWrite $0 "geonames/NOTICE.txt$\r$\n"
-  FileWrite $0 "geonames/cities1000.tsv.gz$\r$\n"
+  FileWrite $0 "geonames/cities500.tsv.gz$\r$\n"
   FileWrite $0 "hostfxr.dll$\r$\n"
   FileWrite $0 "hostpolicy.dll$\r$\n"
   FileWrite $0 "it/Microsoft.VisualBasic.Forms.resources.dll$\r$\n"
@@ -2298,7 +2298,7 @@ SectionEnd
   Delete "$INSTDIR\fr/WindowsBase.resources.dll"
   Delete "$INSTDIR\fr/WindowsFormsIntegration.resources.dll"
   Delete "$INSTDIR\geonames/NOTICE.txt"
-  Delete "$INSTDIR\geonames/cities1000.tsv.gz"
+  Delete "$INSTDIR\geonames/cities500.tsv.gz"
   Delete "$INSTDIR\hostfxr.dll"
   Delete "$INSTDIR\hostpolicy.dll"
   Delete "$INSTDIR\it/Microsoft.VisualBasic.Forms.resources.dll"

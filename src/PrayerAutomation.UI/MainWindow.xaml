@@ -305,7 +305,7 @@
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                     <Grid Margin="0,0,8,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="Nama lokasi" />
                                         <TextBox Grid.Row="0" Grid.Column="1" Name="LocationNameBox" AutomationProperties.AutomationId="LocationNameBox" Margin="3" TextAlignment="Left"
                                                  TextChanged="SettingsPreviewInput_Changed" PreviewKeyDown="LocationNameBox_PreviewKeyDown"
@@ -362,6 +362,21 @@
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
+                                        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Vertical" Margin="0,12,0,0">
+                                            <CheckBox Name="DownloadFullDataCheckBox" AutomationProperties.AutomationId="DownloadFullDataCheckBox"
+                                                      Content="Paket data lokasi lengkap (opsional, ±20 MB)"
+                                                      ToolTip="Jika dicentang dan diunduh, pencarian memakai data global lengkap. Tanpa unduhan, aplikasi tetap memakai data bawaan."
+                                                      Checked="DownloadFullDataCheckBox_Changed" Unchecked="DownloadFullDataCheckBox_Changed" />
+                                            <Button Name="DownloadFullDataButton" AutomationProperties.AutomationId="DownloadFullDataButton"
+                                                    Content="Unduh paket data lengkap" HorizontalAlignment="Left" Margin="0,6,0,0"
+                                                    IsEnabled="False" Click="DownloadFullData_Click" />
+                                            <ProgressBar Name="DownloadFullDataProgress" Height="6" Minimum="0" Maximum="100"
+                                                         Visibility="Collapsed" Margin="0,6,0,0" />
+                                            <TextBlock Name="DownloadFullDataStatus" Style="{StaticResource FormHelpText}"
+                                                       AutomationProperties.AutomationId="DownloadFullDataStatus"
+                                                       Text="Data bawaan sudah mencakup Indonesia dan kota utama dunia. Unduhan hanya bila diperlukan; dapat dibatalkan."
+                                                       Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                        </StackPanel>
                                     </Grid>
                                     <StackPanel Grid.Column="1" Margin="8,3,0,0" VerticalAlignment="Top">
                                         <Button Name="DetectNetworkLocationButton" AutomationProperties.AutomationId="DetectNetworkLocationButton" Content="Perkiraan dari jaringan" Click="DetectNetworkLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />

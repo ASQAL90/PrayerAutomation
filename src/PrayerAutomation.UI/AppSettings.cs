@@ -14,7 +14,7 @@ internal sealed class AppSettings
     /// <summary>Calendar source value for the official KHGT month table.</summary>
     public const string CalendarSourceKhgt = "khgt";
     /// <summary>Label of the Muhammadiyah prayer-time method.</summary>
-    public const string MuhammadiyahMethodLabel = "Indonesia — Muhammadiyah";
+    public const string MuhammadiyahMethodLabel = LocationDefaults.MuhammadiyahLabel;
     /// <summary>Default reminder notification message template.</summary>
     public const string DefaultReminderMessage = "Sebentar lagi waktu sholat {prayer} ({minutes_before} menit lagi).";
     /// <summary>Maximum allowed length of a reminder message.</summary>

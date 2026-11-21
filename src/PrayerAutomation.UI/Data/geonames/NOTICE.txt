@@ -1,47 +1,68 @@
-GeoNames offline locality data
+Offline locality data (schema v2)
+=================================
 
-This application includes derived subsets of the GeoNames Gazetteer, used fully
-offline. No lookup request is made when these datasets are used.
+This application includes derived subsets of the GeoNames Gazetteer and the
+Indonesian administrative register, used fully offline. No lookup request is
+made when these datasets are used.
 
-Source data:
-- https://download.geonames.org/export/dump/cities1000.zip
+Source data
+-----------
+GeoNames (https://www.geonames.org/, CC BY 4.0):
+- https://download.geonames.org/export/dump/cities500.zip
 - https://download.geonames.org/export/dump/ID.zip
 - https://download.geonames.org/export/dump/admin1CodesASCII.txt
 - https://download.geonames.org/export/dump/admin2Codes.txt
 - https://download.geonames.org/export/dump/countryInfo.txt
-- https://www.geonames.org/
+- https://download.geonames.org/export/dump/alternateNamesV2.zip
 
-Snapshot: source files last modified 2026-11-19 (UTC); downloaded 2026-11-19.
+Kemendagri administrative codes (cahyadsn/wilayah, MIT-licensed tooling):
+- https://github.com/cahyadsn/wilayah
+- Kepmendagri No. 300.2.2-2430 Tahun 2025
+- Files used: db/wilayah.sql and db/wilayah_level_1_2.sql
 
-Changes made:
-- `cities1000.tsv.gz`: retained GeoNames feature-class P (populated-place)
-  records; selected the locality name, English ASCII first-level administrative
-  name, country name, WGS84 latitude/longitude, ISO country code, and the
-  GeoNames `dem` elevation in metres.
-- `indonesia.tsv.gz`: retained feature-class P records for Indonesia; added the
-  second-level administrative name (regency/city) and replaced the English
-  first-level name with the official Indonesian province name. Province names
-  are derived from the GeoNames admin1 codes plus the four Papua provinces added
-  in 2022; nine English regency names were normalised to Indonesian.
-- Whitespace normalised and the results compressed as tab-separated files.
+Copernicus DEM elevation samples (Open-Meteo Elevation API, GLO-90, CC BY 4.0):
+- https://open-meteo.com/en/docs/elevation-api
+- https://registry.opendata.aws/copernicus-dem/
 
-Indonesia boundary:
-- `indonesia.boundary.bin` is derived from Natural Earth 1:10m Admin 0
-  Countries, Indonesia feature (public domain).
-- https://www.naturalearthdata.com/
-- https://github.com/nvkelso/natural-earth-vector
-- Only exterior rings are kept and stored in a compact binary form. The file is
-  used to choose between the detailed Indonesian layer and the global layer; it
-  is not a legal, cadastral, or navigational boundary.
+Snapshot: 2026-11-22 (UTC). File hashes are listed in data/offline-data-manifest.json
+in the source repository.
 
-License for GeoNames data: Creative Commons Attribution 4.0 International
-(CC BY 4.0)
+Changes made
+------------
+- `cities500.tsv.gz`: feature-class P records from GeoNames cities500. Each row
+  keeps the locality name, first-level administrative name, country name, WGS84
+  latitude/longitude, ISO country code, GeoNames `dem`, sampled elevation,
+  feature code, population, alternate names, elevation source, and elevation
+  quality.
+- `indonesia.tsv.gz`: feature-class P records for Indonesia. Regency and province
+  names are taken from the official Kemendagri hierarchy where the GeoNames
+  admin2 name could be matched (about 95.5% of rows); unmatched rows keep the
+  GeoNames regency name. Sampled elevation is placed after `dem`; elevation
+  source/quality columns record the provenance. Alternate names are used only
+  as additional search keys and never rewrite a place's own name.
+- `indonesia.boundary.bin`: derived from Natural Earth 1:10m Admin 0 Countries,
+  Indonesia feature (public domain). Only exterior rings are kept. The file is
+  used to choose between the Indonesian and global layers; it is not a legal,
+  cadastral, or navigational boundary.
+
+Licences and attribution
+------------------------
+GeoNames data: Creative Commons Attribution 4.0 International
 https://creativecommons.org/licenses/by/4.0/
 Attribution: GeoNames (https://www.geonames.org/).
+
+Copernicus DEM data: free and open, attribution required
+https://registry.opendata.aws/copernicus-dem/
+Attribution: Copernicus DEM GLO-90 via Open-Meteo Elevation API
+(https://open-meteo.com/).
 
 Natural Earth data is in the public domain:
 https://www.naturalearthdata.com/about/terms-of-use/
 
-GeoNames provides the data "as is" without warranty or representation of
+The Kemendagri-derived hierarchy is distributed under the MIT licence of the
+cahyadsn/wilayah project. Source data remain subject to the originating
+agency's terms.
+
+GeoNames and Copernicus provide their data "as is" without warranty of
 accuracy, timeliness, or completeness. Results are nearest-populated-place
-labels, not street addresses or proof of a device's exact position.
+labels, not street addresses, legal boundaries, or proof of exact position.

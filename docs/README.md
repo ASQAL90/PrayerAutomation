@@ -1,8 +1,8 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.4.2
+## Mulai di sini — ringkasan 2.4.3
 
-> **Catatan 2.4.2:** ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1 di dokumen lain adalah riwayat. Versi 2.4.3 sedang disiapkan secara lokal dan belum dirilis; isinya sinkronisasi `DisplayVersion` dan perapian harness.
+> **Catatan 2.4.3:** stable terbaru adalah `v2.4.3`; rilis `v2.4.2` tetap draft. Ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1/2.4.2 di dokumen lain adalah riwayat. Versi 2.5.0 sedang disiapkan secara lokal dan belum dirilis; isinya perbaikan data lokasi offline lengkap dan paket data opsional.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
