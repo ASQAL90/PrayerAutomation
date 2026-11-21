@@ -121,7 +121,7 @@ internal static class Program
         var resources = document.Root!.Element(p + "Application.Resources")!;
         var dictionary = new XElement(p + "ResourceDictionary",
             new XAttribute(XNamespace.Xmlns + "x", "http://schemas.microsoft.com/winfx/2006/xaml"),
-            new XAttribute(XNamespace.Xmlns + "local", "clr-namespace:PrayerAutomation.UI;assembly=PrayerAutomation.UI"),
+            new XAttribute(XNamespace.Xmlns + "local", "clr-namespace:PrayerAutomation.UI;assembly=AyoJamaah"),
             resources.Elements().Select(e => new XElement(e)));
         Host!.Resources = (ResourceDictionary)XamlReader.Parse(dictionary.ToString());
     }

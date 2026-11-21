@@ -2,12 +2,12 @@
 
 ## Mulai di sini — ringkasan 2.4.2
 
-> **Catatan 2.4.2:** ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1 di dokumen lain adalah riwayat.
+> **Catatan 2.4.2:** ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1 di dokumen lain adalah riwayat. Versi 2.4.3 sedang disiapkan secara lokal dan belum dirilis; isinya sinkronisasi `DisplayVersion` dan perapian harness.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.
 - [Penghargaan dan asal source](SOURCE_ORIGINS_ID.md): referensi teknis dan algoritma lintas bahasa yang dipakai source sekarang.
-- [Paket distribusi lokal](DISTRIBUTION_ID.md): riwayat paket lokal dan status unsigned; unduhan terbaru memakai aset rilis v2.4.2.
+- [Paket distribusi lokal](DISTRIBUTION_ID.md): riwayat paket lokal dan status unsigned; unduhan draft terbaru memakai aset rilis v2.4.2, stable terbaru tetap v2.4.1.
 - [GeoTimeZone](GEOTIMEZONE_LICENSE_ID.md): snapshot logical terikat, input TBB yang dinyatakan, batas lookup dan kewajiban ODbL.
 - [Metadata publisher](PUBLISHER_METADATA_ID.md): hasil PE, identitas upgrade yang dipertahankan, dan perbedaan metadata/signing.
 - [Penandatanganan pembaruan](UPDATE_SIGNING_ID.md): kunci manifest delta, secret CI, dan aset pembaruan rilis 2.4.2.
@@ -19,7 +19,7 @@
 Dokumen berikut dipertahankan untuk referensi, **bukan seluruhnya instruksi rilis 2.2.1**. Beberapa mencampurkan status lama dengan tambahan branding baru. Gunakan README saat ini untuk nama paket dan alur aktif.
 
 - [Panduan program](prompts/PROGRAM_DOCUMENTATION_ID.md): masih memuat lookup nama online lama, alur tutup/preview sebelum konfirmasi baru, dan referensi paket 2.0.0.
-- [Installer](INSTALLER_ID.md): jalur NSIS; snapshot lokal 2.2.1, rilis terbaru 2.4.2 dibangun CI.
+- [Installer](INSTALLER_ID.md): jalur NSIS; snapshot lokal 2.2.1, rilis draft 2.4.2 dibangun CI, stable terbaru tetap v2.4.1.
 - [Persiapan UI/UX](UI_ACCEPTANCE_ID.md): bahan perencanaan uji, bukan hasil acceptance baru.
 - [Panduan build/fixture installer](../installer/README_ID.md): banyak path/receipt lama bersifat lokal; jangan langsung menjalankan semua perintahnya.
 - [UnsavedChangesSmoke](../tests/UnsavedChangesSmoke/README.md): rincian fixture dan bukti slice; path lokal serta status commit di akhir adalah snapshot historis.

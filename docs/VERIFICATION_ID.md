@@ -101,7 +101,8 @@ Uji workflow `Release` dari branch `master`: run `44834408908` gagal di `Build N
 - **Patch kit 2,4 MB** diterapkan di PC ke `C:\qc-kit-2.4.2\smoke\`: DLL runtime WPF yang benar, `PrayerUiLogicSmoke.dll`, dan `UpdateLogicSmoke.dll` beserta sumber pendukung. Kit 420 MB tidak disalin ulang.
 - **Update:** `update-check.ps1` melaporkan `accepted=true`, `before=2.4.1+dcc7f01…`, `after=2.4.2+cdc0bc6…`, `filesChecked=485`, `mismatches=0`, `timedOut=false`, `tokenPersisted=false`. Popup muncul dan tombol “Unduh dan pasang” diklik; aset diambil lewat URL API draft dengan token, redirect CDN tanpa `Authorization`. Skrip lokal perlu membuang metadata SemVer sebelum cast `[version]` di PowerShell 5.1; skrip di kit tidak diubah.
 - **Installer manual:** pengguna mengonfirmasi `/UPDATEMODE` lanjut tanpa dialog dan konfirmasi versi sama/lebih baru pada instalasi manual berjalan OK di PC. Bersama bukti visual dan update di atas, cakupan uji 2.4.2 lengkap.
-- **Batas:** ini membuktikan jalur draft/kanal internal, helper, dan installer. Sinkronisasi `DisplayVersion` (commit lokal `552804d`, direncanakan untuk `v2.4.3`) belum diuji di PC. Tidak ada push, tag, workflow, atau publish baru dari sesi QC ini.
+- **Batas:** ini membuktikan jalur draft/kanal internal, helper, dan installer. Sinkronisasi `DisplayVersion` (commit lokal `552804d`, disiapkan pada `v2.4.3`) belum diuji di PC. Tidak ada push, tag, workflow, atau publish baru dari sesi QC ini.
+- **Persiapan 2.4.3:** nomor versi dinaikkan pada csproj dan NSIS, catatan rilis serta changelog ditambah, dan assertion harness visual diselaraskan dengan produk saat ini. Build WPF Release stable/ber-symbol serta smoke lokal lolos; aset, tag, rilis, dan uji PC untuk 2.4.3 belum dibuat.
 
 ### Instrumentasi first-open kalender (2.4.0)
 

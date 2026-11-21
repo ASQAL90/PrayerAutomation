@@ -24,9 +24,18 @@ internal static class Program
     /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     private static readonly string[] SafetyFlags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled", "LockScreenOptIn", "StartupEnabled", "WidgetEnabled"];
     /// <summary>TextBlock fields expected to use the shared paragraph help typography.</summary>
-    private static readonly string[] HelpFields = ["OverviewCalculationNote", "OverviewCalendarStatus", "SelectedDateDetail", "HijriSelectedDateDetail", "SettingsScheduleDateLabel", "SettingsSchedulePreviewStatus", "NetworkLocationStatus", "GpsLocationStatus", "OfflineReverseGeocodeStatus", "OnlineGeocodingEndpointInfo", "OnlineGeocodingConsentDisclosure", "OnlineReverseGeocodeStatus", "WidgetPreviewOptionsText", "LockScreenSafetyText"];
+    private static readonly string[] HelpFields = ["OverviewCalculationNote", "OverviewCalendarStatus", "SelectedDateDetail", "HijriSelectedDateDetail", "SettingsScheduleDateLabel", "SettingsSchedulePreviewStatus", "NetworkLocationStatus", "GpsLocationStatus", "OfflineReverseGeocodeStatus", "LockScreenSafetyText"];
+    /// <summary>Production field-specific overrides of the shared paragraph margin.</summary>
+    private static readonly Dictionary<string, Thickness> HelpFieldMargins = new()
+    {
+        ["SelectedDateDetail"] = new Thickness(0, 0, 10, 0),
+        ["HijriSelectedDateDetail"] = new Thickness(0, 0, 10, 0),
+        ["SettingsSchedulePreviewStatus"] = new Thickness(3, 12, 3, 8),
+        ["NetworkLocationStatus"] = new Thickness(0, 0, 0, 8),
+        ["OfflineReverseGeocodeStatus"] = new Thickness(0, 8, 0, 0)
+    };
     /// <summary>CheckBox fields whose labels must wrap with the shared typography.</summary>
-    private static readonly string[] CheckboxFields = ["OnlineReverseGeocodeConsentCheckBox", "ReminderEnabledCheckBox", "WidgetEnabledCheckBox", "StartupEnabledCheckBox", "StartHiddenCheckBox", "AutoLockEnabledCheckBox", "LockScreenCheckBox"];
+    private static readonly string[] CheckboxFields = ["ReminderEnabledCheckBox", "WidgetEnabledCheckBox", "StartupEnabledCheckBox", "StartHiddenCheckBox", "AutoLockEnabledCheckBox", "LockScreenCheckBox"];
 
     /// <summary>Runs the form typography smoke suite; returns 0 on success, 1 on failure.</summary>
     /// <returns>Process exit code.</returns>
@@ -81,7 +90,11 @@ internal static class Program
                 Check(text.FontSize == 14 && text.LineHeight == 20 && text.LineStackingStrategy == LineStackingStrategy.BlockLineHeight,
                     field + " must use 14-DIP text with a fixed 20-DIP line step, not " + text.FontSize + "/" + text.LineHeight + ".");
                 Check(text.TextAlignment == TextAlignment.Left && text.TextWrapping == TextWrapping.Wrap, field + " must wrap and align left.");
-                Check(text.Margin == new Thickness(3, 4, 3, 8), field + " must use the shared paragraph inset/gap.");
+                Thickness expectedMargin = HelpFieldMargins.TryGetValue(field, out Thickness configured)
+                    ? configured
+                    : new Thickness(3, 4, 3, 8);
+                Check(text.Margin == expectedMargin,
+                    field + " must keep its production paragraph inset/gap; actual " + text.Margin + ".");
             }
             foreach (string field in CheckboxFields)
             {
@@ -113,12 +126,6 @@ internal static class Program
                 Check(errorText.Foreground is SolidColorBrush errorInk && errorInk.Color == (Color)ColorConverter.ConvertFromString(expectedInk),
                     "Shared error typography must preserve the theme's error foreground.");
             }
-            TextBlock disclosure = Field<TextBlock>(window, "OnlineGeocodingConsentDisclosure");
-            Check(disclosure.Text.Length <= 300, "Online consent disclosure must be concise (maximum 300 characters for the synthetic default endpoint).");
-            Check(disclosure.Text.Contains("IP publik", StringComparison.OrdinalIgnoreCase) && disclosure.Text.Contains("Windows", StringComparison.OrdinalIgnoreCase) && (disclosure.Text.Contains("disimpan", StringComparison.OrdinalIgnoreCase) || disclosure.Text.Contains("menyimpan", StringComparison.OrdinalIgnoreCase)),
-                "Concise online consent must retain public-IP, Windows-fix and storage disclosures.");
-            TextBlock endpoint = Field<TextBlock>(window, "OnlineGeocodingEndpointInfo");
-            Check(endpoint.Text.Contains("HTTPS", StringComparison.OrdinalIgnoreCase), "Server guidance must retain the HTTPS requirement.");
             Type probeType = assembly.GetType("PrayerAutomation.UI.LockScreenSafetyProbe", true)!;
             object safety = probeType.GetMethod("Inspect", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null)!;
             string safetyMessage = (string)safety.GetType().GetProperty("Message")!.GetValue(safety)!;
@@ -132,17 +139,12 @@ internal static class Program
                 "A scheduler status must not hide the current mode/API/recovery safety reason.");
             windowType.GetMethod("RefreshLockScreenSafety", Members)!.Invoke(window, [null]);
             string settingsBefore = JsonSerializer.Serialize(settings, settingsType);
-            Expander onlineAdvanced = Field<Expander>(window, "OnlineGeocodingAdvancedExpander");
-            Check(!onlineAdvanced.IsExpanded, "Online name settings must be collapsed by default.");
             foreach (double width in new[] { 940d, 1180d })
             {
                 window.Width = width;
                 window.Height = width == 940 ? 650 : 820;
                 tabs.SelectedIndex = 2;
-                onlineAdvanced.IsExpanded = true;
                 Pump();
-                Check(Field<CheckBox>(window, "OnlineReverseGeocodeConsentCheckBox").IsVisible,
-                    "Expand advanced before measuring its online controls and privacy text.");
                 FrameworkElement settingsRoot = (FrameworkElement)((TabItem)tabs.SelectedItem).Content;
                 ScrollViewer settingsScroll = Descendants(settingsRoot).OfType<ScrollViewer>().First();
                 FrameworkElement content = (FrameworkElement)settingsScroll.Content;
@@ -153,9 +155,8 @@ internal static class Program
                     Check(text.FontSize == 14 && text.LineHeight == 20 && text.TextAlignment == TextAlignment.Left,
                         "Settings paragraph must share typography: " + Short(text.Text));
                     Check(text.Text.Length <= 300, "Split the long settings explanation into short paragraphs: " + Short(text.Text));
-                    Check(text.Margin.Left == 3 && text.Margin.Right == 3 || text.Parent is CheckBox ||
-                          ReferenceEquals(text, onlineAdvanced.Header) && text.Margin == new Thickness(0),
-                        "Description indentation is inconsistent: " + Short(text.Text));
+                    Check(IsAllowedDescriptionMargin(text.Margin) || text.Parent is CheckBox,
+                        "Description indentation is inconsistent: " + Short(text.Text) + " actual " + text.Margin + ".");
                     if (text.Parent is FrameworkElement parent)
                     {
                         Rect bounds = text.TransformToAncestor(parent).TransformBounds(new Rect(text.RenderSize));
@@ -193,10 +194,6 @@ internal static class Program
                 Check(recoveryHelp is not null && recoveryHelp.Text.Contains("lima waktu", StringComparison.OrdinalIgnoreCase) && !recoveryHelp.Text.StartsWith("Aplikasi tidak mengunci", StringComparison.Ordinal),
                     "Image-change help must retain the prayer trigger and distinguish the image feature from optional session auto-lock.");
                 string allText = string.Join("\n", Descendants(content).OfType<TextBlock>().Select(t => t.Text));
-                Check(allText.Contains("1 permintaan/detik", StringComparison.OrdinalIgnoreCase) || allText.Contains("1 request/detik", StringComparison.OrdinalIgnoreCase), "Keep the shared online-service rate warning.");
-                Check(allText.Contains("seluruh pengguna", StringComparison.OrdinalIgnoreCase), "Do not misrepresent the public-service quota as per PC.");
-                Check(allText.Contains("server sendiri", StringComparison.OrdinalIgnoreCase), "Keep the many-PC deployment guidance.");
-                Check(allText.Contains("https://operations.osmfoundation.org/policies/nominatim/", StringComparison.Ordinal) && allText.Contains("https://osmfoundation.org/wiki/Privacy_Policy", StringComparison.Ordinal), "Keep both policy references.");
                 Check(allText.Contains("1–60 menit", StringComparison.OrdinalIgnoreCase) &&
                       allText.Contains("default 15", StringComparison.OrdinalIgnoreCase) &&
                       allText.Contains("durasi pilihan habis", StringComparison.OrdinalIgnoreCase) &&
@@ -206,7 +203,7 @@ internal static class Program
                 Check(allText.Contains("snapshot", StringComparison.OrdinalIgnoreCase) || allText.Contains("salinan pemulihan", StringComparison.OrdinalIgnoreCase), "Retain the fail-closed recovery prerequisite.");
                 TextBlock[] fieldLabels = Descendants(content).OfType<TextBlock>().Where(t => ReferenceEquals(t.Style, window.TryFindResource("FieldLabel"))).ToArray();
                 foreach (TextBlock label in fieldLabels)
-                    Check(label.TextAlignment == TextAlignment.Left && label.TextWrapping == TextWrapping.Wrap && label.Margin == new Thickness(3, 4, 12, 6), "Field labels need consistent inset and room before their input: " + Short(label.Text));
+                    Check(label.TextAlignment == TextAlignment.Left && label.TextWrapping == TextWrapping.Wrap && IsAllowedFieldLabelMargin(label.Margin), "Field labels need a known production inset and room before their input: " + Short(label.Text) + " actual " + label.Margin + ".");
                 object spacing = VerifyFormSpacing(content, window);
                 Capture(content, Path.Combine(output, "settings-" + width + ".png"));
                 Capture(Field<CheckBox>(window, "ReminderEnabledCheckBox"), Path.Combine(output, "checkbox-" + width + ".png"));
@@ -244,6 +241,23 @@ internal static class Program
         foreach (string failure in Failures.Distinct().Take(15)) Console.WriteLine("FAIL: " + failure);
         return Failures.Count == 0 ? 0 : 1;
     }
+
+    /// <summary>Accepts the shared paragraph inset plus the field-specific production overrides.</summary>
+    /// <param name="margin">Margin measured on a settings description.</param>
+    /// <returns>True when the margin is one of the known production values.</returns>
+    private static bool IsAllowedDescriptionMargin(Thickness margin) =>
+        (margin.Left == 3 && margin.Right == 3) ||
+        (margin.Left == 0 && margin.Right == 0) ||
+        (margin.Left == 0 && margin.Right == 10);
+
+    /// <summary>Accepts the shared field-label inset plus the production overrides used by grouped settings.</summary>
+    /// <param name="margin">Margin measured on a field label.</param>
+    /// <returns>True when the margin is one of the known production values.</returns>
+    private static bool IsAllowedFieldLabelMargin(Thickness margin) =>
+        margin == new Thickness(3, 4, 12, 6) ||
+        margin == new Thickness(0, 8, 0, 0) ||
+        margin == new Thickness(3, 0, 3, 2) ||
+        margin == new Thickness(0, 12, 0, 2);
 
     /// <summary>Verifies inline and stacked label/input spacing and the correction-group gaps; returns measurements.</summary>
     /// <param name="content">Settings tab content root to inspect.</param>

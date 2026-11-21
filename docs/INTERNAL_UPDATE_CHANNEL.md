@@ -32,7 +32,7 @@ Token diperlukan agar draft terbaca. Jangan menaruh token di source, installer, 
 Promosi ke stable/latest dilakukan hanya setelah QC Windows lulus dan dengan perintah eksplisit:
 
 ```bash
-GH_TOKEN="$($HOME/bin/gh-guard token)" gh api repos/ASQAL90/PrayerAutomation/releases/453278433 -X PATCH -F draft=false -F prerelease=false -f make_latest=true
+GH_TOKEN="$($HOME/bin/gh-guard token)" gh api repos/ASQAL90/PrayerAutomation/releases/453384124 -X PATCH -F draft=false -F prerelease=false -f make_latest=true
 ```
 
 Tag dan aset tidak dihapus atau diganti saat status diubah.

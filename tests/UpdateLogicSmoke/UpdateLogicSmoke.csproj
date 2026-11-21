@@ -24,6 +24,8 @@
     <None Include="../../installer/nsis/AyoJamaah.nsi" Link="AyoJamaah.nsi" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/release-notes/2.4.2.md" Link="release-notes-2.4.2.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../docs/release-notes/2.4.3.md" Link="release-notes-2.4.3.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/PrayerAutomation.UI.csproj" Link="PrayerAutomation.UI.csproj" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/TrayService.cs" Link="TrayService.cs" CopyToOutputDirectory="PreserveNewest" />

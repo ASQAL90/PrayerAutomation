@@ -1,5 +1,11 @@
 # Riwayat perubahan
 
+## v2.4.3
+- Disinkronkan nilai `DisplayVersion` pada entri uninstall setelah journal pembaruan tersimpan dan saat startup agar sesuai dengan versi biner yang sedang berjalan.
+- Diselaraskan assertion harness visual dengan `AssemblyName` produk, tinggi widget 34 DIP, padding 2, dan field bantuan yang masih tersedia.
+- Dinaikkan nomor versi aplikasi ke 2.4.3.
+- Diperbarui contoh ID draft pada panduan kanal pembaruan internal.
+
 ## v2.4.2
 - Ditambahkan panel ringkasan catatan rilis versi terbaru pada popup pembaruan.
 - Ditambahkan tombol "Riwayat perubahan" pada halaman Tentang beserta jendela riwayat seluruh versi.

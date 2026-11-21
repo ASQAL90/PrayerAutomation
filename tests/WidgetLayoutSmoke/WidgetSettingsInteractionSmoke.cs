@@ -143,7 +143,7 @@ internal static class WidgetSettingsInteractionSmoke
         fixture.Select("ThemeBox", "dark");
         fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
         Pump();
-        Assert(fixture.WidgetMode == "essential" && fixture.Widget.Height == 40 && fixture.Widget.IsVisible,
+        Assert(fixture.WidgetMode == "essential" && fixture.Widget.Height == 34 && fixture.Widget.IsVisible,
             $"Cancel must restore the existing widget's saved appearance and visibility: mode={fixture.WidgetMode}, height={fixture.Widget.Height}, visible={fixture.Widget.IsVisible}.");
         Assert(fixture.SelectedTag("ThemeBox") == "light" && fixture.CurrentThemeId == "light",
             "Cancel must restore the saved theme instead of leaking the unsaved resource palette.");

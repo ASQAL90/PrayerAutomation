@@ -165,79 +165,26 @@ internal static class VisualAcceptanceSmoke
             errors.Add("StartHidden harus aktif saat registrasi startup dinyalakan.");
     }
 
-    /// <summary>Verifies geocoding controls: defaults, consent gating, endpoint validation, and offline lookup.</summary>
+    /// <summary>Verifies the offline-only geocoding controls and the local Jakarta lookup.</summary>
     /// <param name="type">MainWindow type.</param>
     /// <param name="window">Window instance to inspect.</param>
     /// <param name="errors">Collected error messages.</param>
     private static void VerifyGeocodingControls(Type type, Window window, List<string> errors)
     {
-        TextBox? endpoint = Field<TextBox>(type, window, "OnlineGeocodingEndpointBox");
-        CheckBox? consent = Field<CheckBox>(type, window, "OnlineReverseGeocodeConsentCheckBox");
-        Button? online = Field<Button>(type, window, "OnlineReverseGeocodeButton");
-        TextBlock? endpointInfo = Field<TextBlock>(type, window, "OnlineGeocodingEndpointInfo");
-        TextBlock? disclosure = Field<TextBlock>(type, window, "OnlineGeocodingConsentDisclosure");
-        TextBlock? onlineStatus = Field<TextBlock>(type, window, "OnlineReverseGeocodeStatus");
         Button? offline = Field<Button>(type, window, "OfflineReverseGeocodeButton");
         TextBlock? offlineStatus = Field<TextBlock>(type, window, "OfflineReverseGeocodeStatus");
         TextBox? latitude = Field<TextBox>(type, window, "LatitudeBox");
         TextBox? longitude = Field<TextBox>(type, window, "LongitudeBox");
         TextBox? locationName = Field<TextBox>(type, window, "LocationNameBox");
-        if (endpoint is null || consent is null || online is null || endpointInfo is null || disclosure is null ||
-            onlineStatus is null || offline is null || offlineStatus is null || latitude is null || longitude is null || locationName is null)
+        if (offline is null || offlineStatus is null || latitude is null || longitude is null || locationName is null)
         {
-            errors.Add("Kontrol reverse-geocoding online/offline tidak lengkap di WPF.");
+            errors.Add("Kontrol reverse-geocoding offline tidak lengkap di WPF.");
             return;
         }
-
-        endpoint.BringIntoView();
-        Pump();
-        const string defaultEndpoint = "https://nominatim.openstreetmap.org";
-        if (endpoint.Text != defaultEndpoint || !endpointInfo.Text.Contains(defaultEndpoint, StringComparison.Ordinal))
-            errors.Add("Endpoint online default Nominatim tidak ditampilkan dengan benar.");
-        if (consent.IsChecked == true || online.IsEnabled)
-            errors.Add("Consent online harus tidak dicentang dan tombol nonaktif secara default.");
-        if (!disclosure.Text.Contains("IP publik", StringComparison.OrdinalIgnoreCase) ||
-            !disclosure.Text.Contains("Windows", StringComparison.OrdinalIgnoreCase) ||
-            !disclosure.Text.Contains("form", StringComparison.OrdinalIgnoreCase) ||
-            !disclosure.Text.Contains("tersimpan", StringComparison.OrdinalIgnoreCase) ||
-            !disclosure.Text.Contains("estimasi IP", StringComparison.OrdinalIgnoreCase) ||
-            !(disclosure.Text.Contains("tidak dikirim", StringComparison.OrdinalIgnoreCase) ||
-              disclosure.Text.Contains("tidak digunakan", StringComparison.OrdinalIgnoreCase)))
-            errors.Add("Disclosure harus menyebut IP publik, lokasi Windows terbaru dan larangan memakai koordinat form/tersimpan atau estimasi IP.");
-
-        MethodInfo? onlineClick = type.GetMethod("OnlineReverseGeocode_Click", I);
-        if (onlineClick is null)
-        {
-            errors.Add("Handler online reverse-geocoding tidak ditemukan.");
-        }
-        else
-        {
-            string latitudeBefore = latitude.Text, longitudeBefore = longitude.Text, locationBefore = locationName.Text;
-            onlineClick.Invoke(window, [online, new RoutedEventArgs(Button.ClickEvent, online)]);
-            if (!(onlineStatus.Text.Contains("tidak ada lokasi yang dibaca atau dikirim", StringComparison.OrdinalIgnoreCase) ||
-                  onlineStatus.Text.Contains("belum membaca atau mengirim lokasi", StringComparison.OrdinalIgnoreCase)) ||
-                consent.IsChecked == true || online.IsEnabled ||
-                type.GetField("_onlineGeocodeCancellation", I)?.GetValue(window) is not null ||
-                latitude.Text != latitudeBefore || longitude.Text != longitudeBefore || locationName.Text != locationBefore)
-                errors.Add("Handler online harus menolak tanpa consent, tanpa memulai operasi atau mengubah lokasi form.");
-        }
-
-        consent.IsChecked = true;
-        Pump();
-        if (!online.IsEnabled)
-            errors.Add("Consent eksplisit untuk endpoint valid harus mengaktifkan tombol satu-pencarian.");
-        endpoint.Text = "https://reverse.example/nominatim";
-        Pump();
-        if (consent.IsChecked == true || online.IsEnabled ||
-            !disclosure.Text.Contains("https://reverse.example/nominatim", StringComparison.Ordinal))
-            errors.Add("Mengubah endpoint harus memperbarui disclosure dan mencabut consent lama.");
-        endpoint.Text = "http://reverse.example";
-        Pump();
-        if (consent.IsChecked == true || online.IsEnabled ||
-            !endpointInfo.Text.Contains("HTTPS", StringComparison.OrdinalIgnoreCase))
-            errors.Add("Endpoint HTTP yang tidak aman harus ditolak tanpa consent.");
-        endpoint.Text = defaultEndpoint;
-        Pump();
+        foreach (string name in new[] { "OnlineGeocodingEndpointBox", "OnlineGeocodingConsentDisclosure",
+                     "OnlineReverseGeocodeConsentCheckBox", "OnlineReverseGeocodeButton", "OnlineReverseGeocodeStatus" })
+            if (Field<FrameworkElement>(type, window, name) is not null)
+                errors.Add("Kontrol online yang sudah dihapus masih ditemukan: " + name);
 
         latitude.Text = "-6.21462";
         longitude.Text = "106.84513";
@@ -246,9 +193,6 @@ internal static class VisualAcceptanceSmoke
         Pump();
         bool timedOut = false;
         var frame = new DispatcherFrame();
-        /// <summary>Enables the offline button frame exit when the button becomes enabled.</summary>
-        /// <param name="sender">Event sender (unused).</param>
-        /// <param name="e">Dependency property changed event args (unused).</param>
         void OnOfflineButtonEnabledChanged(object? sender, DependencyPropertyChangedEventArgs e)
         {
             if (offline.IsEnabled)
@@ -439,14 +383,6 @@ internal static class VisualAcceptanceSmoke
                     if (tabIndex == 1) calendarTabs.SelectedIndex = variant;
                     if (tabIndex == 2) mode.SelectedIndex = variant;
                     Pump();
-                    if (tabIndex == 2 && variant == 0)
-                    {
-                        var header = window.FindName("OnlineGeocodingAdvancedHeader") as TextBlock
-                            ?? throw new InvalidOperationException("The actual online advanced header is missing.");
-                        header.BringIntoView();
-                        Pump();
-                        VerifyNativeHeaderSurface(header, window.Background, errors, $"{theme}:header");
-                    }
                     foreach (TextBlock text in Descendants(window).OfType<TextBlock>().Where(text => text.IsVisible && text.ActualWidth > 0 && !string.IsNullOrWhiteSpace(text.Text)))
                     {
                         Brush? background = TextSurface(text, window.Background);

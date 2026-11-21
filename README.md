@@ -69,6 +69,10 @@ Rilis ini sengaja disimpan sebagai draft untuk QC; stable terbaru tetap `v2.4.1`
 
 Aset pembaruan delta (`AyoJamaah-update-2.4.2-*.json`, `.sig`, dan `AyoJamaah-delta-2.4.2-*.zip`) juga tersedia di [rilis v2.4.2](https://github.com/asqal90/PrayerAutomation/releases/tag/v2.4.2) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/asqal90/PrayerAutomation/releases).
 
+### v2.4.3 (persiapan lokal)
+
+Versi ini belum dirilis dan belum punya aset unduhan. Perbaikannya mencakup sinkronisasi `DisplayVersion` setelah pembaruan otomatis dan saat startup, serta penyesuaian assertion harness visual dengan versi produk saat ini. Rilis `v2.4.2` tetap draft dan stable terbaru tetap `v2.4.1`.
+
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
 ## Lisensi

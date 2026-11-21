@@ -32,130 +32,37 @@ internal static class CopyHumanizeSmoke
     /// <summary>Loaded product UI assembly.</summary>
     private static readonly Assembly Product = typeof(ProductUi::PrayerAutomation.UI.App).Assembly;
 
-    /// <summary>Verifies the collapsed-by-default online-advanced section, its consent/endpoint events, and save reachability.</summary>
+    /// <summary>Verifies that geocoding is offline-only and that removed online controls stay absent in the compiled window.</summary>
     /// <param name="application">Application used to host the isolated window.</param>
-    public static void RunOnlineAdvanced(Application application)
+    public static void RunGeocoding(Application application)
     {
-        string directory = OutputDirectory("online-advanced");
-        var rows = new List<object>();
+        string directory = OutputDirectory("geocoding");
         using (var fixture = new CopyFixture(application, directory))
         {
-            // Disconnect acquisition/network owners in this synthetic Window only.
             foreach (string name in new[] { "_deviceLocationService", "_locationDetectionService", "_onlineReverseGeocoder" })
             {
-                FieldInfo service = fixture.MainWindow.GetType().GetField(name, I)
-                    ?? throw new InvalidOperationException("Fail closed: missing acquisition/network owner.");
+                FieldInfo? service = fixture.MainWindow.GetType().GetField(name, I);
+                if (service is null) continue;
                 service.SetValue(fixture.MainWindow, null);
                 Assert(service.GetValue(fixture.MainWindow) is null, "Fail closed: acquisition/network owner must stay disconnected.");
             }
-            var advanced = fixture.MainWindow.FindName("OnlineGeocodingAdvancedExpander") as Expander;
-            Assert(advanced is not null && !advanced.IsExpanded,
-                "ONLINE_ADVANCED_DEFAULT: the online server, consent, disclosures and action must be behind a closed-by-default advanced toggle.");
-            var expander = advanced!;
-            var header = fixture.MainWindow.FindName("OnlineGeocodingAdvancedHeader") as TextBlock;
-            Assert(header is not null && header.Text == "Lanjutan — pencarian nama online",
-                "ONLINE_ADVANCED_HEADER: use a concise, explicit Indonesian label.");
-            string[] onlineNames = ["OnlineGeocodingEndpointBox", "OnlineGeocodingEndpointInfo", "OnlineGeocodingConsentDisclosure",
-                "OnlineReverseGeocodeConsentCheckBox", "OnlineReverseGeocodeButton", "OnlineReverseGeocodeStatus"];
-            FrameworkElement[] online = onlineNames.Select(name => fixture.Field<FrameworkElement>(name)).ToArray();
-            var consent = fixture.Field<CheckBox>("OnlineReverseGeocodeConsentCheckBox");
-            var button = fixture.Field<Button>("OnlineReverseGeocodeButton");
-            var endpoint = fixture.Field<TextBox>("OnlineGeocodingEndpointBox");
-            Assert(expander.Content is StackPanel panel && panel.Children.Count == 11,
-                "ONLINE_ADVANCED_CONTENT: the entire existing online block must be retained, including unnamed privacy/policy/attribution paragraphs.");
-            foreach (string theme in Themes)
-            foreach (int width in new[] { 940, 1180 })
-            {
-                fixture.SelectTheme(theme);
-                fixture.MainWindow.Width = width;
-                fixture.MainWindow.Height = width == 940 ? 650 : 820;
-                Pump(application, fixture);
-                Assert(!expander.IsExpanded && online.All(control => !control.IsVisible),
-                    "ONLINE_ADVANCED_COLLAPSED: online fields/actions must be effectively invisible, not simply disabled or offscreen.");
-                Assert(new[] { "DetectNetworkLocationButton", "DetectGpsLocationButton", "OfflineReverseGeocodeButton" }
-                    .All(name => fixture.Field<Button>(name).IsVisible && fixture.Field<Button>(name).IsEnabled),
-                    "ONLINE_ADVANCED_NORMAL: network/device/GPS and offline actions must remain outside the advanced section.");
-                expander.BringIntoView();
-                Pump(application, fixture);
-                fixture.MainWindow.UpdateLayout();
-                double collapsedHeight = expander.ActualHeight;
-                Assert(collapsedHeight > 0 && collapsedHeight <= 60 && header!.IsVisible,
-                    "ONLINE_ADVANCED_COMPACT: closed section must consume header height only.");
-                /// <summary>Snapshots settings and form values to detect side effects.</summary>
-                string Stable() => JsonSerializer.Serialize(new
-                {
-                    settings = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType),
-                    form = new[] { "LocationNameBox", "LatitudeBox", "LongitudeBox", "TimeZoneBox", "LockScreenDurationBox" }
-                        .Select(name => new { name, text = name == "TimeZoneBox" ? fixture.Field<ComboBox>(name).Text : fixture.Field<TextBox>(name).Text }),
-                    endpoint = endpoint.Text, consent = consent.IsChecked, actionEnabled = button.IsEnabled,
-                    status = fixture.Field<TextBlock>("OnlineReverseGeocodeStatus").Text,
-                    fixture.SaveWrites, fixture.StartupWrites
-                });
-                string stable = Stable();
-                expander.IsExpanded = true;
-                Pump(application, fixture);
-                fixture.MainWindow.UpdateLayout();
-                Assert(online.All(control => control.IsVisible && ReferenceEquals(Ancestor<Expander>(control), expander)),
-                    "ONLINE_ADVANCED_EXPANDED: the existing online block must become visible inside the actual Expander.");
-                Assert(expander.ActualHeight > collapsedHeight + 100 && Stable() == stable && !button.IsEnabled && consent.IsChecked is false,
-                    "ONLINE_ADVANCED_NO_SIDE_EFFECT: opening must not grant consent, acquire location, request online, change drafts/settings or save.");
-                var body = (StackPanel)expander.Content;
-                TextBlock[] help = body.Children.OfType<TextBlock>()
-                    .Where(text => ReferenceEquals(text.Style, fixture.MainWindow.FindResource("FormHelpText"))).ToArray();
-                Assert(help.Length == 7 && help.All(text => text.TextWrapping == TextWrapping.Wrap && text.FontSize == 14 &&
-                    text.LineHeight == 20 && text.TextAlignment == TextAlignment.Left),
-                    "ONLINE_ADVANCED_PARAGRAPHS: retain shared readable wrapping/spacing for all existing help and disclosure text.");
-                double expandedHeight = expander.ActualHeight;
-                expander.BringIntoView();
-                Pump(application, fixture);
-                Color foreground = ((SolidColorBrush)header!.Foreground).Color;
-                Color background = ((SolidColorBrush)expander.Background).Color;
-                double contrast = Contrast(foreground, background);
-                Assert(contrast >= 4.5, "ONLINE_ADVANCED_HEADER_CONTRAST: real theme header text must remain readable.");
-                string capture = Path.Combine(directory, theme + "-" + width + "-header.png");
-                int glyphs = CaptureGlyphs(header, expander.Background, foreground, capture);
-                Assert(glyphs > 0, "ONLINE_ADVANCED_HEADER_RENDER: actual header glyphs must be rendered, not only correct brush properties.");
-                expander.IsExpanded = false;
-                Pump(application, fixture);
-                fixture.MainWindow.UpdateLayout();
-                Assert(online.All(control => !control.IsVisible) && Math.Abs(expander.ActualHeight - collapsedHeight) < .5 && Stable() == stable,
-                    "ONLINE_ADVANCED_RECLOSE: collapse must remove the online area and blank height without changing consent or other state.");
-                VerifySaveReachable(application, fixture);
-                rows.Add(new { theme, formWidth = width, collapsedHeight, expandedHeight, contrast, headerGlyphPixels = glyphs,
-                    capture, captureSha256 = HashFile(capture), entireOnlineBlockToggles = true, normalActionsVisible = true,
-                    draftAndSavedStateUnchanged = true, consentStillFalse = true });
-            }
-            expander.IsExpanded = true;
-            Pump(application, fixture);
-            // The actual wired click is forced while disabled to check the early no-consent branch.
-            // All acquisition/network owner fields were disconnected before this event.
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Pump(application, fixture);
-            Assert(fixture.Field<TextBlock>("OnlineReverseGeocodeStatus").Text.StartsWith("Centang", StringComparison.Ordinal) &&
-                consent.IsChecked is false && !button.IsEnabled,
-                "ONLINE_ADVANCED_CONSENT_REQUIRED: a forced actual click without consent must return before any acquisition/request.");
-            consent.IsChecked = true;
-            Pump(application, fixture);
-            Assert(button.IsEnabled, "ONLINE_ADVANCED_CONSENT_WIRING: valid endpoint plus explicit consent must retain original action enablement.");
-            endpoint.Text = "http://example.invalid";
-            Pump(application, fixture);
-            Assert(consent.IsChecked is false && !button.IsEnabled,
-                "ONLINE_ADVANCED_ENDPOINT_REVOKES: changing the endpoint must revoke consent and keep invalid HTTP unavailable.");
-            Assert(fixture.SaveWrites == 0 && fixture.StartupWrites == 0 && !File.Exists(fixture.SavePath),
-                "Online advanced interaction must not save even through mock boundaries.");
-            Assert(fixture.MainWindow.GetType().GetField("_onlineGeocodeCancellation", I)!.GetValue(fixture.MainWindow) is null,
-                "No online lookup may start in this isolated toggle/early-consent test.");
+            foreach (string name in new[] { "OnlineGeocodingAdvancedExpander", "OnlineGeocodingEndpointBox",
+                         "OnlineGeocodingConsentDisclosure", "OnlineReverseGeocodeConsentCheckBox",
+                         "OnlineReverseGeocodeButton", "OnlineReverseGeocodeStatus" })
+                Assert(fixture.MainWindow.FindName(name) is null, "Removed online geocoding control must stay absent: " + name);
+
+            Button offline = fixture.Field<Button>("OfflineReverseGeocodeButton");
+            TextBlock offlineStatus = fixture.Field<TextBlock>("OfflineReverseGeocodeStatus");
+            Assert(offline.IsVisible && offline.IsEnabled && offlineStatus.IsVisible,
+                "Offline lookup must remain the visible geocoding action.");
+            Assert(offlineStatus.Text.Contains("Tidak ada data dikirim", StringComparison.OrdinalIgnoreCase),
+                "Offline status must retain the no-data-sent disclosure.");
+            VerifySaveReachable(application, fixture);
+            Assert(fixture.SaveWrites == 0 && fixture.StartupWrites == 0,
+                "Copy inspection must not save even through mock boundaries.");
         }
         WpfApplicationIsolation.Verify(application);
-        Assert(rows.Count == 16, "Advanced realization coverage must be 8 themes x 2 widths.");
-        WriteEvidence(directory, "online-advanced", rows, new HashSet<string>(), new
-        {
-            themes = 8, widths = new[] { 940, 1180 }, realizations = rows.Count, actualCompiledMainWindowBaml = true,
-            normalActionsRemainVisible = true, collapsedAndExpandedExercised = true,
-            actualConsentAndEndpointEventsExercised = true, deviceAcquisitionAndNetworkRequestExercised = false,
-            note = "Uses existing pre-constructor false-flag/scratch-save/startup-mock fixture; existing constructor read-only capability inspection remains; acquisition/network owners are disconnected before toggle/early-consent events."
-        });
-        Console.WriteLine("ONLINE_ADVANCED PASS: default closed; complete block open/close; 16 actual-WPF theme/width cases; header glyphs/contrast; GPS/offline preserved; actual consent/endpoint events, no acquisition/request/save.");
+        Console.WriteLine("GEOCODING PASS: online controls absent; offline lookup visible with no-data-sent disclosure; no save.");
     }
 
     /// <summary>Verifies the compiled safety status literals match the approved humanized text in all themes and widths.</summary>
@@ -730,7 +637,7 @@ internal static class CopyHumanizeSmoke
     {
         savedSettings = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType),
         checkBoxes = new[] { "StartupEnabledCheckBox", "StartHiddenCheckBox", "AutoLockEnabledCheckBox", "LockScreenCheckBox",
-            "ReminderEnabledCheckBox", "WidgetEnabledCheckBox", "OnlineReverseGeocodeConsentCheckBox" }
+            "ReminderEnabledCheckBox", "WidgetEnabledCheckBox" }
             .Select(name => { CheckBox x = fixture.Field<CheckBox>(name); return new { name, x.IsChecked, x.IsEnabled,
                 x.Visibility, templateIdentity = RuntimeHelpers.GetHashCode(x.Template) }; }),
         values = new[] { "LocationNameBox", "LatitudeBox", "LongitudeBox", "TimeZoneBox", "LockScreenDurationBox",
@@ -739,9 +646,8 @@ internal static class CopyHumanizeSmoke
                 string text = x is ComboBox combo ? combo.Text : ((TextBox)x).Text; return new { name, Text = text, x.IsEnabled,
                 x.MinHeight, width = double.IsNaN(x.Width) ? "Auto" : x.Width.ToString(CultureInfo.InvariantCulture),
                 templateIdentity = x.Template is null ? 0 : RuntimeHelpers.GetHashCode(x.Template) }; }),
-        neighboringStatuses = new[] { "NetworkLocationStatus", "OnlineReverseGeocodeStatus", "OfflineReverseGeocodeStatus", "SettingsStatusLabel" }
+        neighboringStatuses = new[] { "NetworkLocationStatus", "OfflineReverseGeocodeStatus", "SettingsStatusLabel" }
             .Select(name => new { name, text = fixture.Field<TextBlock>(name).Text }),
-        onlineButtonEnabled = fixture.Field<Button>("OnlineReverseGeocodeButton").IsEnabled,
         tab = fixture.Field<TabControl>("MainTabs").SelectedIndex,
         loading = fixture.MainWindow.GetType().GetField("_loadingSettings", I)!.GetValue(fixture.MainWindow),
         fixture.SaveWrites, fixture.StartupWrites
@@ -818,9 +724,8 @@ internal static class CopyHumanizeSmoke
             Field<TabControl>("MainTabs").SelectedIndex = 2;
             Pump(application, this);
             Assert(Field<TextBox>("LockScreenDurationBox").Text == "15" &&
-                !Field<CheckBox>("OnlineReverseGeocodeConsentCheckBox").IsChecked.GetValueOrDefault() &&
-                !Field<Button>("OnlineReverseGeocodeButton").IsEnabled,
-                "Fail closed: actual duration default/online consent and action must remain safe.");
+                Field<TextBlock>("OfflineReverseGeocodeStatus").Text.Contains("Tidak ada data dikirim", StringComparison.OrdinalIgnoreCase),
+                "Fail closed: actual duration default and offline-only notice must remain safe.");
             Console.WriteLine("COPY_FIXTURE_FLAGS PASS: deserialized 7 consequential/start-hidden/widget flags=false before Window; scratch saver/mock startup; clock stopped.");
         }
         /// <summary>Product AppSettings type.</summary>

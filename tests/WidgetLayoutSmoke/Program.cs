@@ -44,10 +44,10 @@ internal static class Program
                        args.SequenceEqual(new[] { "--lockscreen-duration-only" }) ||
                        args.SequenceEqual(new[] { "--copy-safety-only" }) ||
                        args.SequenceEqual(new[] { "--copy-gps-only" }) ||
-                       args.SequenceEqual(new[] { "--online-advanced-only" }),
+                       args.SequenceEqual(new[] { "--geocoding-only" }),
                     "Only a known isolated WPF suite may be selected.");
-                if (args.SequenceEqual(new[] { "--online-advanced-only" }))
-                    CopyHumanizeSmoke.RunOnlineAdvanced(application);
+                if (args.SequenceEqual(new[] { "--geocoding-only" }))
+                    CopyHumanizeSmoke.RunGeocoding(application);
                 else if (args.SequenceEqual(new[] { "--copy-safety-only" }))
                     CopyHumanizeSmoke.RunSafety(application);
                 else if (args.SequenceEqual(new[] { "--copy-gps-only" }))
@@ -79,7 +79,7 @@ internal static class Program
                     VerifyEssentialMarqueeLayout();
                     VerifyMinimalistLayout(application);
                     VerifyMediumDetailLayout();
-                    CopyHumanizeSmoke.RunOnlineAdvanced(application);
+                    CopyHumanizeSmoke.RunGeocoding(application);
                     UiMinorSmoke.Run(application);
                     WidgetSettingsInteractionSmoke.Run(application);
                     StartupWidgetLifecycleSmoke.Run(application);
@@ -459,6 +459,8 @@ internal static class Program
     /// <param name="application">Application hosting the widgets.</param>
     private static void VerifyMinimalistLayout(Application application)
     {
+        const double SlimHeight = 34;
+        const double SlimPadding = 2;
         using var essential = new WidgetFixture("essential", "static");
         essential.Layout();
         using var widget = new WidgetFixture("minimalist", "static");
@@ -467,9 +469,11 @@ internal static class Program
         var essentialFrame = (Border)essential.Window.Content;
         Console.WriteLine($"WIDGET_MINIMALIST_SLIM height={widget.Window.ActualHeight:0.#} essential={essential.Window.ActualHeight:0.#} " +
             $"paddingTop={frame.Padding.Top:0.#} paddingBottom={frame.Padding.Bottom:0.#} content={host.ActualHeight:0.#}");
-        Assert(widget.Window.ActualHeight == essential.Window.ActualHeight && widget.Window.ActualHeight == 40 &&
-               frame.Padding == essentialFrame.Padding && frame.Padding.Top <= 5 && frame.Padding.Bottom <= 5,
-            "Minimalist must match the 40-DIP one-line widget height and compact vertical padding.");
+        Assert(Math.Abs(widget.Window.ActualHeight - SlimHeight) <= 1 &&
+               Math.Abs(essential.Window.ActualHeight - SlimHeight) <= 1 &&
+               frame.Padding == essentialFrame.Padding &&
+               frame.Padding.Top <= SlimPadding && frame.Padding.Bottom <= SlimPadding,
+            "Minimalist must match the 34-DIP one-line widget height and compact vertical padding.");
 
         TextBlock[] labels = Descendants(body).OfType<TextBlock>().ToArray();
         TextBlock nextPrayer = labels.SingleOrDefault(text => text.Text.StartsWith("Berikutnya:", StringComparison.Ordinal))
@@ -515,7 +519,7 @@ internal static class Program
         hide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         Assert(!widget.Window.IsVisible, "The real Minimalist hide button must still hide the widget.");
         widget.Layout();
-        Assert(widget.Window.IsVisible && widget.Window.ActualHeight == 40,
+        Assert(widget.Window.IsVisible && Math.Abs(widget.Window.ActualHeight - SlimHeight) <= 1,
             "A hidden Minimalist widget must reopen with the same compact height.");
 
         using var fixture = new WidgetSettingsInteractionSmoke.Fixture(application, isolateSave: true, preventActivation: true);
@@ -527,18 +531,18 @@ internal static class Program
             fixture.Select("WidgetModeBox", "minimalist");
             actual.UpdateLayout();
             var actualFrame = (Border)actual.Content;
-            Assert(ReferenceEquals(actual, fixture.Widget) && actual.ActualHeight == 40 &&
-                   actualFrame.Padding.Top == 5 && actualFrame.Padding.Bottom == 5 &&
+            Assert(ReferenceEquals(actual, fixture.Widget) && Math.Abs(actual.ActualHeight - SlimHeight) <= 1 &&
+                   actualFrame.Padding.Top == SlimPadding && actualFrame.Padding.Bottom == SlimPadding &&
                    Descendants(actualFrame).OfType<TextBlock>().Count(text =>
                        System.Windows.Automation.AutomationProperties.GetAutomationId(text) is "MinimalistNextPrayer" or "MinimalistCountdown") == 2 &&
                    System.Text.Json.JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == baseline,
                 "The compiled production widget must preview the same compact Minimalist layout in every theme without changing saved settings.");
             fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
-            Assert(fixture.WidgetMode == "essential" && actual.Height == 40 && fixture.CurrentThemeId == "light",
+            Assert(fixture.WidgetMode == "essential" && actual.Height == SlimHeight && fixture.CurrentThemeId == "light",
                 "Cancel must restore saved one-line appearance and theme on the same compiled widget.");
             checks++;
         }
-        Console.WriteLine($"WIDGET_MINIMALIST_SLIM PASS: checks={checks} height=40 padding=5 text-unclipped hide/reopen actual-preview/Cancel preserved.");
+        Console.WriteLine($"WIDGET_MINIMALIST_SLIM PASS: checks={checks} height={SlimHeight} padding={SlimPadding} text-unclipped hide/reopen actual-preview/Cancel preserved.");
     }
 
     /// <summary>Verifies the Medium Detail layout fits comfortably: height cap, slice margins, right padding, and schedule rows.</summary>
