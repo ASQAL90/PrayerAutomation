@@ -23,6 +23,8 @@ internal static class UiMinorSmoke
     private const BindingFlags S = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
     /// <summary>Consequential settings flags forced false for the synthetic fixture.</summary>
     private static readonly string[] SafetyFlags = ["RemindersEnabled", "AutoLockEnabled", "LockScreenEnabled", "LockScreenOptIn", "StartupEnabled"];
+    /// <summary>Margin passed by the production widget to WidgetSettingsLogic.PlaceWidget.</summary>
+    private const double WidgetMargin = 4;
 
     /// <summary>Runs all UI minor smoke phases in sequence.</summary>
     /// <param name="application">Application used to host the isolated fixtures.</param>
@@ -62,11 +64,11 @@ internal static class UiMinorSmoke
                 // with like so a 0.2 px DIP rounding difference is not reported as a regression.
                 double expectedLeft = normalized switch
                 {
-                    "tl" or "bl" => area.Left + 12,
-                    "tr" or "br" => area.Right - actual.ActualWidth - 12,
+                    "tl" or "bl" => area.Left + WidgetMargin,
+                    "tr" or "br" => area.Right - actual.ActualWidth - WidgetMargin,
                     _ => area.Left + (area.Width - actual.ActualWidth) / 2
                 };
-                double expectedTop = normalized is "bl" or "br" ? area.Bottom - actual.ActualHeight - 12 : area.Top;
+                double expectedTop = normalized is "bl" or "br" ? area.Bottom - actual.ActualHeight - WidgetMargin : area.Top;
                 Console.WriteLine($"UI_MINOR_TOP mode={mode} motion={motion} requested={position} normalized={normalized} actual={actual.Left:0.###},{actual.Top:0.###},{actual.ActualWidth:0.###},{actual.ActualHeight:0.###} expected={expectedLeft:0.###},{expectedTop:0.###} workarea={area}");
                 Assert(ReferenceEquals(actual, fixture.Widget) && actual.IsVisible && actual.ActualWidth > 0 && actual.ActualHeight > 0,
                     "The placement test must use the same visible realized production widget.");
@@ -74,7 +76,8 @@ internal static class UiMinorSmoke
                     $"Horizontal placement must preserve centering and side margins: {mode}/{position}.");
                 if (Math.Abs(actual.Top - expectedTop) >= 0.1)
                     failures.Add($"UI_MINOR_TOP_FAILURE {mode}/{motion}/{position}: actual Top={actual.Top:0.###}, expected work-area edge/bottom margin={expectedTop:0.###}.");
-                Assert(actual.Width <= area.Width - 24 + 0.1 && actual.Height <= area.Height - 24 + 0.1,
+                Assert(actual.ActualWidth <= area.Width - 2 * WidgetMargin + 0.1 &&
+                       actual.ActualHeight <= area.Height - 2 * WidgetMargin + 0.1,
                     "Top alignment must preserve work-area dimension clamps.");
                 Assert(JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == saved,
                     "Placement preview must not change persisted/scheduler settings.");
