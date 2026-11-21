@@ -120,9 +120,8 @@ internal static class Program
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         var resources = document.Root!.Element(p + "Application.Resources")!;
         var dictionary = new XElement(p + "ResourceDictionary",
-            new XAttribute(XNamespace.Xmlns + "x", "http://schemas.microsoft.com/winfx/2006/xaml"),
-            new XAttribute(XNamespace.Xmlns + "local", "clr-namespace:PrayerAutomation.UI;assembly=AyoJamaah"),
-            resources.Elements().Select(e => new XElement(e)));
+            document.Root!.Attributes().Where(attribute => attribute.IsNamespaceDeclaration),
+            resources.Elements().Select(element => new XElement(element)));
         Host!.Resources = (ResourceDictionary)XamlReader.Parse(dictionary.ToString());
     }
 

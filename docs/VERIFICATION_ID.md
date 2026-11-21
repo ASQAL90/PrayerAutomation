@@ -103,6 +103,7 @@ Uji workflow `Release` dari branch `master`: run `44834408908` gagal di `Build N
 - **Installer manual:** pengguna mengonfirmasi `/UPDATEMODE` lanjut tanpa dialog dan konfirmasi versi sama/lebih baru pada instalasi manual berjalan OK di PC. Bersama bukti visual dan update di atas, cakupan uji 2.4.2 lengkap.
 - **Batas:** ini membuktikan jalur draft/kanal internal, helper, dan installer. Sinkronisasi `DisplayVersion` (commit lokal `552804d`, disiapkan pada `v2.4.3`) belum diuji di PC. Tidak ada push, tag, workflow, atau publish baru dari sesi QC ini.
 - **Persiapan 2.4.3:** nomor versi dinaikkan pada csproj dan NSIS, catatan rilis serta changelog ditambah, dan assertion harness visual diselaraskan dengan produk saat ini. Build WPF Release stable/ber-symbol serta smoke lokal lolos; aset, tag, rilis, dan uji PC untuk 2.4.3 belum dibuat.
+- **Tindak lanjut harness 2.4.3:** `HANDOFF-PC.md` melaporkan 3 smoke gagal karena paket biner, bukan regresi: DLL produk di `smoke\` masih 2.4.2 dan `*.deps.json` masih mengunci 2.4.2 sementara harness sudah menaut ke 2.4.3, sedangkan `AboutWindowSmoke` kehilangan deklarasi `xmlns:sys` saat menyalin resource. Loader harness sekarang mewarisi semua deklarasi namespace produksi, dan paket `handoff-fix/` berisi DLL produk 2.4.3 beserta deps.json sudah disiapkan. Hasil ulang PC belum diterima.
 
 ### Instrumentasi first-open kalender (2.4.0)
 
