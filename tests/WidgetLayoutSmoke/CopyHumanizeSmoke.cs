@@ -822,10 +822,13 @@ internal static class CopyHumanizeSmoke
     /// <returns>The created directory path.</returns>
     private static string OutputDirectory(string phase)
     {
-        string root = Environment.GetEnvironmentVariable("SMOKE_SCRATCH")
-            ?? throw new InvalidOperationException("Fail closed: explicit owned scratch fixture directory is required.");
-        string approved = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PrayerAutomationSmoke", "scratch") + Path.DirectorySeparatorChar;
-        Assert(Path.GetFullPath(root).StartsWith(approved, StringComparison.OrdinalIgnoreCase), "Fail closed: no original profile or system-temp fixture paths.");
+        string root = Path.GetFullPath(Environment.GetEnvironmentVariable("SMOKE_SCRATCH")
+            ?? throw new InvalidOperationException("Fail closed: explicit owned scratch fixture directory is required."));
+        string approved = Path.GetFullPath(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PrayerAutomationSmoke", "scratch"));
+        Assert(root.Equals(approved, StringComparison.OrdinalIgnoreCase) ||
+               root.StartsWith(approved + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
+            "Fail closed: no original profile or system-temp fixture paths.");
         string output = Path.Combine(root, "copy-" + phase + "-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(output);
         return output;

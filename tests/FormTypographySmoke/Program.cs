@@ -156,6 +156,11 @@ internal static class Program
                 ScrollViewer settingsScroll = Descendants(settingsRoot).OfType<ScrollViewer>().First();
                 FrameworkElement content = (FrameworkElement)settingsScroll.Content;
                 content.UpdateLayout();
+                // Re-realize the production-collapsed correction section for this layout pass,
+                // so spacing measurements always include the seven correction rows.
+                correctionsRow.Visibility = Visibility.Visible;
+                correctionsRow.UpdateLayout();
+                Pump();
                 TextBlock[] descriptions = Descendants(content).OfType<TextBlock>().Where(t => t.TextWrapping == TextWrapping.Wrap && t.IsVisible && !string.IsNullOrWhiteSpace(t.Text) && !ReferenceEquals(t.Style, window.TryFindResource("FieldLabel"))).ToArray();
                 foreach (TextBlock text in descriptions)
                 {
@@ -358,7 +363,9 @@ internal static class Program
         double? methodExpectedHeight = selectedText is null ? null : RealizedTextHeight(selectedText);
         Check(selectedText is not null && selectedText.TextWrapping == TextWrapping.Wrap && selectedText.ActualHeight >= methodExpectedHeight - 1,
             "The full calculation-method name must wrap inside the closed selection box, not be clipped; actual=" + selectedText?.ActualHeight + ", WPF measured=" + methodExpectedHeight + ", width=" + selectedText?.ActualWidth + ".");
-        Check(groups.Length >= 7 && containmentChecks > 20 && gaps.Count > 20, "Spacing checks must cover the seven prayer-correction rows and real field/input pairs.");
+        Check(groups.Length >= 7 && containmentChecks > 20 && gaps.Count > 20,
+            "Spacing checks must cover the seven prayer-correction rows and real field/input pairs; actual groups=" + groups.Length +
+            ", containment=" + containmentChecks + ", gaps=" + gaps.Count + ".");
         return new { containment_checks = containmentChecks, correction_groups = groups.Length, gaps, method_name_wraps = selectedText?.TextWrapping == TextWrapping.Wrap,
             method_width = selectedText?.ActualWidth, method_height = selectedText?.ActualHeight, method_expected_height = methodExpectedHeight };
     }
