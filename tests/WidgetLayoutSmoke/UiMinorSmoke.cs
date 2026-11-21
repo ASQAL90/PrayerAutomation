@@ -50,9 +50,15 @@ internal static class UiMinorSmoke
             Window actual = fixture.Widget;
             Rect area = SystemParameters.WorkArea;
             // DpiScaleX is already the scale relative to 96 DPI (1.25 on this PC).
+            // WPF rounds half a physical pixel upward; Math.Round's default ToEven
+            // would round 522.5 px down to 522 and falsely fail essential/tc.
             double physicalScale = VisualTreeHelper.GetDpi(actual).DpiScaleX;
             double SnapToPhysicalPixel(double value) =>
-                Math.Abs(physicalScale - 1d) < 0.001 ? value : Math.Round(value * physicalScale) / physicalScale;
+                Math.Abs(physicalScale - 1d) < 0.001
+                    ? value
+                    : Math.Round(value * physicalScale, MidpointRounding.AwayFromZero) / physicalScale;
+            // Bottom-right Top can land half a physical pixel from the snapped value.
+            double topTolerance = 0.5 / physicalScale + 1e-6;
             foreach (string mode in new[] { "minimalist", "essential", "detail" })
             foreach (string motion in mode == "essential" ? new[] { "static", "marquee" } : new[] { "static" })
             foreach (string position in new[] { "tc", "tl", "tr", "bl", "br" })
@@ -81,7 +87,7 @@ internal static class UiMinorSmoke
                     "The placement test must use the same visible realized production widget.");
                 Assert(Math.Abs(actual.Left - expectedLeft) < 0.1,
                     $"Horizontal placement must preserve centering and side margins: {mode}/{position}.");
-                if (Math.Abs(actual.Top - expectedTop) >= 0.1)
+                if (Math.Abs(actual.Top - expectedTop) > topTolerance)
                     failures.Add($"UI_MINOR_TOP_FAILURE {mode}/{motion}/{position}: actual Top={actual.Top:0.###}, expected work-area edge/bottom margin={expectedTop:0.###}.");
                 Assert(actual.ActualWidth <= area.Width - 2 * WidgetMargin + 0.1 &&
                        actual.ActualHeight <= area.Height - 2 * WidgetMargin + 0.1,
@@ -94,7 +100,7 @@ internal static class UiMinorSmoke
             actual.Top = area.Top + 23;
             fixture.Select("WidgetModeBox", "minimalist");
             Pump(application);
-            if (Math.Abs(actual.Top - SnapToPhysicalPixel(area.Top)) >= 0.1)
+            if (Math.Abs(actual.Top - SnapToPhysicalPixel(area.Top)) > topTolerance)
                 failures.Add($"UI_MINOR_TOP_FAILURE preview after manual offset: actual={actual.Top}, expected={SnapToPhysicalPixel(area.Top)}.");
             fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
             Pump(application);
