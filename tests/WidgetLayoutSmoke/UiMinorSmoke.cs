@@ -49,6 +49,9 @@ internal static class UiMinorSmoke
             string saved = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
             Window actual = fixture.Widget;
             Rect area = SystemParameters.WorkArea;
+            double physicalScale = VisualTreeHelper.GetDpi(actual).DpiScaleX / 96d;
+            double SnapToPhysicalPixel(double value) =>
+                Math.Abs(physicalScale - 1d) < 0.001 ? value : Math.Round(value * physicalScale) / physicalScale;
             foreach (string mode in new[] { "minimalist", "essential", "detail" })
             foreach (string motion in mode == "essential" ? new[] { "static", "marquee" } : new[] { "static" })
             foreach (string position in new[] { "tc", "tl", "tr", "bl", "br" })
@@ -60,15 +63,18 @@ internal static class UiMinorSmoke
                 actual.UpdateLayout();
                 string normalized = position;
                 // Production computes tr/br anchors (and bl/br bottom) from Width/Height before
-                // layout, while WPF re-centers tc against the realized ActualWidth. Mixing the two
-                // produces an 0.8 px false failure; use the same basis production actually used.
-                double expectedLeft = normalized switch
+                // layout, while WPF re-centers tc against the realized ActualWidth. WPF then snaps
+                // the final DIP value to a physical pixel, so at 125% DPI 1062 DIP becomes 1062.4
+                // DIP (1327.5 -> 1328 px). Snap the expectation the same way instead of widening
+                // the assertion tolerance.
+                double expectedLeft = SnapToPhysicalPixel(normalized switch
                 {
                     "tl" or "bl" => area.Left + WidgetMargin,
                     "tr" or "br" => area.Right - actual.Width - WidgetMargin,
                     _ => area.Left + (area.Width - actual.ActualWidth) / 2
-                };
-                double expectedTop = normalized is "bl" or "br" ? area.Bottom - actual.Height - WidgetMargin : area.Top;
+                });
+                double expectedTop = SnapToPhysicalPixel(
+                    normalized is "bl" or "br" ? area.Bottom - actual.Height - WidgetMargin : area.Top);
                 Console.WriteLine($"UI_MINOR_TOP mode={mode} motion={motion} requested={position} normalized={normalized} actual={actual.Left:0.###},{actual.Top:0.###},{actual.ActualWidth:0.###},{actual.ActualHeight:0.###} expected={expectedLeft:0.###},{expectedTop:0.###} workarea={area}");
                 Assert(ReferenceEquals(actual, fixture.Widget) && actual.IsVisible && actual.ActualWidth > 0 && actual.ActualHeight > 0,
                     "The placement test must use the same visible realized production widget.");
@@ -87,8 +93,8 @@ internal static class UiMinorSmoke
             actual.Top = area.Top + 23;
             fixture.Select("WidgetModeBox", "minimalist");
             Pump(application);
-            if (Math.Abs(actual.Top - area.Top) >= 0.1)
-                failures.Add($"UI_MINOR_TOP_FAILURE preview after manual offset: actual={actual.Top}, expected={area.Top}.");
+            if (Math.Abs(actual.Top - SnapToPhysicalPixel(area.Top)) >= 0.1)
+                failures.Add($"UI_MINOR_TOP_FAILURE preview after manual offset: actual={actual.Top}, expected={SnapToPhysicalPixel(area.Top)}.");
             fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
             Pump(application);
             Assert(fixture.WidgetMode == "essential" && JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == saved,
