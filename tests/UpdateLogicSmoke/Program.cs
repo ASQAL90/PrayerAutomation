@@ -212,4 +212,27 @@ Check(updateServiceSource.Contains("ApiUrl = null") &&
       updateServiceSource.Contains("asset.ApiUrl : asset.Url"),
     "Aset draft/privat memakai URL API, bukan browser_download_url, saat token tersedia.");
 
+// Auto-update lewat delta/helper tidak menjalankan NSIS, jadi registry Harus
+// disinkronisasi oleh helper dan oleh startup agar Programs & Features tidak stale.
+string installSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "StartupRegistration.cs"));
+string applierSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateApplier.cs"));
+Check(installSource.Contains("SyncInstalledVersion(string root, string version)", StringComparison.Ordinal) &&
+      installSource.Contains("IsInstalledPath(root)", StringComparison.Ordinal) &&
+      installSource.Contains("key.SetValue(\"DisplayVersion\", version, RegistryValueKind.String)", StringComparison.Ordinal) &&
+      installSource.Contains("key.GetValue(\"DisplayVersion\")", StringComparison.Ordinal),
+    "DisplayVersion hanya ditulis untuk copy terpasang dan hanya saat nilainya berbeda.");
+int syncStart = installSource.IndexOf("internal static void SyncInstalledVersion", StringComparison.Ordinal);
+int syncEnd = installSource.IndexOf("/// <summary>Builds the quoted Run-registry", StringComparison.Ordinal);
+Check(syncStart >= 0 && syncEnd > syncStart &&
+      installSource[syncStart..syncEnd].Contains("catch (Exception ex) when", StringComparison.Ordinal) &&
+      installSource[syncStart..syncEnd].Contains("AppLogger.Write(\"install.version\", ex)", StringComparison.Ordinal),
+    "Gagal menulis registry tidak boleh menggagalkan pembaruan yang sudah diterapkan.");
+Check(applierSource.Contains("journal.Status = \"applied\"", StringComparison.Ordinal) &&
+      applierSource.Contains("journal.Save(job.JournalPath);\n                if (job.IsInstalled) StartupRegistration.SyncInstalledVersion(job.TargetRoot, job.TargetVersion);",
+          StringComparison.Ordinal),
+    "Helper harus menulis DisplayVersion setelah journal pembaruan berhasil disimpan.");
+Check(appSource.Contains("StartupRegistration.SyncInstalledVersion(\n            Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,\n            AppBranding.Version)",
+          StringComparison.Ordinal),
+    "Startup harus merekonsiliasi DisplayVersion dengan versi biner yang sedang berjalan.");
+
 Console.WriteLine("UpdateLogicSmoke: PASS");

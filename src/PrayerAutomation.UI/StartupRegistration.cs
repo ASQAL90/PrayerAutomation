@@ -127,6 +127,27 @@ internal static class StartupRegistration
         return matches(root) || matches(registered);
     }
 
+    /// <summary>Keeps Programs and Features in sync with the version of an installed copy.</summary>
+    /// <param name="root">Application root folder.</param>
+    /// <param name="version">Version reported by the running binary.</param>
+    internal static void SyncInstalledVersion(string root, string version)
+    {
+        if (string.IsNullOrWhiteSpace(version) || !IsInstalledPath(root)) return;
+        try
+        {
+            using RegistryKey? key = Registry.CurrentUser.OpenSubKey(UninstallKey, writable: true);
+            if (key is null) return;
+            if (string.Equals(key.GetValue("DisplayVersion") as string, version, StringComparison.Ordinal)) return;
+            key.SetValue("DisplayVersion", version, RegistryValueKind.String);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            // A registry write must never roll back an otherwise successful update;
+            // the next launch retries this reconciliation.
+            AppLogger.Write("install.version", ex);
+        }
+    }
+
     /// <summary>Builds the quoted Run-registry command line, optionally with --hidden.</summary>
     /// <param name="executablePath">Full path to the executable.</param>
     /// <param name="startHidden">Append --hidden.</param>

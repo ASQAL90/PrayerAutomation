@@ -81,6 +81,9 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         Settings = SettingsStore.Load();
         StartupRegistration.SelfHeal(Settings.StartupEnabled, Environment.ProcessPath);
+        StartupRegistration.SyncInstalledVersion(
+            Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,
+            AppBranding.Version);
         StorageMaintenance.DeleteFinishedUpdateJobs();
         ThemeManager.Apply(this, Settings.ThemeId);
         _widgetSettingEnabled = Settings.WidgetEnabled;

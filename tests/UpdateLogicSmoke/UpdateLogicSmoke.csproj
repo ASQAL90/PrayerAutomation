@@ -27,5 +27,7 @@
     <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/TrayService.cs" Link="TrayService.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/StartupRegistration.cs" Link="StartupRegistration.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/UpdateApplier.cs" Link="UpdateApplier.cs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

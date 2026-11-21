@@ -99,6 +99,7 @@ internal static class UpdateApplier
                 journal.Message = string.Empty;
                 journal.UpdatedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
                 journal.Save(job.JournalPath);
+                if (job.IsInstalled) StartupRegistration.SyncInstalledVersion(job.TargetRoot, job.TargetVersion);
             }
             catch (Exception ex)
             {
