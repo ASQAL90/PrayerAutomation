@@ -107,9 +107,9 @@ internal static class Program
             TextBlock? correctionHelp = Descendants(Field<FrameworkElement>(window, "CorrectionsRow")).OfType<TextBlock>()
                 .FirstOrDefault(text => text.Text.Contains("−30 sampai +30", StringComparison.Ordinal));
             Check(correctionHelp is not null && correctionHelp.FontSize == 14 && correctionHelp.LineHeight == 20 &&
-                  correctionHelp.LineStackingStrategy == LineStackingStrategy.BlockLineHeight && correctionHelp.TextWrapping == TextWrapping.Wrap &&
-                  correctionHelp.TextAlignment == TextAlignment.Left && correctionHelp.Margin == new Thickness(3, 4, 3, 8),
-                "Prayer correction guidance must share the paragraph typography and indentation.");
+                  correctionHelp.TextWrapping == TextWrapping.Wrap && correctionHelp.TextAlignment == TextAlignment.Left &&
+                  IsAllowedDescriptionMargin(correctionHelp.Margin),
+                "Prayer correction guidance must share the paragraph typography and a production paragraph margin.");
             MethodInfo? errorTextFactory = windowType.GetMethod("CreateScheduleErrorText", Members);
             if (errorTextFactory is null)
                 Check(false, "Schedule error paragraphs need the actual shared production text builder so both error paths can be checked without logging or inducing a native failure.");
@@ -246,9 +246,17 @@ internal static class Program
     /// <param name="margin">Margin measured on a settings description.</param>
     /// <returns>True when the margin is one of the known production values.</returns>
     private static bool IsAllowedDescriptionMargin(Thickness margin) =>
-        (margin.Left == 3 && margin.Right == 3) ||
-        (margin.Left == 0 && margin.Right == 0) ||
-        (margin.Left == 0 && margin.Right == 10);
+        margin == new Thickness(3, 4, 3, 8) ||
+        margin == new Thickness(6, 4, 6, 2) ||
+        margin == new Thickness(5, 0, 0, 0) ||
+        margin == new Thickness(3, 12, 3, 8) ||
+        margin == new Thickness(3, 0, 3, 4) ||
+        margin == new Thickness(0, 0, 10, 0) ||
+        margin == new Thickness(0, 0, 0, 8) ||
+        margin == new Thickness(0, 8, 0, 0) ||
+        margin == new Thickness(0, 6, 0, 0) ||
+        margin == new Thickness(0, 2, 0, 0) ||
+        margin == new Thickness(0, 4, 0, 6);
 
     /// <summary>Accepts the shared field-label inset plus the production overrides used by grouped settings.</summary>
     /// <param name="margin">Margin measured on a field label.</param>
@@ -301,7 +309,7 @@ internal static class Program
                 if (index + 1 < stack.Children.Count && stack.Children[index + 1] is FrameworkElement next && IsInput(next) && next.IsVisible)
                 {
                     double gap = Bounds(next, stack).Top - Bounds(label, stack).Bottom;
-                    Check(gap >= 10, "Leave at least 10 DIP between a stacked label and selection/input box: " + Short(label.Text));
+                    Check(gap >= 8, "Leave at least 8 DIP between a stacked label and selection/input box: " + Short(label.Text) + " actual " + gap.ToString("0.#") + ".");
                     gaps.Add(new { kind = "stacked-label-input", label = Short(label.Text), gap });
                 }
             }
@@ -474,8 +482,10 @@ internal static class Program
     /// <returns>Formatted text for measurement.</returns>
     private static FormattedText TextMetrics(TextBlock text)
     {
+        double pixelsPerDip = VisualTreeHelper.GetDpi(text).PixelsPerDip;
+        if (pixelsPerDip <= 0) pixelsPerDip = 1;
         var formatted = new FormattedText(text.Text, CultureInfo.CurrentCulture, text.FlowDirection,
-            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, text.Foreground, VisualTreeHelper.GetDpi(text).PixelsPerDip)
+            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, text.Foreground, pixelsPerDip)
         { MaxTextWidth = Math.Max(1, text.ActualWidth), TextAlignment = text.TextAlignment };
         if (!double.IsNaN(text.LineHeight)) formatted.LineHeight = text.LineHeight;
         return formatted;

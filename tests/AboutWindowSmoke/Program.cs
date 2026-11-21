@@ -122,6 +122,7 @@ internal static class Program
         var dictionary = new XElement(p + "ResourceDictionary",
             document.Root!.Attributes().Where(attribute => attribute.IsNamespaceDeclaration),
             resources.Elements().Select(element => new XElement(element)));
+        dictionary.SetAttributeValue(XNamespace.Xmlns + "local", "clr-namespace:PrayerAutomation.UI;assembly=AyoJamaah");
         Host!.Resources = (ResourceDictionary)XamlReader.Parse(dictionary.ToString());
     }
 

@@ -175,6 +175,10 @@ Check(uiProject.Contains("<Version>2.4.3</Version>", StringComparison.Ordinal) &
       nsisSource.Contains("IfSilent version_check_done", StringComparison.Ordinal) &&
       nsisSource.Contains("/UPDATEMODE", StringComparison.Ordinal),
     "Versi aplikasi dan installer harus 2.4.3; installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+Check(!nsisSource.Contains("\\r\\n", StringComparison.Ordinal) &&
+      !nsisSource.Contains("\u2192", StringComparison.Ordinal) &&
+      nsisSource.Contains("$\\r$\\n$\\r$\\n", StringComparison.Ordinal),
+    "Teks installer memakai escape NSIS dan ASCII, tanpa escape literal atau panah Unicode.");
 Check(appSource.Contains("ForceRestoreForUpdateAsync()", StringComparison.Ordinal) &&
       !appSource.Contains("WaitForRecoveryAsync(", StringComparison.Ordinal) &&
       appSource.Contains("pembaruan tetap dilanjutkan", StringComparison.Ordinal),

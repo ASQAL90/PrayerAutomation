@@ -3,6 +3,7 @@ extern alias ProductUi;
 
 using System.Reflection;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -480,8 +481,13 @@ internal static class Program
             ?? throw new InvalidOperationException("Minimalist must show the next prayer label and time.");
         TextBlock countdown = labels.SingleOrDefault(text => text.Text.Length == 8 && text.Text[2] == ':' && text.Text[5] == ':')
             ?? throw new InvalidOperationException("Minimalist must show a separate countdown value.");
-        Assert(RelativeBounds(nextPrayer!, body).X <= 4,
-            $"Minimalist next-prayer text must begin at the left content edge: x={RelativeBounds(nextPrayer!, body).X:F1}.");
+        Image? icon = Descendants(body).OfType<Image>()
+            .SingleOrDefault(image => AutomationProperties.GetAutomationId(image) == "MinimalistNextPrayerIcon");
+        Assert(icon is not null, "Minimalist must show the next-prayer icon before its text.");
+        Rect iconBounds = RelativeBounds(icon!, body);
+        Rect textBounds = RelativeBounds(nextPrayer!, body);
+        Assert(iconBounds.Left <= 4 && textBounds.Left >= iconBounds.Right - 0.5 && textBounds.Left - iconBounds.Right <= 8,
+            $"Minimalist next-prayer text must follow the leading icon: iconRight={iconBounds.Right:F1}, textLeft={textBounds.Left:F1}.");
         Rect countdownBounds = RelativeBounds(countdown!, body);
         Assert(countdownBounds.Right >= body.ActualWidth * 0.90,
             $"Minimalist countdown must align near the right edge: right={countdownBounds.Right:F1}, body={body.ActualWidth:F1}.");
