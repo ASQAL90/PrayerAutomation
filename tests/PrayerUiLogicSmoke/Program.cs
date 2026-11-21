@@ -574,10 +574,18 @@ Assert(lockScreenNative.Contains("LockScreen.SetImageFileAsync", StringCompariso
        !lockScreenBackend.Contains("requireAdministrator", StringComparison.OrdinalIgnoreCase),
     "The Windows backend must touch only the lock-screen API and current-user mode flags, never desktop wallpaper or elevation.");
 var lockScreenModeWriteCalls = System.Text.RegularExpressions.Regex.Matches(lockScreenBackend, @"_native\.WriteModeFlags\(([^;]*)\);");
-Assert(lockScreenModeWriteCalls.Count == 3 &&
-       lockScreenModeWriteCalls.Cast<System.Text.RegularExpressions.Match>()
-           .All(write => write.Groups[1].Value.Contains("canWrite:", StringComparison.Ordinal)),
-    "Apply, maintenance and restore must each pass an ownership guard to the native mode-write boundary.");
+var guardedModeWrites = lockScreenModeWriteCalls.Cast<System.Text.RegularExpressions.Match>()
+    .Where(write => write.Groups[1].Value.Contains("canWrite:", StringComparison.Ordinal)).ToList();
+var forcedModeWrite = lockScreenModeWriteCalls.Cast<System.Text.RegularExpressions.Match>()
+    .Single(write => !write.Groups[1].Value.Contains("canWrite:", StringComparison.Ordinal));
+int forcedStart = lockScreenBackend.IndexOf("ForceRestoreAsync", StringComparison.Ordinal);
+int forcedEnd = lockScreenBackend.IndexOf("/// <inheritdoc/>", forcedStart, StringComparison.Ordinal);
+Assert(lockScreenModeWriteCalls.Count == 4 && guardedModeWrites.Count == 3 &&
+       forcedStart >= 0 && forcedEnd > forcedStart &&
+       forcedModeWrite.Index > forcedStart && forcedModeWrite.Index < forcedEnd &&
+       string.Equals(forcedModeWrite.Groups[1].Value.Trim(),
+           "snapshot.PreviousSlideshowEnabled, snapshot.PreviousSpotlightEnabled", StringComparison.Ordinal),
+    "Apply, maintenance and restore must each pass an ownership guard; only ForceRestoreAsync may write unguarded.");
 Assert(lockScreenWorkflow.Contains("TemporaryDuration = TimeSpan.FromMinutes(60)", StringComparison.Ordinal) &&
        lockScreenWorkflow.Contains("CheckTemporaryImage", StringComparison.Ordinal) &&
        lockScreenWorkflow.Contains("IsRestored", StringComparison.Ordinal) &&
@@ -712,7 +720,7 @@ Assert(appSource.Contains("WidgetLifecycleLogic.ForSettingsChange", StringCompar
     "Saving widget settings must create/show it when enabled and hide it when disabled.");
 Assert(appSource.Split("ThemeManager.Apply(this, Settings.ThemeId)", StringSplitOptions.None).Length >= 3 &&
        appSource.Contains("ApplyThemePreview(string themeId)", StringComparison.Ordinal) &&
-       appSource.Contains("_mainWindow.RestoreSavedSettingsPreview();", StringComparison.Ordinal) &&
+       System.Text.RegularExpressions.Regex.IsMatch(appSource, @"\b\w+\.RestoreSavedSettingsPreview\(\);") &&
        codeBehind.Contains("internal void RestoreSavedSettingsPreview()", StringComparison.Ordinal) &&
        codeBehind.Contains("RestoreWidgetAppearancePreview();", StringComparison.Ordinal) &&
        codeBehind.Contains("ThemeBox_SelectionChanged", StringComparison.Ordinal) &&
