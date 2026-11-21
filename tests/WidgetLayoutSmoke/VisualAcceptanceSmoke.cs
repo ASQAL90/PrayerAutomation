@@ -171,12 +171,11 @@ internal static class VisualAcceptanceSmoke
     /// <param name="errors">Collected error messages.</param>
     private static void VerifyGeocodingControls(Type type, Window window, List<string> errors)
     {
-        Button? offline = Field<Button>(type, window, "OfflineReverseGeocodeButton");
         TextBlock? offlineStatus = Field<TextBlock>(type, window, "OfflineReverseGeocodeStatus");
         TextBox? latitude = Field<TextBox>(type, window, "LatitudeBox");
         TextBox? longitude = Field<TextBox>(type, window, "LongitudeBox");
         TextBox? locationName = Field<TextBox>(type, window, "LocationNameBox");
-        if (offline is null || offlineStatus is null || latitude is null || longitude is null || locationName is null)
+        if (offlineStatus is null || latitude is null || longitude is null || locationName is null)
         {
             errors.Add("Kontrol reverse-geocoding offline tidak lengkap di WPF.");
             return;
@@ -186,39 +185,40 @@ internal static class VisualAcceptanceSmoke
             if (Field<FrameworkElement>(type, window, name) is not null)
                 errors.Add("Kontrol online yang sudah dihapus masih ditemukan: " + name);
 
-        latitude.Text = "-6.21462";
-        longitude.Text = "106.84513";
-        locationName.Text = "Lokasi uji sebelum lookup";
-        offline.BringIntoView();
-        Pump();
+        // The current UI fills the location name automatically when coordinates change;
+        // there is no dedicated offline lookup button any more.
         bool timedOut = false;
         var frame = new DispatcherFrame();
-        void OnOfflineButtonEnabledChanged(object? sender, DependencyPropertyChangedEventArgs e)
-        {
-            if (offline.IsEnabled)
-                frame.Continue = false;
-        }
-        offline.IsEnabledChanged += OnOfflineButtonEnabledChanged;
         var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         timeout.Tick += (_, _) =>
         {
             timedOut = true;
             frame.Continue = false;
         };
+        var poll = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        poll.Tick += (_, _) =>
+        {
+            if (locationName.Text.StartsWith("Jakarta", StringComparison.OrdinalIgnoreCase))
+                frame.Continue = false;
+        };
         timeout.Start();
-        offline.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, offline));
-        if (!offline.IsEnabled)
+        poll.Start();
+        locationName.Text = "Lokasi uji sebelum lookup";
+        latitude.Text = "-6.21462";
+        longitude.Text = "106.84513";
+        Pump();
+        if (!locationName.Text.StartsWith("Jakarta", StringComparison.OrdinalIgnoreCase))
         {
             frame.Continue = true;
             Dispatcher.PushFrame(frame);
         }
+        poll.Stop();
         timeout.Stop();
-        offline.IsEnabledChanged -= OnOfflineButtonEnabledChanged;
         if (timedOut)
             errors.Add("Lookup offline WPF melebihi batas 20 detik.");
         if (!locationName.Text.StartsWith("Jakarta", StringComparison.OrdinalIgnoreCase) ||
-            !offlineStatus.Text.Contains("tidak ada permintaan internet", StringComparison.OrdinalIgnoreCase))
-            errors.Add("Tombol lookup offline WPF harus menemukan Jakarta dari dataset lokal tanpa jaringan.");
+            !offlineStatus.Text.Contains("tidak dikirim", StringComparison.OrdinalIgnoreCase))
+            errors.Add("Isian otomatis offline WPF harus menemukan Jakarta dari dataset lokal tanpa jaringan.");
     }
 
     /// <summary>Verifies the live widget preview updates without persisting the previewed mode.</summary>

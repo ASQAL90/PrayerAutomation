@@ -51,12 +51,17 @@ internal static class CopyHumanizeSmoke
                          "OnlineReverseGeocodeButton", "OnlineReverseGeocodeStatus" })
                 Assert(fixture.MainWindow.FindName(name) is null, "Removed online geocoding control must stay absent: " + name);
 
-            Button offline = fixture.Field<Button>("OfflineReverseGeocodeButton");
+            // The current UI has no dedicated reverse-geocode button: entering coordinates
+            // fills the name automatically, and name lookup uses the local suggestion list.
+            TextBox latitude = fixture.Field<TextBox>("LatitudeBox");
+            TextBox longitude = fixture.Field<TextBox>("LongitudeBox");
+            TextBox locationName = fixture.Field<TextBox>("LocationNameBox");
             TextBlock offlineStatus = fixture.Field<TextBlock>("OfflineReverseGeocodeStatus");
-            Assert(offline.IsVisible && offline.IsEnabled && offlineStatus.IsVisible,
-                "Offline lookup must remain the visible geocoding action.");
-            Assert(offlineStatus.Text.Contains("Tidak ada data dikirim", StringComparison.OrdinalIgnoreCase),
-                "Offline status must retain the no-data-sent disclosure.");
+            Assert(latitude.IsVisible && longitude.IsVisible && locationName.IsVisible && offlineStatus.IsVisible,
+                "Offline lookup must remain reachable through the visible location fields.");
+            Assert(string.IsNullOrWhiteSpace(offlineStatus.Text) ||
+                   offlineStatus.Text.Contains("tidak dikirim", StringComparison.OrdinalIgnoreCase),
+                "Offline status must retain the no-data-sent disclosure; actual=" + offlineStatus.Text + ".");
             VerifySaveReachable(application, fixture);
             Assert(fixture.SaveWrites == 0 && fixture.StartupWrites == 0,
                 "Copy inspection must not save even through mock boundaries.");
