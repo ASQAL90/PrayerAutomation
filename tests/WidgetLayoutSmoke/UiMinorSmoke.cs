@@ -49,7 +49,8 @@ internal static class UiMinorSmoke
             string saved = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
             Window actual = fixture.Widget;
             Rect area = SystemParameters.WorkArea;
-            double physicalScale = VisualTreeHelper.GetDpi(actual).DpiScaleX / 96d;
+            // DpiScaleX is already the scale relative to 96 DPI (1.25 on this PC).
+            double physicalScale = VisualTreeHelper.GetDpi(actual).DpiScaleX;
             double SnapToPhysicalPixel(double value) =>
                 Math.Abs(physicalScale - 1d) < 0.001 ? value : Math.Round(value * physicalScale) / physicalScale;
             foreach (string mode in new[] { "minimalist", "essential", "detail" })
