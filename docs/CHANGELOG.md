@@ -2,7 +2,7 @@
 
 ## v2.4.3
 - Disinkronkan nilai `DisplayVersion` pada entri uninstall setelah journal pembaruan tersimpan dan saat startup agar sesuai dengan versi biner yang sedang berjalan.
-- Diselaraskan assertion harness visual dengan `AssemblyName` produk, tinggi widget 34 DIP, padding 2, teks bantuan, margin, dan jarak layout yang benar-benar dipakai produksi.
+- Diselaraskan assertion harness visual dengan `AssemblyName` produk, tinggi widget 34 DIP, padding 2, teks bantuan, margin, jarak layout, direktori scratch milik harness, dan jalur Cancel tanpa dialog; kode produksi WPF tidak diubah.
 - Dihilangkan karakter panah non-ASCII pada halaman selamat datang installer dan diganti escape baris literal pada pengaman lock screen dengan escape NSIS yang benar.
 - Dinaikkan nomor versi aplikasi ke 2.4.3.
 - Diperbarui contoh ID draft pada panduan kanal pembaruan internal.

@@ -368,6 +368,12 @@ internal static class WidgetSettingsInteractionSmoke
             }
             else
                 MainWindow = (Window)windowType.GetConstructor(I, null, [SettingsType], null)!.Invoke([Settings]);
+            FieldInfo promptField = windowType.GetField("_promptUnsavedChanges", I)
+                ?? throw new InvalidOperationException("The unsaved-changes prompt seam must exist for isolated Cancel tests.");
+            object discard = Enum.Parse(assembly.GetType("PrayerAutomation.UI.UnsavedChangesChoice", true)!, "Discard");
+            ParameterExpression discardOnly = Expression.Parameter(typeof(bool), "discardOnly");
+            Delegate prompt = Expression.Lambda(promptField.FieldType, Expression.Constant(discard), discardOnly).Compile();
+            promptField.SetValue(MainWindow, prompt);
             Prepare(MainWindow);
             if (preventActivation) MainWindow.IsEnabled = false;
             if (initiallyHasWidget)

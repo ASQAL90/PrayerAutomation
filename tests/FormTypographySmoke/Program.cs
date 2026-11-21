@@ -104,7 +104,12 @@ internal static class Program
             }
             tabs.SelectedIndex = 2;
             Pump();
-            TextBlock? correctionHelp = Descendants(Field<FrameworkElement>(window, "CorrectionsRow")).OfType<TextBlock>()
+            FrameworkElement correctionsRow = Field<FrameworkElement>(window, "CorrectionsRow");
+            // The production row starts collapsed; realize its visual children before measuring them.
+            correctionsRow.Visibility = Visibility.Visible;
+            correctionsRow.UpdateLayout();
+            Pump();
+            TextBlock? correctionHelp = Descendants(correctionsRow).OfType<TextBlock>()
                 .FirstOrDefault(text => text.Text.Contains("Koreksi tiap waktu", StringComparison.Ordinal));
             Check(correctionHelp is not null && correctionHelp.FontSize == 14 && correctionHelp.LineHeight == 20 &&
                   correctionHelp.TextWrapping == TextWrapping.Wrap && correctionHelp.TextAlignment == TextAlignment.Left &&

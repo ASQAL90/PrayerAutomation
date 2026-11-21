@@ -1,6 +1,7 @@
 // Smoke test verifying actual WPF widget/settings layout behavior: correction editors, auto-lock scheduling, Essential/Minimalist/Medium Detail layouts, and dispatcher exception capture.
 extern alias ProductUi;
 
+using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
@@ -22,6 +23,16 @@ internal static class Program
     {
         try
         {
+            string approvedScratch = Path.GetFullPath(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "PrayerAutomationSmoke", "scratch"));
+            string scratch = Path.GetFullPath(Environment.GetEnvironmentVariable("SMOKE_SCRATCH") ?? approvedScratch);
+            Assert(scratch.Equals(approvedScratch, StringComparison.OrdinalIgnoreCase) ||
+                   scratch.StartsWith(approvedScratch + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
+                "Fail closed: scratch root must stay inside the owned PrayerAutomationSmoke scratch directory.");
+            Directory.CreateDirectory(scratch);
+            Environment.SetEnvironmentVariable("SMOKE_SCRATCH", scratch);
+
             var application = WpfApplicationIsolation.Create();
             application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
