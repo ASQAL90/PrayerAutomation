@@ -544,7 +544,9 @@ internal static class Program
                    System.Text.Json.JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == baseline,
                 "The compiled production widget must preview the same compact Minimalist layout in every theme without changing saved settings.");
             fixture.InvokeMain("CancelSettings_Click", fixture.MainWindow, new RoutedEventArgs());
-            Assert(fixture.WidgetMode == "essential" && actual.Height == SlimHeight && fixture.CurrentThemeId == "light",
+            Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+            Assert(fixture.WidgetMode == "essential" && actual.Height == SlimHeight &&
+                   fixture.SelectedTag("ThemeBox") == "light" && fixture.CurrentThemeId == "light",
                 "Cancel must restore saved one-line appearance and theme on the same compiled widget.");
             checks++;
         }

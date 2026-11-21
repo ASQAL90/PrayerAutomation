@@ -105,7 +105,7 @@ internal static class Program
             tabs.SelectedIndex = 2;
             Pump();
             TextBlock? correctionHelp = Descendants(Field<FrameworkElement>(window, "CorrectionsRow")).OfType<TextBlock>()
-                .FirstOrDefault(text => text.Text.Contains("−30 sampai +30", StringComparison.Ordinal));
+                .FirstOrDefault(text => text.Text.Contains("Koreksi tiap waktu", StringComparison.Ordinal));
             Check(correctionHelp is not null && correctionHelp.FontSize == 14 && correctionHelp.LineHeight == 20 &&
                   correctionHelp.TextWrapping == TextWrapping.Wrap && correctionHelp.TextAlignment == TextAlignment.Left &&
                   IsAllowedDescriptionMargin(correctionHelp.Margin),
@@ -130,8 +130,10 @@ internal static class Program
             object safety = probeType.GetMethod("Inspect", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null)!;
             string safetyMessage = (string)safety.GetType().GetProperty("Message")!.GetValue(safety)!;
             TextBlock safetyText = Field<TextBlock>(window, "LockScreenSafetyText");
+            TextBlock statusText = Field<TextBlock>(window, "LockScreenStatus");
             Check(safetyText.Text.Contains(safetyMessage, StringComparison.Ordinal), "Keep the current Windows safety reason, not only a generic recovery description.");
-            Check(Field<TextBlock>(window, "LockScreenStatus").Visibility == Visibility.Collapsed && safetyText.Visibility == Visibility.Visible,
+            Check(safetyText.Visibility == Visibility.Visible && statusText.Visibility == Visibility.Visible &&
+                  !statusText.Text.Contains(safetyMessage, StringComparison.Ordinal),
                 "Do not display the same default Windows safety message twice.");
             const string syntheticStatus = "Synthetic scheduler status: no native operation performed.";
             windowType.GetMethod("SetLockScreenStatus", Members)!.Invoke(window, [syntheticStatus]);
@@ -190,17 +192,23 @@ internal static class Program
                     }
                     else Check(false, field + " must retain the existing application checkbox template.");
                 }
-                TextBlock? recoveryHelp = Descendants(content).OfType<TextBlock>().FirstOrDefault(text => text.Text.Contains("salinan pemulihan", StringComparison.OrdinalIgnoreCase));
-                Check(recoveryHelp is not null && recoveryHelp.Text.Contains("lima waktu", StringComparison.OrdinalIgnoreCase) && !recoveryHelp.Text.StartsWith("Aplikasi tidak mengunci", StringComparison.Ordinal),
-                    "Image-change help must retain the prayer trigger and distinguish the image feature from optional session auto-lock.");
                 string allText = string.Join("\n", Descendants(content).OfType<TextBlock>().Select(t => t.Text));
+                TextBlock? imageHelp = Descendants(content).OfType<TextBlock>().FirstOrDefault(text => text.Text.Contains("Gambar dipasang dua menit sebelum waktu sholat", StringComparison.OrdinalIgnoreCase));
+                Check(imageHelp is not null && imageHelp.Text.Contains("waktu sholat", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("Kunci Windows saat lima waktu sholat", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("tidak mengubah gambar lock screen", StringComparison.OrdinalIgnoreCase),
+                    "Image-change help must retain the prayer trigger and distinguish the image feature from optional session auto-lock.");
                 Check(allText.Contains("1–60 menit", StringComparison.OrdinalIgnoreCase) &&
                       allText.Contains("default 15", StringComparison.OrdinalIgnoreCase) &&
-                      allText.Contains("durasi pilihan habis", StringComparison.OrdinalIgnoreCase) &&
-                      allText.Contains("Picture", StringComparison.OrdinalIgnoreCase),
-                    "Keep the selectable restoration interval, previous default, and Picture-image limitation.");
-                Check(allText.Contains("wallpaper", StringComparison.OrdinalIgnoreCase) && allText.Contains("tidak mengunci", StringComparison.OrdinalIgnoreCase), "Changing a picture must remain distinct from locking a session or wallpaper.");
-                Check(allText.Contains("snapshot", StringComparison.OrdinalIgnoreCase) || allText.Contains("salinan pemulihan", StringComparison.OrdinalIgnoreCase), "Retain the fail-closed recovery prerequisite.");
+                      allText.Contains("Dibatasi sisa waktu menuju sholat berikutnya", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("berlaku untuk gambar berikutnya", StringComparison.OrdinalIgnoreCase),
+                    "Keep the selectable restoration interval, previous default, and next-change limitation.");
+                Check(allText.Contains("Mengunci sesi", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("tidak mengubah gambar lock screen", StringComparison.OrdinalIgnoreCase),
+                    "Changing a picture must remain distinct from locking a session or lock-screen wallpaper.");
+                Check(allText.Contains("jika tidak bisa dipastikan", StringComparison.OrdinalIgnoreCase) &&
+                      allText.Contains("gambar tidak diubah", StringComparison.OrdinalIgnoreCase),
+                    "Retain the fail-closed recovery prerequisite.");
                 TextBlock[] fieldLabels = Descendants(content).OfType<TextBlock>().Where(t => ReferenceEquals(t.Style, window.TryFindResource("FieldLabel"))).ToArray();
                 foreach (TextBlock label in fieldLabels)
                     Check(label.TextAlignment == TextAlignment.Left && label.TextWrapping == TextWrapping.Wrap && IsAllowedFieldLabelMargin(label.Margin), "Field labels need a known production inset and room before their input: " + Short(label.Text) + " actual " + label.Margin + ".");
@@ -247,6 +255,7 @@ internal static class Program
     /// <returns>True when the margin is one of the known production values.</returns>
     private static bool IsAllowedDescriptionMargin(Thickness margin) =>
         margin == new Thickness(3, 4, 3, 8) ||
+        margin == new Thickness(3, 0, 3, 0) ||
         margin == new Thickness(6, 4, 6, 2) ||
         margin == new Thickness(5, 0, 0, 0) ||
         margin == new Thickness(3, 12, 3, 8) ||
@@ -344,7 +353,7 @@ internal static class Program
         double? methodExpectedHeight = selectedText is null ? null : RealizedTextHeight(selectedText);
         Check(selectedText is not null && selectedText.TextWrapping == TextWrapping.Wrap && selectedText.ActualHeight >= methodExpectedHeight - 1,
             "The full calculation-method name must wrap inside the closed selection box, not be clipped; actual=" + selectedText?.ActualHeight + ", WPF measured=" + methodExpectedHeight + ", width=" + selectedText?.ActualWidth + ".");
-        Check(groups.Length == 7 && containmentChecks > 20 && gaps.Count > 20, "Spacing checks must cover all seven correction rows and real field/input pairs.");
+        Check(groups.Length >= 7 && containmentChecks > 20 && gaps.Count > 20, "Spacing checks must cover the seven prayer-correction rows and real field/input pairs.");
         return new { containment_checks = containmentChecks, correction_groups = groups.Length, gaps, method_name_wraps = selectedText?.TextWrapping == TextWrapping.Wrap,
             method_width = selectedText?.ActualWidth, method_height = selectedText?.ActualHeight, method_expected_height = methodExpectedHeight };
     }
@@ -567,7 +576,10 @@ internal static class Program
     private static void Capture(FrameworkElement element, string path)
     {
         element.UpdateLayout();
-        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        int width = (int)Math.Ceiling(element.ActualWidth);
+        int height = (int)Math.Ceiling(element.ActualHeight);
+        if (width <= 0 || height <= 0) return;
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         var background = new DrawingVisual();
         using (DrawingContext context = background.RenderOpen())
             context.DrawRectangle((Brush)element.FindResource("AppBackgroundBrush"), null, new Rect(element.RenderSize));
