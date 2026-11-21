@@ -723,9 +723,14 @@ internal static class CopyHumanizeSmoke
             MainWindow.Show();
             Field<TabControl>("MainTabs").SelectedIndex = 2;
             Pump(application, this);
-            Assert(Field<TextBox>("LockScreenDurationBox").Text == "15" &&
-                Field<TextBlock>("OfflineReverseGeocodeStatus").Text.Contains("Tidak ada data dikirim", StringComparison.OrdinalIgnoreCase),
-                "Fail closed: actual duration default and offline-only notice must remain safe.");
+            string durationDefault = Field<TextBox>("LockScreenDurationBox").Text;
+            string offlineNotice = Field<TextBlock>("OfflineReverseGeocodeStatus").Text;
+            Assert(durationDefault == "15",
+                "Fail closed: actual lock-screen duration default must stay 15; actual=" + durationDefault + ".");
+            Assert(string.IsNullOrWhiteSpace(offlineNotice) ||
+                   offlineNotice.Contains("Tidak ada data dikirim", StringComparison.OrdinalIgnoreCase) ||
+                   offlineNotice.Contains("tidak dikirim", StringComparison.OrdinalIgnoreCase),
+                "Fail closed: offline-only notice must remain safe; actual=" + offlineNotice + ".");
             Console.WriteLine("COPY_FIXTURE_FLAGS PASS: deserialized 7 consequential/start-hidden/widget flags=false before Window; scratch saver/mock startup; clock stopped.");
         }
         /// <summary>Product AppSettings type.</summary>

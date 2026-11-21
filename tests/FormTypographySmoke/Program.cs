@@ -344,7 +344,9 @@ internal static class Program
                 }
             }
         }
-        StackPanel[] groups = Descendants(Field<FrameworkElement>(window, "CorrectionsRow")).OfType<StackPanel>()
+        // Measure from the realized settings content itself; the named correction grid can be
+        // replaced by a layout pass, while this root is the one used for all other spacing checks.
+        StackPanel[] groups = Descendants(content).OfType<StackPanel>()
             .Where(p => p.Orientation == Orientation.Horizontal && p.Children.OfType<Button>().Count() == 2 && p.Children.OfType<TextBox>().Any()).ToArray();
         for (int i = 0; i < groups.Length; i++)
             for (int j = i + 1; j < groups.Length; j++)
