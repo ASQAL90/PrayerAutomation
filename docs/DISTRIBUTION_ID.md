@@ -1,6 +1,6 @@
 # Distribusi lokal — Ayo Jama'ah!
 
-> **Status 2.4.2:** rilis [v2.4.2](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.2) dibangun dari tag `v2.4.2`; asetnya (installer NSIS dual-arch, portable x64/x86, `SHA256SUMS.txt`, dan manifest/delta pembaruan bertanda tangan) dibangun oleh workflow `Release` di GitHub Actions. Rilis 2.4.1 dan 2.4.0 tetap ada sebagai riwayat. Uji install/upgrade/uninstall dan verifikasi visual tetap wajib di Windows. Catatan 2.2.1/2.1.0 di bawah adalah riwayat paket lokal, bukan rujukan unduhan terbaru.
+> **Status 2.4.3:** rilis [v2.4.3](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.3) dibangun dari tag `v2.4.3`; asetnya (installer NSIS dual-arch, portable x64/x86, `SHA256SUMS.txt`, dan manifest/delta pembaruan bertanda tangan) dibangun oleh workflow `Release` di GitHub Actions. Rilis `v2.4.2` tetap draft dan tidak diubah; `v2.4.1` dan `v2.4.0` tetap ada sebagai riwayat. Uji install/upgrade/uninstall dan verifikasi visual tetap wajib di Windows. Catatan 2.2.1/2.1.0 di bawah adalah riwayat paket lokal, bukan rujukan unduhan terbaru.
 
 Paket di bawah disiapkan lokal untuk pemeriksaan pengguna. **Unsigned: signing belum selesai.** CompanyName/AppPublisher `Ayo Jama'ah!` hanya metadata, bukan publisher Authenticode terverifikasi. SmartScreen/Smart App Control masih dapat memperingatkan atau memblokir. Tidak ada pemasangan sertifikat self-signed, pengecualian Defender, atau perubahan trust Windows.
 
