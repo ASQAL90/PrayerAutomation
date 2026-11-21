@@ -190,6 +190,7 @@ internal sealed class OfflineReverseGeocoder
                 city.CityName,
                 city.RegionName,
                 TranslateCountry(city.CountryName, city.CountryCode),
+                city.CountryCode,
                 string.Join(", ", new[]
                     {
                         city.CityName,
@@ -545,6 +546,7 @@ internal sealed record OfflineLocationSuggestion(
     string CityName,
     string RegionName,
     string CountryName,
+    string CountryCode,
     string DisplayName,
     double Latitude,
     double Longitude,

@@ -1857,48 +1857,49 @@ public partial class MainWindow : Window
             && TryDouble(LongitudeBox.Text, out double longitude) && double.IsFinite(longitude) && longitude is >= -180 and <= 180)
         {
             int requestVersion = _locationRequestVersion;
+            string timeZoneId = _settings.TimeZoneId;
+            try { timeZoneId = GeoTimeZone.TimeZoneLookup.GetTimeZone(latitude, longitude).Result; }
+            catch (Exception) { /* Keep the configured zone for ocean or unresolvable coordinates. */ }
             _loadingSettings = true;
             try
             {
-                TimeZoneBox.Text = GeoTimeZone.TimeZoneLookup.GetTimeZone(latitude, longitude).Result;
+                TimeZoneBox.Text = timeZoneId;
+                ApplyAutoCalculationMethod(null, timeZoneId);
             }
             finally { _loadingSettings = false; }
-            await UpdateLocationNameFromCoordinatesAsync(latitude, longitude, requestVersion);
+            await UpdateLocationNameFromCoordinatesAsync(latitude, longitude, timeZoneId, requestVersion);
         }
         RefreshSettingsSchedulePreview();
     }
 
-    /// <summary>Fills the location name from the offline datasets without overwriting a typed name.</summary>
+    /// <summary>Fills the location name, elevation, and method from the offline datasets for entered coordinates.</summary>
     /// <param name="latitude">Latitude in degrees.</param>
     /// <param name="longitude">Longitude in degrees.</param>
+    /// <param name="timeZoneId">IANA time zone already resolved for the coordinates.</param>
     /// <param name="requestVersion">Request generation captured before the lookup.</param>
-    private async Task UpdateLocationNameFromCoordinatesAsync(double latitude, double longitude, int requestVersion)
+    private async Task UpdateLocationNameFromCoordinatesAsync(double latitude, double longitude, string timeZoneId, int requestVersion)
     {
         try
         {
             OfflineLocationResult? place = await Task.Run(
                 () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
             if (requestVersion != _locationRequestVersion) return;
-            bool mayOverwrite = LocationNameBox.Text.Trim().Length == 0 || _locationNameAutoFilled;
+            _elevationManuallyEdited = false;
             ApplyAutoElevation(place?.ElevationMeters);
-            if (mayOverwrite)
-            {
-                SetAutoLocationName(place?.DisplayName ?? "Lokasi manual");
-                _locationNameAutoFilled = place is not null;
-            }
+            SetAutoLocationName(place?.DisplayName ?? "Lokasi manual");
+            _locationNameAutoFilled = place is not null;
+            ApplyAutoCalculationMethod(place?.CountryCode, timeZoneId);
             OfflineReverseGeocodeStatus.Text = place is null
-                ? "Tidak ada permukiman dalam radius 75 km. Isi nama sendiri; koordinat tetap lokal dan belum disimpan."
+                ? "Tidak ada permukiman dalam radius 75 km. Nama diisi 'Lokasi manual'; koordinat dan metode tetap lokal, belum disimpan."
                 : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
         }
         catch (Exception)
         {
             if (requestVersion != _locationRequestVersion) return;
-            if (LocationNameBox.Text.Trim().Length == 0 || _locationNameAutoFilled)
-            {
-                SetAutoLocationName("Lokasi manual");
-                _locationNameAutoFilled = false;
-            }
-            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Isi nama sendiri; koordinat dan zona waktu tetap di draf, tidak dikirim ke internet.";
+            SetAutoLocationName("Lokasi manual");
+            _locationNameAutoFilled = false;
+            ApplyAutoCalculationMethod(null, timeZoneId);
+            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama diisi 'Lokasi manual'; koordinat, zona waktu, dan metode tetap di draf, tidak dikirim ke internet.";
         }
     }
 
@@ -1918,6 +1919,57 @@ public partial class MainWindow : Window
         place.IsIndonesiaLayer
             ? "Nama otomatis dari data desa/kecamatan Indonesia"
             : "Nama otomatis dari daftar kota lokal";
+
+    /// <summary>Chooses the calculation method implied by a location's country and time zone.</summary>
+    /// <param name="countryCode">ISO country code from the offline or network lookup, when known.</param>
+    /// <param name="timeZoneId">IANA time zone already resolved for the location.</param>
+    /// <param name="currentMethodId">Method currently selected, used to preserve an explicit Muhammadiyah choice.</param>
+    /// <returns>The calculation method to apply.</returns>
+    private static CalculationMethod ResolveAutoCalculationMethod(string? countryCode, string timeZoneId, int currentMethodId)
+    {
+        string country = (countryCode ?? string.Empty).Trim().ToUpperInvariant();
+        bool indonesia = country == "ID" ||
+            timeZoneId.StartsWith("Asia/Jakarta", StringComparison.OrdinalIgnoreCase) ||
+            timeZoneId.StartsWith("Asia/Makassar", StringComparison.OrdinalIgnoreCase) ||
+            timeZoneId.StartsWith("Asia/Jayapura", StringComparison.OrdinalIgnoreCase) ||
+            timeZoneId.StartsWith("Asia/Pontianak", StringComparison.OrdinalIgnoreCase);
+        if (indonesia && currentMethodId == 99) return CalculationMethods[1];
+        if (indonesia) return CalculationMethods[0];
+        return country switch
+        {
+            "MY" => CalculationMethods[2],
+            "SG" => CalculationMethods[3],
+            "SA" => CalculationMethods[4],
+            "TR" => CalculationMethods[5],
+            "US" => CalculationMethods[7],
+            _ => MethodForTimeZone(timeZoneId)
+        };
+    }
+
+    /// <summary>Falls back to a country-specific method when only the time zone is known.</summary>
+    /// <param name="timeZoneId">IANA time zone identifier.</param>
+    /// <returns>The matching method, or the general Muslim World League method.</returns>
+    private static CalculationMethod MethodForTimeZone(string timeZoneId) =>
+        timeZoneId.StartsWith("Asia/Kuala_Lumpur", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[2] :
+        timeZoneId.StartsWith("Asia/Singapore", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[3] :
+        timeZoneId.StartsWith("Asia/Riyadh", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[4] :
+        timeZoneId.StartsWith("Europe/Istanbul", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[5] :
+        timeZoneId.StartsWith("America/", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[7] :
+        CalculationMethods[6];
+
+    /// <summary>Applies the automatic calculation method without retriggering the form handlers.</summary>
+    /// <param name="countryCode">ISO country code from the location lookup, when known.</param>
+    /// <param name="timeZoneId">IANA time zone already resolved for the location.</param>
+    private void ApplyAutoCalculationMethod(string? countryCode, string timeZoneId)
+    {
+        int currentId = MethodBox.SelectedItem is CalculationMethod current ? current.Id : _settings.MethodId;
+        CalculationMethod method = ResolveAutoCalculationMethod(countryCode, timeZoneId, currentId);
+        if (currentId == method.Id) return;
+        bool wasLoading = _loadingSettings;
+        _loadingSettings = true;
+        try { MethodBox.SelectedValue = method.Id; }
+        finally { _loadingSettings = wasLoading; }
+    }
 
     /// <summary>
     /// Fills the elevation field from the nearest settlement, unless the user has
@@ -2025,9 +2077,10 @@ public partial class MainWindow : Window
             _elevationManuallyEdited = false;
             ApplyAutoElevation(suggestion.ElevationMeters);
             TimeZoneBox.Text = timezone;
+            ApplyAutoCalculationMethod(suggestion.CountryCode, timezone);
         }
         finally { _loadingSettings = false; }
-        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar kota lokal: {suggestion.DisplayName}. Koordinat mewakili permukiman, bukan alamat persis; zona waktu dicocokkan lokal. Belum disimpan.";
+        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar kota lokal: {suggestion.DisplayName}. Koordinat, mdpl, zona waktu, dan metode hitung mewakili permukiman, bukan alamat persis. Belum disimpan.";
         RefreshSettingsSchedulePreview();
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
@@ -2254,6 +2307,7 @@ public partial class MainWindow : Window
                 LatitudeBox.Text = latitude.ToString("G", CultureInfo.InvariantCulture);
                 LongitudeBox.Text = longitude.ToString("G", CultureInfo.InvariantCulture);
                 TimeZoneBox.Text = result.IpApi.TimeZoneId!;
+                ApplyAutoCalculationMethod(result.IpApi.CountryCode, TimeZoneBox.Text);
             }
             finally { _loadingSettings = wasLoading; }
 
@@ -2276,8 +2330,9 @@ public partial class MainWindow : Window
                 _locationNameAutoFilled = true;
                 _elevationManuallyEdited = false;
                 ApplyAutoElevation(offlinePlace.ElevationMeters);
+                ApplyAutoCalculationMethod(offlinePlace.CountryCode, TimeZoneBox.Text);
                 OfflineReverseGeocodeStatus.Text =
-                    $"{AutoLocationSourceLabel(offlinePlace)}: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Nama jaringan diganti dengan nama lokal; belum disimpan.";
+                    $"{AutoLocationSourceLabel(offlinePlace)}: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Nama, mdpl, dan metode dari data lokal; belum disimpan.";
                 NetworkLocationStatus.Text = $"Lokasi perkiraan diisi ({result.IpApi.CountryCode}); nama dicocokkan lokal; belum disimpan.";
             }
             else if (offlineLookupFailed)
@@ -2348,6 +2403,7 @@ public partial class MainWindow : Window
                 _locationNameAutoFilled = true;
                 LatitudeBox.Text = result.Latitude!.Value.ToString("G", CultureInfo.InvariantCulture);
                 LongitudeBox.Text = result.Longitude!.Value.ToString("G", CultureInfo.InvariantCulture);
+                ApplyAutoCalculationMethod(null, TimeZoneBox.Text);
             }
             finally { _loadingSettings = wasLoading; }
             RefreshSettingsSchedulePreview();
@@ -2372,6 +2428,7 @@ public partial class MainWindow : Window
                 _locationNameAutoFilled = true;
                 _elevationManuallyEdited = false;
                 ApplyAutoElevation(offlinePlace.ElevationMeters);
+                ApplyAutoCalculationMethod(offlinePlace.CountryCode, TimeZoneBox.Text);
                 GpsLocationStatus.Text += $" Nama terdekat: {offlinePlace.DisplayName}.";
                 OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(offlinePlace)}: {offlinePlace.DisplayName}, sekitar {offlinePlace.DistanceKm:0.0} km. Tidak ada permintaan internet.";
             }
