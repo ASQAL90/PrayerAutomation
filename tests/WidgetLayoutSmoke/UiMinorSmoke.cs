@@ -59,16 +59,16 @@ internal static class UiMinorSmoke
                 Pump(application);
                 actual.UpdateLayout();
                 string normalized = position;
-                // WPF centers and clamps against the realized DIP size (ActualWidth/ActualHeight),
-                // while Width/Height can differ by a fraction after layout rounding. Compare like
-                // with like so a 0.2 px DIP rounding difference is not reported as a regression.
+                // Production computes tr/br anchors (and bl/br bottom) from Width/Height before
+                // layout, while WPF re-centers tc against the realized ActualWidth. Mixing the two
+                // produces an 0.8 px false failure; use the same basis production actually used.
                 double expectedLeft = normalized switch
                 {
                     "tl" or "bl" => area.Left + WidgetMargin,
-                    "tr" or "br" => area.Right - actual.ActualWidth - WidgetMargin,
+                    "tr" or "br" => area.Right - actual.Width - WidgetMargin,
                     _ => area.Left + (area.Width - actual.ActualWidth) / 2
                 };
-                double expectedTop = normalized is "bl" or "br" ? area.Bottom - actual.ActualHeight - WidgetMargin : area.Top;
+                double expectedTop = normalized is "bl" or "br" ? area.Bottom - actual.Height - WidgetMargin : area.Top;
                 Console.WriteLine($"UI_MINOR_TOP mode={mode} motion={motion} requested={position} normalized={normalized} actual={actual.Left:0.###},{actual.Top:0.###},{actual.ActualWidth:0.###},{actual.ActualHeight:0.###} expected={expectedLeft:0.###},{expectedTop:0.###} workarea={area}");
                 Assert(ReferenceEquals(actual, fixture.Widget) && actual.IsVisible && actual.ActualWidth > 0 && actual.ActualHeight > 0,
                     "The placement test must use the same visible realized production widget.");
