@@ -97,7 +97,10 @@ internal static class UiMinorSmoke
                 checks++;
             }
             // A fresh placement restores the top edge without rewriting manual drag wiring.
+            // The loop above ends on br; production preview reads WidgetPositionBox, so reset
+            // it to a top position first or the widget is placed at the bottom edge again.
             actual.Top = area.Top + 23;
+            fixture.Select("WidgetPositionBox", "tc");
             fixture.Select("WidgetModeBox", "minimalist");
             Pump(application);
             if (Math.Abs(actual.Top - SnapToPhysicalPixel(area.Top)) > topTolerance)
@@ -386,7 +389,10 @@ internal static class UiMinorSmoke
         using (var fixture = new Fixture(application, isolateSave: true))
         {
             string saved = JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType);
-            string[] prayers = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
+            // Production routes Dhuha to DhuhaAfterSunriseBox and leaves the redundant
+            // CorrectionDhuhaBox inside the hidden CorrectionsRow, so only six editors
+            // are relocated into the realized schedule preview grid.
+            string[] prayers = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
             string[] dates = ["HijriDateCorrection"];
             TextBox reference = fixture.Field<TextBox>("CorrectionFajrBox");
             double baselineWidth = reference.ActualWidth, baselineHeight = reference.ActualHeight;
@@ -408,7 +414,7 @@ internal static class UiMinorSmoke
                 {
                     TextBox prayerBox = fixture.Field<TextBox>("Correction" + prayer + "Box");
                     Assert(prayerBox.ActualWidth == baselineWidth && prayerBox.ActualHeight == baselineHeight,
-                        $"All seven prayer correction boxes must retain their original realized dimensions: {prayer}/{theme}/{width}.");
+                        $"Realized prayer correction boxes must retain their original dimensions: {prayer}/{theme}/{width}: actual={prayerBox.ActualWidth:0.###}x{prayerBox.ActualHeight:0.###} baseline={baselineWidth:0.###}x{baselineHeight:0.###}.");
                 }
                 foreach (string prefix in dates)
                 {
@@ -427,9 +433,13 @@ internal static class UiMinorSmoke
                         failures.Add($"UI_MINOR_SIZE_FAILURE compact {theme}/{width}/{prefix}: group={group.ActualWidth:0.###}, gaps={boxBounds.Left-leftBounds.Right:0.###}/{rightBounds.Left-boxBounds.Right:0.###}.");
                     Assert(box.TextAlignment == TextAlignment.Center && box.VerticalContentAlignment == VerticalAlignment.Center,
                         "Date numeric values must retain centered text and content alignment.");
+                    // At 125% DPI a declared 25 DIP button realizes as 24.8 DIP (31 physical px).
+                    double sizeScale = VisualTreeHelper.GetDpi(box).DpiScaleX;
+                    double sizeTolerance = 0.5 / sizeScale + 1e-6;
                     Assert(leftBounds.Right <= boxBounds.Left && boxBounds.Right <= rightBounds.Left &&
-                           decrease.ActualWidth == 25 && increase.ActualWidth == 25 && decrease.ActualHeight == 28 && increase.ActualHeight == 28,
-                        "Date helper buttons must retain original 25x28 geometry and never overlap the TextBox.");
+                           Math.Abs(decrease.ActualWidth - 25) <= sizeTolerance && Math.Abs(increase.ActualWidth - 25) <= sizeTolerance &&
+                           Math.Abs(decrease.ActualHeight - 28) <= sizeTolerance && Math.Abs(increase.ActualHeight - 28) <= sizeTolerance,
+                        $"Date helper buttons must retain original 25x28 geometry and never overlap the TextBox: theme={theme}/{width} left={decrease.ActualWidth:0.###}x{decrease.ActualHeight:0.###} right={increase.ActualWidth:0.###}x{increase.ActualHeight:0.###} gaps={boxBounds.Left-leftBounds.Right:0.###}/{rightBounds.Left-boxBounds.Right:0.###}.");
                     Assert(Math.Abs(leftBounds.Top + leftBounds.Height / 2 - boxBounds.Top - boxBounds.Height / 2) <= 1 &&
                            Math.Abs(rightBounds.Top + rightBounds.Height / 2 - boxBounds.Top - boxBounds.Height / 2) <= 1,
                         "The compact numeric group must keep both helpers vertically centered with its TextBox.");

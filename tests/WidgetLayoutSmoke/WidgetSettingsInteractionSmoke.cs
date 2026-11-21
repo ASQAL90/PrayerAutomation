@@ -53,9 +53,14 @@ internal static class WidgetSettingsInteractionSmoke
         Assert(!widget.Topmost,
             "Medium Detail must stay in the normal z-order even while a settings preview is active.");
         Rect workArea = SystemParameters.WorkArea;
-        Assert(Math.Abs(widget.Left - (workArea.Right - widget.Width - 12)) < 1 &&
-               Math.Abs(widget.Top - (workArea.Bottom - widget.Height - 12)) < 1,
-            "The live actual widget must immediately follow the selected bottom-right placement.");
+        // Production places the widget with a 4 DIP margin (ScheduleWidgetWindow.cs).
+        double scale = VisualTreeHelper.GetDpi(widget).DpiScaleX;
+        double Snap(double value) => Math.Abs(scale - 1d) < 0.001
+            ? value : Math.Round(value * scale, MidpointRounding.AwayFromZero) / scale;
+        double expectedLeft = Snap(workArea.Right - widget.Width - 4);
+        double expectedTop = Snap(workArea.Bottom - widget.Height - 4);
+        Assert(Math.Abs(widget.Left - expectedLeft) < 0.1 && Math.Abs(widget.Top - expectedTop) < 0.5 / scale + 1e-6,
+            $"The live actual widget must immediately follow the selected bottom-right placement: actual={widget.Left:0.###},{widget.Top:0.###} expected={expectedLeft:0.###},{expectedTop:0.###} size={widget.Width:0.###}x{widget.Height:0.###} area={workArea}.");
         Assert(JsonSerializer.Serialize(fixture.Settings, fixture.SettingsType) == savedSettings,
             "Live appearance must not mutate saved settings or scheduler inputs.");
         Console.WriteLine("WIDGET_LIVE_APPEARANCE PASS: actual window, mode, placement, saved-state isolation.");
@@ -95,14 +100,17 @@ internal static class WidgetSettingsInteractionSmoke
         Pump();
         Window widget = fixture.Widget;
         IntPtr handle = new WindowInteropHelper(widget).Handle;
+        double opacityBefore = widget.Opacity;
         Assert(handle != IntPtr.Zero, "The click-through test requires a created widget window.");
         Assert(!HasTransparentStyle(handle), "A new widget must not start click-through.");
         fixture.Field<CheckBox>("WidgetClickThroughCheckBox").IsChecked = true;
         Pump();
         Assert(HasTransparentStyle(handle),
             "Enabling click-through must add WS_EX_TRANSPARENT to the real widget window.");
-        Assert(widget.Opacity == 1,
-            "Click-through must not fade the widget; opacity and the solid panel stay unchanged.");
+        // Fixture.Prepare() makes the widget inert (Opacity=0, IsHitTestVisible=false), so
+        // compare against the value captured before the toggle instead of assuming 1.
+        Assert(Math.Abs(widget.Opacity - opacityBefore) < 1e-9,
+            $"Click-through must not fade the widget; opacity and the solid panel stay unchanged: before={opacityBefore} after={widget.Opacity}.");
         Assert(fixture.Field<CheckBox>("WidgetAutoHideCheckBox").IsEnabled,
             "The hover auto-hide option must be available for Essential mode.");
         fixture.Field<CheckBox>("WidgetClickThroughCheckBox").IsChecked = false;

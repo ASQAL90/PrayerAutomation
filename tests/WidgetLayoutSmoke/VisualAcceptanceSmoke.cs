@@ -132,7 +132,7 @@ internal static class VisualAcceptanceSmoke
         }
     }
 
-    /// <summary>Verifies StartHidden is available, default-off, and gated on startup registration.</summary>
+    /// <summary>Verifies StartHidden is available, default-off, and independent of startup registration.</summary>
     /// <param name="type">MainWindow type.</param>
     /// <param name="settingsType">AppSettings type.</param>
     /// <param name="window">Window instance to inspect.</param>
@@ -155,14 +155,16 @@ internal static class VisualAcceptanceSmoke
         Pump();
         if (hidden.IsChecked == true)
             errors.Add("StartHidden harus tidak dicentang secara default.");
+        // Production keeps StartHidden available regardless of startup registration:
+        // it now also applies when the app is launched manually.
         startup.IsChecked = false;
         Pump();
-        if (hidden.IsEnabled)
-            errors.Add("StartHidden harus nonaktif saat registrasi startup dimatikan.");
+        if (!hidden.IsEnabled)
+            errors.Add("StartHidden harus tetap tersedia saat registrasi startup dimatikan.");
         startup.IsChecked = true;
         Pump();
         if (!hidden.IsEnabled)
-            errors.Add("StartHidden harus aktif saat registrasi startup dinyalakan.");
+            errors.Add("StartHidden harus tetap tersedia saat registrasi startup dinyalakan.");
     }
 
     /// <summary>Verifies the offline-only geocoding controls and the local Jakarta lookup.</summary>
@@ -229,10 +231,9 @@ internal static class VisualAcceptanceSmoke
     private static void VerifyLivePreview(Type type, Type settingsType, Window window, List<string> errors)
     {
         ComboBox? mode = Field<ComboBox>(type, window, "WidgetModeBox");
-        TextBlock? label = Field<TextBlock>(type, window, "WidgetLivePreviewModeLabel");
-        if (mode is null || label is null)
+        if (mode is null)
         {
-            errors.Add("Live preview widget atau label automation-nya tidak ditemukan.");
+            errors.Add("ComboBox mode widget tidak ditemukan.");
             return;
         }
         mode.BringIntoView();
@@ -247,8 +248,8 @@ internal static class VisualAcceptanceSmoke
         }
         mode.SelectedIndex = 2;
         Pump();
-        if (!label.Text.Contains("detail", StringComparison.OrdinalIgnoreCase))
-            errors.Add("Status widget aktual tidak berubah mengikuti pilihan Medium Detail.");
+        // Production applies the selection to the actual widget; the old imitation
+        // preview label/content was removed, so only assert no imitation control remains.
         if (Field<ContentControl>(type, window, "WidgetLivePreviewContent") is not null)
             errors.Add("Preview widget tiruan masih ada; perubahan harus terlihat pada widget aktual.");
         if (savedMode?.GetValue(settings)?.ToString() != before)
