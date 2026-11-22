@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "dataset_version": 2,
+  "snapshot": "2026-11-22",
+  "files": [
+    {
+      "name": "global.tsv.gz",
+      "size": 7335870,
+      "sha256": "0a2acc20b6dd052678e7864d8fae91db36c3d4533ac96d3d57164d03abeb40a8"
+    },
+    {
+      "name": "indonesia.tsv.gz",
+      "size": 4268581,
+      "sha256": "c78196c0d2894bc3c3fb6651b27574b92af1b0bec0e0c9e1591e6e8cb8016d9b"
+    },
+    {
+      "name": "indonesia.boundary.bin",
+      "size": 314104,
+      "sha256": "b161759010b116e0ec291302cef6f84f6af2ca1b379d79788aa81c05bae14ba4"
+    }
+  ]
+}
