@@ -2279,12 +2279,16 @@ public partial class MainWindow : Window
         DownloadFullDataProgress.Value = 0;
         var progress = new Progress<OfflineDownloadProgress>(update =>
         {
-            DownloadFullDataStatus.Text = update.TotalBytes > 0
-                ? $"{update.Phase} {update.BytesDownloaded * 100 / update.TotalBytes}%"
-                : update.Phase;
-            if (update.TotalBytes > 0)
-                DownloadFullDataProgress.Value = Math.Clamp(
-                    update.BytesDownloaded * 100.0 / update.TotalBytes, 0, 100);
+            try
+            {
+                DownloadFullDataStatus.Text = update.TotalBytes > 0
+                    ? $"{update.Phase} {update.BytesDownloaded * 100 / update.TotalBytes}%"
+                    : update.Phase;
+                if (update.TotalBytes > 0)
+                    DownloadFullDataProgress.Value = Math.Clamp(
+                        update.BytesDownloaded * 100.0 / update.TotalBytes, 0, 100);
+            }
+            catch (Exception ex) { AppLogger.Write("settings.download-full-data-progress", ex); }
         });
         try
         {
@@ -2295,6 +2299,11 @@ public partial class MainWindow : Window
         catch (OperationCanceledException)
         {
             DownloadFullDataStatus.Text = "Unduhan dibatalkan. Data bawaan tetap dipakai.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("settings.download-full-data", ex);
+            DownloadFullDataStatus.Text = "Unduhan gagal. Data bawaan tetap dipakai.";
         }
         finally
         {

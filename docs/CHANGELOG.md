@@ -5,7 +5,7 @@
 - Ditingkatkan ketinggian permukiman dengan sampel Copernicus GLO-90 di samping `dem` GeoNames; sumber dan kualitas ketinggian disimpan pada data.
 - Diperbaiki peringkat pencarian nama lokasi agar nama resmi dan nama alternatif tidak menggabungkan tempat yang berbeda, khususnya `Cibarusa`/`Cibarusah` dan `Cileungsi`/`Cileungsir`.
 - Disatukan katalog metode hitung dan aturan negara/zona waktu untuk semua jalur input lokasi; Muhammadiyah 99 tetap dipertahankan di Indonesia.
-- Ditambahkan opsi paket data global lengkap dengan checkbox izin, tombol unduh, progres, pembatalan, cache permanen, dan verifikasi SHA-256.
+- Ditambahkan opsi paket data global lengkap dengan checkbox izin, tombol unduh, progres, pembatalan, cache permanen, dan verifikasi SHA-256. Kegagalan manifest/jaringan ditangani tanpa menghentikan aplikasi; data bawaan tetap dipakai.
 - Ditambahkan deteksi lokasi otomatis saat instalasi baru: prioritas lokasi perangkat/GPS, fallback ke perkiraan jaringan, lalu fallback ke lokasi bawaan; nama, mdpl, zona waktu, lintang, bujur, dan metode diisi otomatis.
 - Disesuaikan preset instalasi baru: metode Muhammadiyah, widget desktop aktif (lima waktu statis, tengah atas, selalu di atas, klik tembus, sembunyi saat kursor mendekat), panel taskbar aktif, mulai tersembunyi, jalankan saat masuk Windows, periksa pembaruan otomatis, kunci Windows lima waktu sholat, dan persetujuan lock screen aktif.
 - Diperbaiki aktivasi widget desktop dan panel taskbar agar langsung diterapkan saat dicentang atau disimpan, tanpa memerlukan keluar-masuk aplikasi.

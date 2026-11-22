@@ -364,9 +364,11 @@
                                         </ComboBox>
                                         <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Vertical" Margin="0,12,0,0">
                                             <CheckBox Name="DownloadFullDataCheckBox" AutomationProperties.AutomationId="DownloadFullDataCheckBox"
-                                                      Content="Paket data lokasi lengkap (opsional, ±20 MB)"
+                                                      Margin="3,2,3,2"
                                                       ToolTip="Jika dicentang dan diunduh, pencarian memakai data global lengkap. Tanpa unduhan, aplikasi tetap memakai data bawaan."
-                                                      Checked="DownloadFullDataCheckBox_Changed" Unchecked="DownloadFullDataCheckBox_Changed" />
+                                                      Checked="DownloadFullDataCheckBox_Changed" Unchecked="DownloadFullDataCheckBox_Changed">
+                                                <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Paket data lokasi lengkap (opsional, ±20 MB)" />
+                                            </CheckBox>
                                             <Button Name="DownloadFullDataButton" AutomationProperties.AutomationId="DownloadFullDataButton"
                                                     Content="Unduh paket data lengkap" HorizontalAlignment="Left" Margin="0,6,0,0"
                                                     IsEnabled="False" Click="DownloadFullData_Click" />

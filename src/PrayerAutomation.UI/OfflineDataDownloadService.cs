@@ -89,16 +89,16 @@ internal sealed class OfflineDataDownloadService
         CancellationToken cancellationToken)
     {
         progress.Report(new OfflineDownloadProgress(string.Empty, 0, 0, "Membaca manifest data…"));
-        byte[] manifestBytes = await _httpClient.GetByteArrayAsync(ManifestUrl, cancellationToken).ConfigureAwait(false);
-        OfflineDataManifest? manifest = ParseManifest(manifestBytes);
-        if (manifest is null)
-            return new OfflineDataInstallResult(false, string.Empty, "Manifest data tidak dapat dibaca atau tidak valid.");
-
-        long totalBytes = manifest.Files.Sum(file => Math.Max(0, file.Size));
         string staging = CacheDirectory + ".stage";
         string partial = CacheDirectory + ".partial";
         try
         {
+            byte[] manifestBytes = await _httpClient.GetByteArrayAsync(ManifestUrl, cancellationToken).ConfigureAwait(false);
+            OfflineDataManifest? manifest = ParseManifest(manifestBytes);
+            if (manifest is null)
+                return new OfflineDataInstallResult(false, string.Empty, "Manifest data tidak dapat dibaca atau tidak valid.");
+
+            long totalBytes = manifest.Files.Sum(file => Math.Max(0, file.Size));
             if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
             if (Directory.Exists(partial)) Directory.Delete(partial, recursive: true);
             Directory.CreateDirectory(staging);
@@ -134,10 +134,19 @@ internal sealed class OfflineDataDownloadService
         {
             CleanupDirectory(staging);
             CleanupDirectory(partial);
-            throw;
+            if (cancellationToken.IsCancellationRequested) throw;
+            return new OfflineDataInstallResult(false, string.Empty,
+                "Unduhan melebihi batas waktu. Aplikasi tetap memakai data bawaan.");
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException
             or InvalidDataException or NotSupportedException or JsonException)
+        {
+            CleanupDirectory(staging);
+            CleanupDirectory(partial);
+            return new OfflineDataInstallResult(false, string.Empty,
+                $"Unduhan gagal: {ex.Message}. Aplikasi tetap memakai data bawaan.");
+        }
+        catch (Exception ex)
         {
             CleanupDirectory(staging);
             CleanupDirectory(partial);
