@@ -2,7 +2,7 @@
 
 ## Mulai di sini — ringkasan 2.4.3
 
-> **Catatan 2.4.3:** stable terbaru adalah `v2.4.3`; rilis `v2.4.2` tetap draft. Ringkasan perubahan versi terbaru ditampilkan pada popup pembaruan; riwayat seluruh versi tersedia dari halaman Tentang. Preflight pembaruan menyelesaikan pemulihan lock screen secara paksa dan tetap melanjutkan pembaruan bila verifikasi gagal. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru, sedangkan `/UPDATEMODE` tetap lanjut tanpa dialog. Angka 2.2.1/2.3.1/2.4.0/2.4.1/2.4.2 di dokumen lain adalah riwayat. Versi 2.5.0 sedang disiapkan secara lokal dan belum dirilis; isinya perbaikan data lokasi offline lengkap dan paket data opsional.
+> **Catatan 2.5.1:** stable terbaru adalah `v2.5.1`. Rilis ini memfokuskan optimasi ukuran paket self-contained (Tier 1 prune payload, Tier 2 tray native `Shell_NotifyIconW` tanpa WinForms) dan menyediakan tiga varian installer (universal/x64/x86). Angka versi sebelumnya di dokumen lain adalah riwayat.
 
 - [README aplikasi](../README.md): fitur, penggunaan, build, dan batas pengujian saat ini.
 - [Inventaris third-party](THIRD_PARTY_NOTICES.md): komponen yang dipakai source/paket sekarang dan kewajiban atribusinya.

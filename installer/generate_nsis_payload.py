@@ -117,6 +117,33 @@ def render(payload_x64: dict[str, str], payload_x86: dict[str, str],
     return "\n".join(lines)
 
 
+def render_single(payload: dict[str, str], arch: str,
+                  separator: str | None = None) -> str:
+    """Renders an installer include that ships exactly one architecture."""
+    separator = separator or os.sep
+    name = "x64" if arch == "x64" else "x86"
+    label = "64-bit" if arch == "x64" else "32-bit"
+    section = f"SEC_PAYLOAD_{name.upper()}"
+    files = sorted(payload)
+
+    lines = list(HEADER)
+    lines.append(f"; single-architecture build: {arch} files={len(files)}")
+    lines.append(f"; ui_sha256_{arch}={payload[UI_NAME]}")
+    lines.append("")
+    lines.append(f"!define NSIS_PAYLOAD_COUNT_{name.upper()} {len(files)}")
+    lines.append("")
+    lines.append(f'Section "Berkas aplikasi {label}" {section}')
+    lines.append("  SectionIn RO")
+    render_file_group(lines, "${PAYLOAD_" + name.upper() + "}", files, separator)
+    lines.append("SectionEnd")
+    lines.append("")
+    render_manifest_macro(lines, f"NSIS_WRITE_MANIFEST_{name.upper()}", files)
+    lines.append("")
+    render_delete_macro(lines, files)
+    lines.append("")
+    return "\n".join(lines)
+
+
 def render_files_list(files: list[str]) -> str:
     """Line-based list of relative POSIX paths for the installer's cleanup."""
     return "\n".join(sorted(files)) + "\n"

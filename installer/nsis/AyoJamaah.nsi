@@ -14,8 +14,8 @@ Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.5.0"
-!define APP_VERSION_QUAD "2.5.0.0"
+!define APP_VERSION "2.5.1"
+!define APP_VERSION_QUAD "2.5.1.0"
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -54,7 +54,7 @@ OutFile "${OUTFILE}"
 InstallDir "${APP_INSTALL_DIR}"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-SetCompressorDictSize 64
+SetCompressorDictSize 128
 SetDatablockOptimize on
 CRCCheck on
 XPStyle on
@@ -161,7 +161,17 @@ SectionEnd
 ; Payload sections are generated from the reviewed receipts. They are included
 ; here so they run after the preflight/cleanup section and before finalization.
 ; The section identifiers are still defined before .onInit references them.
-!include "AyoJamaahPayload-dual.nsh"
+; A single-architecture build includes only that payload, so the installer does
+; not ship a second copy the user will never install.
+!ifdef SINGLE_ARCH_X64
+  !include "AyoJamaahPayload-x64.nsh"
+!else
+  !ifdef SINGLE_ARCH_X86
+    !include "AyoJamaahPayload-x86.nsh"
+  !else
+    !include "AyoJamaahPayload-dual.nsh"
+  !endif
+!endif
 
 Section "Finalisasi" SEC_INSTALL_FINAL
   SectionIn RO
@@ -256,6 +266,17 @@ Function .onInit
   StrCpy $DesktopShortcutSelected 0
   StrCpy $UpdateMode 0
 
+  ; A 64-bit-only package cannot run on a 32-bit Windows installation. Refuse
+  ; early instead of leaving a broken install behind. The universal package
+  ; selects the matching payload itself, and the 32-bit package runs anywhere.
+!ifdef SINGLE_ARCH_X64
+  ${IfNot} ${RunningX64}
+    MessageBox MB_ICONSTOP "Paket ini hanya untuk Windows 64-bit. Unduh paket universal atau versi 32-bit."
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+!endif
+
   ; The application launches this installer with /UPDATEMODE after it exits.
   ; That switch allows a silent, page-less update; ordinary silent installs are
   ; still refused because they would skip the safety review. The installed
@@ -333,6 +354,8 @@ Function .onInit
     Quit
   ${EndIf}
 
+!ifndef SINGLE_ARCH_X64
+!ifndef SINGLE_ARCH_X86
   ${If} ${RunningX64}
     SectionSetFlags ${SEC_PAYLOAD_X64} ${SF_SELECTED}
     SectionSetFlags ${SEC_PAYLOAD_X86} 0
@@ -340,6 +363,8 @@ Function .onInit
     SectionSetFlags ${SEC_PAYLOAD_X64} 0
     SectionSetFlags ${SEC_PAYLOAD_X86} ${SF_SELECTED}
   ${EndIf}
+!endif
+!endif
 
   Return
 FunctionEnd
@@ -463,11 +488,19 @@ Function ${P}LoadPayload
   ; Reads the whole payload list once into memory as a newline-delimited
   ; string so IsPayloadFile costs a single substring search per manifest entry.
   StrCpy $SafetyPayload "$\n"
-  ${If} ${RunningX64}
-    FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x64.txt" r
-  ${Else}
+!ifdef SINGLE_ARCH_X64
+  FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x64.txt" r
+!else
+  !ifdef SINGLE_ARCH_X86
     FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x86.txt" r
-  ${EndIf}
+  !else
+    ${If} ${RunningX64}
+      FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x64.txt" r
+    ${Else}
+      FileOpen $2 "$PLUGINSDIR\ayojamaah-payload-x86.txt" r
+    ${EndIf}
+  !endif
+!endif
   ${If} $2 != ""
     ${Do}
       FileRead $2 $3
@@ -571,11 +604,19 @@ FunctionEnd
 
 Function WriteInstallManifest
   CreateDirectory "$LOCALAPPDATA\PrayerAutomation"
-  ${If} ${RunningX64}
-    !insertmacro NSIS_WRITE_MANIFEST_X64
-  ${Else}
+!ifdef SINGLE_ARCH_X64
+  !insertmacro NSIS_WRITE_MANIFEST_X64
+!else
+  !ifdef SINGLE_ARCH_X86
     !insertmacro NSIS_WRITE_MANIFEST_X86
-  ${EndIf}
+  !else
+    ${If} ${RunningX64}
+      !insertmacro NSIS_WRITE_MANIFEST_X64
+    ${Else}
+      !insertmacro NSIS_WRITE_MANIFEST_X86
+    ${EndIf}
+  !endif
+!endif
 FunctionEnd
 
 Function ApplyStartFresh

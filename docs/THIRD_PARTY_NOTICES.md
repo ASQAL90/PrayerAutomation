@@ -1,6 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.5.0
+# Third-party notices — Ayo Jama'ah! 2.5.1
 
-Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.5.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
+Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.5.1. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
 Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lisensinya dan tidak dicantumkan lagi di repository.
 

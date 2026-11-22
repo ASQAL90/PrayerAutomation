@@ -65,7 +65,7 @@ def fetch_elevations(latitudes: list[float], longitudes: list[float], attempts: 
         try:
             request = urllib.request.Request(
                 f"{API_URL}?{query}",
-                headers={"User-Agent": "AyoJamaah-DatasetBuilder/2.5.0"})
+                headers={"User-Agent": "AyoJamaah-DatasetBuilder/2.5.1"})
             with urllib.request.urlopen(request, timeout=45) as response:
                 payload = json.load(response)
             values = payload.get("elevation", [])

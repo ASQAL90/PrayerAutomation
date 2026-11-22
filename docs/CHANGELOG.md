@@ -1,5 +1,12 @@
 # Riwayat perubahan
 
+## v2.5.1
+- Diperkecil ukuran paket self-contained lewat optimasi Tier 1: payload publish memangkas berkas runtime/framework yang tidak diperlukan aplikasi, memverifikasi berkas wajib, dan membersihkan/remap `deps.json`.
+- Dihapus dependensi WinForms lewat optimasi Tier 2: tray icon memakai native `Shell_NotifyIconW` dengan menu konteks WPF, sehingga `UseWindowsForms` tidak lagi diperlukan.
+- Diperbaiki tampilan menu systray agar mengikuti tema aplikasi, termasuk latar, hover, kontras tema gelap, dan separator.
+- Ditambahkan tiga varian installer NSIS: universal (`x64+x86`), `x64`, dan `x86`; updater memprioritaskan installer sesuai arsitektur dengan fallback universal.
+- Dinaikkan nomor versi aplikasi dan installer ke 2.5.1.
+
 ## v2.5.0
 - Diperluas data lokasi offline dengan daftar global `cities500` dan data Indonesia hybrid Kemendagri–GeoNames yang memuat koordinat, `dem`, nama alternatif, kode fitur, dan populasi.
 - Ditingkatkan ketinggian permukiman dengan sampel Copernicus GLO-90 di samping `dem` GeoNames; sumber dan kualitas ketinggian disimpan pada data.

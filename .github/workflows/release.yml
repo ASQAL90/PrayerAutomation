@@ -46,6 +46,14 @@ jobs:
       - name: Publish portable x86
         run: dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x86 -r win-x86 -p:SelfContained=true -p:RustTarget=i686-pc-windows-msvc -o out/portable-x86
 
+      - name: Prune portable x64
+        shell: pwsh
+        run: python installer/prune_publish.py --source out/portable-x64 --arch x64 --report out/prune-x64.json
+
+      - name: Prune portable x86
+        shell: pwsh
+        run: python installer/prune_publish.py --source out/portable-x86 --arch x86 --report out/prune-x86.json
+
       - name: Receipt portable x64
         shell: pwsh
         run: python installer/make_payload_receipt.py --source out/portable-x64 --arch x64 --output out/receipt-x64.json
@@ -54,24 +62,40 @@ jobs:
         shell: pwsh
         run: python installer/make_payload_receipt.py --source out/portable-x86 --arch x86 --output out/receipt-x86.json
 
-      - name: Build NSIS installer
+      - name: Build NSIS installers
         shell: pwsh
         env:
           AYOJAMAAH_OUT: out
         run: |
           $env:PATH = "$env:PATH;C:\Program Files (x86)\NSIS"
-          python installer/build_installer_nsis.py
+          foreach ($variant in @('universal', 'x64', 'x86')) {
+            python installer/build_installer_nsis.py --variant $variant
+            if ($LASTEXITCODE -ne 0) { throw "Installer $variant gagal." }
+          }
 
       - name: Package ZIPs
         shell: pwsh
         run: |
           $version = (Select-Xml -Path src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -XPath '//Version').Node.InnerText
-          $installer = "out/installer/AyoJamaah.Setup-$version.exe"
-          $installerZip = "AyoJamaah.Setup-$version.zip"
-          Compress-Archive -Path out/portable-x64/* -DestinationPath AyoJamaah-win-x64.zip -Force
-          Compress-Archive -Path out/portable-x86/* -DestinationPath AyoJamaah-win-x86.zip -Force
-          Compress-Archive -Path $installer -DestinationPath $installerZip -Force
-          $lines = foreach ($f in @('AyoJamaah-win-x64.zip','AyoJamaah-win-x86.zip',$installer,$installerZip)) {
+          $root = (Get-Location).Path
+          $installers = @(
+            "out/installer/AyoJamaah.Setup-$version.exe",
+            "out/installer/AyoJamaah.Setup-$version-x64.exe",
+            "out/installer/AyoJamaah.Setup-$version-x86.exe"
+          )
+          $zips = @("AyoJamaah-win-x64.zip", "AyoJamaah-win-x86.zip")
+          Push-Location out/portable-x64
+          7z a -tzip -mx=9 (Join-Path $root "AyoJamaah-win-x64.zip") *
+          Pop-Location
+          Push-Location out/portable-x86
+          7z a -tzip -mx=9 (Join-Path $root "AyoJamaah-win-x86.zip") *
+          Pop-Location
+          foreach ($installer in $installers) {
+            $installerZip = (Split-Path $installer -Leaf) -replace '\.exe$', '.zip'
+            Compress-Archive -Path $installer -DestinationPath $installerZip -Force
+            $zips += $installerZip
+          }
+          $lines = foreach ($f in ($zips + $installers)) {
             $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
             "$hash  $(Split-Path $f -Leaf)"
           }
@@ -88,13 +112,13 @@ jobs:
             --source out/portable-x64 `
             --baseline installer/update/baseline-2.3.0-x64.json `
             --portable-zip AyoJamaah-win-x64.zip `
-            --installer out/installer/AyoJamaah.Setup-$version.exe `
+            --installer out/installer/AyoJamaah.Setup-$version-x64.exe `
             --output-dir out/update
           python installer/build_update_payload.py --version $version --arch x86 `
             --source out/portable-x86 `
             --baseline installer/update/baseline-2.3.0-x86.json `
             --portable-zip AyoJamaah-win-x86.zip `
-            --installer out/installer/AyoJamaah.Setup-$version.exe `
+            --installer out/installer/AyoJamaah.Setup-$version-x86.exe `
             --output-dir out/update
 
       - name: Upload artifacts

@@ -387,9 +387,11 @@ internal sealed class UpdateService
 
     private static ReleaseAsset? FindInstaller(IReadOnlyDictionary<string, ReleaseAsset> assets, string version)
     {
-        if (assets.TryGetValue($"AyoJamaah.Setup-{version}.exe", out ReleaseAsset? installer)) return installer;
+        // Prefer the smaller architecture-specific package; the universal
+        // installer ships both payloads and is only a fallback for older tags.
         string arch = Environment.Is64BitProcess ? "x64" : "x86";
-        assets.TryGetValue($"AyoJamaah.Setup-{version}-{arch}.exe", out installer);
+        if (assets.TryGetValue($"AyoJamaah.Setup-{version}-{arch}.exe", out ReleaseAsset? installer)) return installer;
+        assets.TryGetValue($"AyoJamaah.Setup-{version}.exe", out installer);
         return installer;
     }
 

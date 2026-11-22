@@ -51,6 +51,18 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        bool crashHandled = false;
+        DispatcherUnhandledException += (_, args) =>
+        {
+            AppLogger.Write("app.unhandled", args.Exception);
+            args.Handled = true;
+            if (crashHandled) return;
+            crashHandled = true;
+            try { MessageBox.Show("Ayo Jama'ah gagal memulai: " + args.Exception.GetBaseException().Message, AppBranding.DisplayName, MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+            try { Shutdown(); } catch { }
+        };
+        try
+        {
 
         // The updater helper is a copy of this executable. It must run before the
         // single-instance mutex, otherwise it would shut itself down immediately.
@@ -139,6 +151,13 @@ public partial class App : Application
         }
         if (Settings.UpdateAutoCheck)
             _ = AutoCheckForUpdatesAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("app.startup", ex);
+            try { MessageBox.Show("Ayo Jama'ah gagal memulai: " + ex.Message, AppBranding.DisplayName, MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+            try { Shutdown(); } catch { }
+        }
     }
 
     /// <summary>Completes widget startup after the main window is shown, respecting any active appearance preview.</summary>

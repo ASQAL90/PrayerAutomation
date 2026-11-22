@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from payload_receipt import validated_payload  # noqa: E402
-from generate_nsis_payload import render, render_files_list, write_output  # noqa: E402
+from generate_nsis_payload import render, render_files_list, render_single, write_output  # noqa: E402
 
 def app_version(nsis_dir: Path) -> str:
     """Reads APP_VERSION from the NSIS script so the output name never drifts."""
@@ -45,6 +45,10 @@ def nsis_command(args: argparse.Namespace, script: Path, output: Path) -> list[s
         f"-DPAYLOAD_X86={args.portable_x86.resolve()}",
         f"-DOUTFILE={output.resolve()}",
     ]
+    if args.variant == "x64":
+        defines.append("-DSINGLE_ARCH_X64")
+    elif args.variant == "x86":
+        defines.append("-DSINGLE_ARCH_X86")
     if args.makensis:
         return [args.makensis, "-V3", *defines, str(script.resolve())]
 
@@ -64,7 +68,9 @@ def nsis_command(args: argparse.Namespace, script: Path, output: Path) -> list[s
             f"-DPAYLOAD_X64=/mnt/payload-x64 "
             f"-DPAYLOAD_X86=/mnt/payload-x86 "
             f"-DOUTFILE=/mnt/out/{shlex.quote(output.name)} "
-            f"{shlex.quote(script.name)}"
+            + ("-DSINGLE_ARCH_X64 " if args.variant == "x64" else
+               "-DSINGLE_ARCH_X86 " if args.variant == "x86" else "")
+            + f"{shlex.quote(script.name)}"
         )
         result = [proot, "login", "debian"]
         for bind in binds:
@@ -89,25 +95,38 @@ def main() -> None:
     parser.add_argument("--portable-x86", type=Path, default=build_root / "portable-x86")
     parser.add_argument("--receipt-x64", type=Path, default=build_root / "receipt-x64.json")
     parser.add_argument("--receipt-x86", type=Path, default=build_root / "receipt-x86.json")
+    parser.add_argument("--variant", choices=("universal", "x64", "x86"), default="universal",
+                        help="universal ships both payloads; x64/x86 ship one architecture")
     parser.add_argument("--output", type=Path,
-                        default=build_root / "installer" / f"AyoJamaah.Setup-{app_version(nsis_dir)}.exe")
+                        help="Output path (default depends on --variant)")
     parser.add_argument("--makensis", help="Path to makensis (skips the Termux proot wrapper)")
     parser.add_argument("--check-only", action="store_true", help="Validate and regenerate the include, but do not compile")
     args = parser.parse_args()
+
+    version = app_version(nsis_dir)
+    variant_suffix = {"universal": "", "x64": "-x64", "x86": "-x86"}[args.variant]
+    if args.output is None:
+        args.output = build_root / "installer" / f"AyoJamaah.Setup-{version}{variant_suffix}.exe"
 
     receipt_architecture(args.receipt_x64, "x64")
     receipt_architecture(args.receipt_x86, "x86")
     payload_x64 = validated_payload(args.receipt_x64, args.portable_x64)
     payload_x86 = validated_payload(args.receipt_x86, args.portable_x86)
 
-    include = nsis_dir / "AyoJamaahPayload-dual.nsh"
-    write_output(include, render(payload_x64, payload_x86), force=True)
+    if args.variant == "universal":
+        include = nsis_dir / "AyoJamaahPayload-dual.nsh"
+        write_output(include, render(payload_x64, payload_x86), force=True)
+    else:
+        payload = payload_x64 if args.variant == "x64" else payload_x86
+        include = nsis_dir / f"AyoJamaahPayload-{args.variant}.nsh"
+        write_output(include, render_single(payload, args.variant), force=True)
     for arch, payload in (("x64", payload_x64), ("x86", payload_x86)):
         write_output(nsis_dir / f"AyoJamaahPayloadFiles-{arch}.txt",
                      render_files_list(list(payload)), force=True)
 
     result = {
         "status": "PASS",
+        "variant": args.variant,
         "files_x64": len(payload_x64),
         "files_x86": len(payload_x86),
         "files_unique": len(set(payload_x64) | set(payload_x86)),

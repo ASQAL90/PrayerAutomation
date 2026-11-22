@@ -130,7 +130,7 @@ internal static class AppLogger
     /// <param name="exception">Exception to log.</param>
     public static void Write(string context, Exception exception)
     {
-        Append($"{DateTimeOffset.Now:O} ERROR [{context}] {exception.Message}{Environment.NewLine}");
+        Append($"{DateTimeOffset.Now:O} ERROR [{context}] {exception}{Environment.NewLine}");
     }
 
     // Only explicitly wired, privacy-safe timeline fields belong in this information channel.

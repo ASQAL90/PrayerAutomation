@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the v2 offline location datasets for Ayo Jama'ah 2.5.0.
+"""Build the v2 offline location datasets for Ayo Jama'ah 2.5.1.
 
 Hybrid sources:
   * GeoNames (cities500.txt, ID.txt, admin2Codes.txt, alternateNamesV2.txt)

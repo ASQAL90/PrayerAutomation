@@ -87,9 +87,9 @@ Ulangi satu mode per siklus; jangan mengganti mode di tengah restore normal. Jik
 
 Failure scheduler dan interruption sudah diuji memakai backend/native platform terisolasi. Itu tidak berarti fault injection/force-close pada lock screen pengguna sudah diuji. Jangan menyimulasikan failure dengan memblokir file, merusak Registry, atau menghapus gambar asal pada PC harian.
 
-## E. Uji data lokasi 2.5.0 — belum dijalankan
+## E. Uji data lokasi 2.5.1 — belum dijalankan
 
-Bagian ini untuk build `2.5.0`. Kolom **Hasil Anda** belum diisi; menjalankan checklist ini tidak berarti rilis atau uji pembaruan `2.4.3` sudah diperintahkan.
+Bagian ini untuk build `2.5.1`. Kolom **Hasil Anda** belum diisi; menjalankan checklist ini tidak berarti rilis atau uji pembaruan `2.4.3` sudah diperintahkan.
 
 | ID | Tindakan | Hasil yang diharapkan | Hasil Anda |
 |---|---|---|---|
