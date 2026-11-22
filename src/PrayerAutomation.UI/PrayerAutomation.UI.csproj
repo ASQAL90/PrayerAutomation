@@ -61,7 +61,6 @@
   </Target>
 
   <ItemGroup>
-    <Compile Remove="NominatimReverseGeocodingService.cs" />
     <Compile Include="../Shared/PrayerIconPaths.cs" Link="Shared/PrayerIconPaths.cs" />
   </ItemGroup>
 </Project>

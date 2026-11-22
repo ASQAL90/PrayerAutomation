@@ -126,6 +126,7 @@ internal sealed class OfflineDataDownloadService
             }
 
             ActivateStaging(staging);
+            CleanupDirectory(partial);
             OfflineReverseGeocoder.UseDownloaded(OfflineReverseGeocoder.LoadFromDirectory(CacheDirectory));
             return new OfflineDataInstallResult(true, CacheDirectory,
                 $"Paket data lengkap ({manifest.Snapshot}) terpasang dan siap dipakai tanpa internet.");

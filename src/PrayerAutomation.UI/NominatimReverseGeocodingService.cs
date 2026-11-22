@@ -16,6 +16,7 @@ internal sealed class NominatimReverseGeocodingService
     private static readonly SemaphoreSlim RequestGate = new(1, 1);
     private static readonly object CacheLock = new();
     private static readonly Dictionary<string, CacheEntry> MemoryCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, SearchCacheEntry> SearchMemoryCache = new(StringComparer.Ordinal);
     private static readonly TimeSpan MinimumRequestInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromHours(1);
     private const int MaximumCacheEntries = 128;
@@ -95,6 +96,71 @@ internal sealed class NominatimReverseGeocodingService
         }
         if (position.Source is not (DeviceLocationSource.Satellite or DeviceLocationSource.WiFi or DeviceLocationSource.Cellular))
             throw new InvalidOperationException("Sumber lokasi bukan GPS, Wi-Fi, atau jaringan seluler; koordinat tidak dikirim.");
+
+        string latitudeText = latitude.ToString("G", CultureInfo.InvariantCulture);
+        string longitudeText = longitude.ToString("G", CultureInfo.InvariantCulture);
+        string cacheKey = $"{baseUri.AbsoluteUri}|{latitudeText}|{longitudeText}";
+        if (TryGetCached(cacheKey, out OnlineLocationResult? cached))
+            return cached;
+
+        await RequestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (TryGetCached(cacheKey, out cached))
+                return cached;
+
+            TimeSpan elapsed = DateTimeOffset.UtcNow - _lastRequestStartedUtc;
+            TimeSpan wait = MinimumRequestInterval - elapsed;
+            if (wait > TimeSpan.Zero)
+                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Uri requestUri = BuildRequestUri(baseUri, latitudeText, longitudeText);
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            Version version = typeof(NominatimReverseGeocodingService).Assembly.GetName().Version ?? new Version(1, 0);
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("PrayerAutomation", version.ToString()));
+            _lastRequestStartedUtc = DateTimeOffset.UtcNow;
+
+            using HttpResponseMessage response = await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Layanan geocoding mengembalikan HTTP {(int)response.StatusCode}.", null, response.StatusCode);
+
+            string json = await ReadLimitedResponseAsync(response.Content, cancellationToken).ConfigureAwait(false);
+            OnlineLocationResult result = ParseResponse(json);
+            AddToCache(cacheKey, result);
+            return result;
+        }
+        finally
+        {
+            RequestGate.Release();
+        }
+    }
+
+    /// <summary>Reverse-geocodes explicit coordinates; requires explicit user consent.</summary>
+    /// <param name="latitude">Latitude in degrees.</param>
+    /// <param name="longitude">Longitude in degrees.</param>
+    /// <param name="endpointBaseUri">Base URL of the geocoding service.</param>
+    /// <param name="userConsentGranted">Must be true; online geocoding sends coordinates to the network.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The resolved location.</returns>
+    internal async Task<OnlineLocationResult> ReverseGeocodeCoordinatesAsync(
+        double latitude,
+        double longitude,
+        string endpointBaseUri,
+        bool userConsentGranted,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConsentGranted)
+            throw new InvalidOperationException("Reverse geocoding online memerlukan persetujuan eksplisit.");
+        if (!TryNormalizeBaseUri(endpointBaseUri, out Uri baseUri, out string endpointError))
+            throw new ArgumentException(endpointError, nameof(endpointBaseUri));
+        if (!DeviceLocationLogic.HasValidCoordinates(latitude, longitude))
+            throw new ArgumentException("Koordinat tidak valid.", nameof(latitude));
 
         string latitudeText = latitude.ToString("G", CultureInfo.InvariantCulture);
         string longitudeText = longitude.ToString("G", CultureInfo.InvariantCulture);
@@ -221,6 +287,70 @@ internal sealed class NominatimReverseGeocodingService
         return "";
     }
 
+    /// <summary>Searches locations by name; requires explicit user consent.</summary>
+    /// <param name="query">Search query.</param>
+    /// <param name="endpointBaseUri">Base URL of the geocoding service.</param>
+    /// <param name="userConsentGranted">Must be true; online geocoding sends the query to the network.</param>
+    /// <param name="limit">Maximum results.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>Location suggestions compatible with offline suggestion UI.</returns>
+    internal async Task<IReadOnlyList<OfflineLocationSuggestion>> SearchAsync(
+        string query,
+        string endpointBaseUri,
+        bool userConsentGranted,
+        int limit = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConsentGranted)
+            throw new InvalidOperationException("Pencarian lokasi online memerlukan persetujuan eksplisit.");
+        if (!TryNormalizeBaseUri(endpointBaseUri, out Uri baseUri, out string endpointError))
+            throw new ArgumentException(endpointError, nameof(endpointBaseUri));
+        string trimmed = query?.Trim() ?? "";
+        if (trimmed.Length < 2) return [];
+
+        string cacheKey = $"search|{baseUri.AbsoluteUri}|{trimmed.ToLowerInvariant()}|{Math.Clamp(limit, 1, 8)}";
+        if (TryGetCachedSearch(cacheKey, out IReadOnlyList<OfflineLocationSuggestion>? cached))
+            return cached;
+
+        await RequestGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (TryGetCachedSearch(cacheKey, out cached))
+                return cached;
+
+            TimeSpan elapsed = DateTimeOffset.UtcNow - _lastRequestStartedUtc;
+            TimeSpan wait = MinimumRequestInterval - elapsed;
+            if (wait > TimeSpan.Zero)
+                await Task.Delay(wait, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string endpoint = baseUri.AbsoluteUri.TrimEnd('/') + "/search";
+            string q = "format=jsonv2&addressdetails=1&accept-language=id&limit=" + Math.Clamp(limit, 1, 8)
+                + "&q=" + Uri.EscapeDataString(trimmed);
+            var requestUri = new UriBuilder(endpoint) { Query = q }.Uri;
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            Version version = typeof(NominatimReverseGeocodingService).Assembly.GetName().Version ?? new Version(1, 0);
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("PrayerAutomation", version.ToString()));
+            _lastRequestStartedUtc = DateTimeOffset.UtcNow;
+
+            using HttpResponseMessage response = await _httpClient.SendAsync(
+                request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Layanan geocoding mengembalikan HTTP {(int)response.StatusCode}.", null, response.StatusCode);
+
+            string json = await ReadLimitedResponseAsync(response.Content, cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<OfflineLocationSuggestion> results = ParseSearchResponse(json, Math.Clamp(limit, 1, 8));
+            AddToSearchCache(cacheKey, results);
+            return results;
+        }
+        finally
+        {
+            RequestGate.Release();
+        }
+    }
+
     /// <summary>Looks up a cache entry, dropping expired entries.</summary>
     /// <param name="key">Cache key.</param>
     /// <param name="result">The cached result on hit.</param>
@@ -241,6 +371,81 @@ internal sealed class NominatimReverseGeocodingService
         }
         result = null!;
         return false;
+    }
+
+    private static bool TryGetCachedSearch(string key, out IReadOnlyList<OfflineLocationSuggestion> result)
+    {
+        lock (CacheLock)
+        {
+            if (SearchMemoryCache.TryGetValue(key, out SearchCacheEntry? entry))
+            {
+                if (entry.ExpiresAtUtc > DateTimeOffset.UtcNow)
+                {
+                    result = entry.Results;
+                    return true;
+                }
+                SearchMemoryCache.Remove(key);
+            }
+        }
+        result = [];
+        return false;
+    }
+
+    private static void AddToSearchCache(string key, IReadOnlyList<OfflineLocationSuggestion> results)
+    {
+        lock (CacheLock)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            foreach (string expiredKey in SearchMemoryCache.Where(pair => pair.Value.ExpiresAtUtc <= now).Select(pair => pair.Key).ToArray())
+                SearchMemoryCache.Remove(expiredKey);
+            if (SearchMemoryCache.Count >= MaximumCacheEntries)
+            {
+                string oldestKey = SearchMemoryCache.MinBy(pair => pair.Value.ExpiresAtUtc).Key;
+                SearchMemoryCache.Remove(oldestKey);
+            }
+            SearchMemoryCache[key] = new SearchCacheEntry(results, now.Add(CacheLifetime));
+        }
+    }
+
+    private static IReadOnlyList<OfflineLocationSuggestion> ParseSearchResponse(string json, int limit)
+    {
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return [];
+        var results = new List<OfflineLocationSuggestion>();
+        foreach (JsonElement item in doc.RootElement.EnumerateArray())
+        {
+            if (results.Count >= limit) break;
+            if (item.ValueKind != JsonValueKind.Object) continue;
+            if (!item.TryGetProperty("lat", out JsonElement latEl) || !item.TryGetProperty("lon", out JsonElement lonEl))
+                continue;
+            if (!double.TryParse(latEl.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double lat) ||
+                !double.TryParse(lonEl.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double lon))
+                continue;
+            if (!DeviceLocationLogic.HasValidCoordinates(lat, lon)) continue;
+
+            string displayName = item.TryGetProperty("display_name", out JsonElement dn) ? dn.GetString() ?? "" : "";
+            string countryCode = "";
+            string countryName = "";
+            string regionName = "";
+            string cityName = "";
+            if (item.TryGetProperty("address", out JsonElement address) && address.ValueKind == JsonValueKind.Object)
+            {
+                countryCode = GetAddressField(address, "country_code").ToUpperInvariant();
+                countryName = GetAddressField(address, "country");
+                regionName = FirstNonEmpty(address, "state", "county", "state_district", "province");
+                cityName = FirstNonEmpty(address, "city", "town", "village", "municipality", "hamlet", "suburb", "county");
+            }
+            if (string.IsNullOrWhiteSpace(cityName))
+                cityName = displayName.Split(',')[0].Trim();
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = cityName;
+            if (string.IsNullOrWhiteSpace(countryName))
+                countryName = countryCode;
+
+            results.Add(new OfflineLocationSuggestion(
+                cityName, regionName, countryName, countryCode, displayName, lat, lon, null, null));
+        }
+        return results;
     }
 
     /// <summary>Adds a result to the memory cache, evicting expired and oldest entries as needed.</summary>
@@ -264,6 +469,7 @@ internal sealed class NominatimReverseGeocodingService
 
     /// <summary>Cache entry with its expiration time.</summary>
     private sealed record CacheEntry(OnlineLocationResult Result, DateTimeOffset ExpiresAtUtc);
+    private sealed record SearchCacheEntry(IReadOnlyList<OfflineLocationSuggestion> Results, DateTimeOffset ExpiresAtUtc);
 }
 
 /// <summary>Location resolved by the online reverse-geocoding service, including license attribution.</summary>

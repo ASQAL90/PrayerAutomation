@@ -386,6 +386,11 @@
                                         <Button Name="DetectGpsLocationButton" AutomationProperties.AutomationId="DetectGpsLocationButton" Content="Lokasi perangkat / GPS" Click="DetectGpsLocation_Click" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="GpsLocationStatus" AutomationProperties.AutomationId="GpsLocationStatus" Text="Windows memakai GPS, Wi-Fi, seluler, atau lokasi sistem." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" MinHeight="40" />
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="OfflineReverseGeocodeStatus" AutomationProperties.AutomationId="OfflineReverseGeocodeStatus" Text="Pencarian offline memakai koordinat form. Tidak ada data dikirim." Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0" MinHeight="40" />
+                                        <CheckBox Name="OnlineGeocodingEnabledCheckBox" AutomationProperties.AutomationId="OnlineGeocodingEnabledCheckBox"
+                                                  Margin="3,8,3,2" Checked="OnlineGeocodingEnabledCheckBox_Changed" Unchecked="OnlineGeocodingEnabledCheckBox_Changed"
+                                                  ToolTip="Saat aktif, nama lokasi bisa dicari lewat Nominatim. Koordinat/nama lokasi dikirim ke endpoint yang dikonfigurasi.">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Gunakan Nominatim online (opsional)" />
+                                        </CheckBox>
                                     </StackPanel>
                                 </Grid>
                             </GroupBox>

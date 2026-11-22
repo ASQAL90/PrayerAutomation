@@ -54,6 +54,8 @@ internal sealed class AppSettings
     [JsonPropertyName("start_hidden")] public bool StartHidden { get; set; }
     /// <summary>Base URL of the online reverse-geocoding service.</summary>
     [JsonPropertyName("online_geocoding_endpoint")] public string OnlineGeocodingEndpoint { get; set; } = DefaultOnlineGeocodingEndpoint;
+    /// <summary>Whether optional online reverse geocoding is enabled after explicit user consent.</summary>
+    [JsonPropertyName("online_geocoding_enabled")] public bool OnlineGeocodingEnabled { get; set; }
     /// <summary>Whether the floating schedule widget is enabled.</summary>
     [JsonPropertyName("widget")] public bool WidgetEnabled { get; set; }
     /// <summary>Whether the taskbar countdown panel is enabled.</summary>

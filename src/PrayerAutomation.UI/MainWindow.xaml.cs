@@ -1205,6 +1205,8 @@ public partial class MainWindow : Window
             InstalledVersionText.Text = AppBranding.VersionLabel;
             RefreshLockScreenSafety();
             UpdateTaskbarWidgetAvailability();
+            OnlineGeocodingEnabledCheckBox.IsChecked = _settings.OnlineGeocodingEnabled;
+            UpdateOnlineGeocodingStatus();
         }
         finally { _loadingSettings = false; }
         UpdateWidgetOptionStates();
@@ -1872,26 +1874,62 @@ public partial class MainWindow : Window
         RefreshSettingsSchedulePreview();
     }
 
-    /// <summary>Fills the location name, elevation, and method from the offline datasets for entered coordinates.</summary>
+    /// <summary>Fills the location name, elevation, and method from offline datasets, optionally supplemented by Nominatim.</summary>
     /// <param name="latitude">Latitude in degrees.</param>
     /// <param name="longitude">Longitude in degrees.</param>
     /// <param name="timeZoneId">IANA time zone already resolved for the coordinates.</param>
     /// <param name="requestVersion">Request generation captured before the lookup.</param>
     private async Task UpdateLocationNameFromCoordinatesAsync(double latitude, double longitude, string timeZoneId, int requestVersion)
     {
+        bool onlineEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        string onlineEndpoint = _settings.OnlineGeocodingEndpoint;
         try
         {
             OfflineLocationResult? place = await Task.Run(
                 () => OfflineReverseGeocoder.Current.FindNearest(latitude, longitude));
             if (requestVersion != _locationRequestVersion) return;
+
+            OnlineLocationResult? online = null;
+            string? onlineError = null;
+            if (onlineEnabled)
+            {
+                try
+                {
+                    var nominatim = new NominatimReverseGeocodingService();
+                    online = await nominatim.ReverseGeocodeCoordinatesAsync(
+                        latitude, longitude, onlineEndpoint, userConsentGranted: true);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
+                    or IOException or InvalidDataException or ArgumentException or InvalidOperationException or System.Text.Json.JsonException)
+                {
+                    onlineError = ex.Message;
+                }
+            }
+            if (requestVersion != _locationRequestVersion) return;
+
             _elevationManuallyEdited = false;
             ApplyAutoElevation(place?.ElevationMeters);
-            SetAutoLocationName(place?.DisplayName ?? "Lokasi manual");
-            _locationNameAutoFilled = place is not null;
+            string displayName = place?.DisplayName ?? online?.DisplayName ?? "Lokasi manual";
+            SetAutoLocationName(displayName);
+            _locationNameAutoFilled = place is not null || online is not null;
             ApplyAutoCalculationMethod(place?.CountryCode, timeZoneId);
-            OfflineReverseGeocodeStatus.Text = place is null
-                ? "Tidak ada permukiman dalam radius 75 km. Nama diisi 'Lokasi manual'; koordinat dan metode tetap lokal, belum disimpan."
-                : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+
+            if (online is not null && place is not null)
+                OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(place)}: {place.DisplayName}. Pelengkap Nominatim: {online.DisplayName}. Belum disimpan.";
+            else if (online is not null)
+                OfflineReverseGeocodeStatus.Text = $"Nama dari Nominatim online: {online.DisplayName}. {online.Attribution}. Belum disimpan.";
+            else if (place is not null && onlineError is not null)
+                OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Nominatim gagal, data offline dipakai.";
+            else if (place is not null)
+                OfflineReverseGeocodeStatus.Text = onlineEnabled
+                    ? $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Belum disimpan."
+                    : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+            else if (onlineError is not null)
+                OfflineReverseGeocodeStatus.Text = $"Tidak ada permukiman lokal dalam radius 75 km dan Nominatim gagal. Nama diisi 'Lokasi manual'; tidak ada data dikirim selain percobaan Nominatim yang gagal.";
+            else
+                OfflineReverseGeocodeStatus.Text = onlineEnabled
+                    ? "Tidak ada permukiman lokal/Nominatim yang cocok. Nama diisi 'Lokasi manual'; belum disimpan."
+                    : "Tidak ada permukiman dalam radius 75 km. Nama diisi 'Lokasi manual'; koordinat dan metode tetap lokal, belum disimpan.";
         }
         catch (Exception)
         {
@@ -1899,7 +1937,7 @@ public partial class MainWindow : Window
             SetAutoLocationName("Lokasi manual");
             _locationNameAutoFilled = false;
             ApplyAutoCalculationMethod(null, timeZoneId);
-            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama diisi 'Lokasi manual'; koordinat, zona waktu, dan metode tetap di draf, tidak dikirim ke internet.";
+            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama diisi 'Lokasi manual'; koordinat, zona waktu, dan metode tetap di draf.";
         }
     }
 
@@ -1983,11 +2021,33 @@ public partial class MainWindow : Window
         int version = _locationSearchVersion;
         string query = LocationNameBox.Text.Trim();
         if (_loadingSettings || query.Length < 2) return;
+        bool onlineEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        string onlineEndpoint = _settings.OnlineGeocodingEndpoint;
         try
         {
-            IReadOnlyList<OfflineLocationSuggestion> results = await Task.Run(() =>
+            Task<IReadOnlyList<OfflineLocationSuggestion>> offlineTask = Task.Run(() =>
                 OfflineReverseGeocoder.Current.Search(query, maxResults: 8));
-            CompleteLocationSearch(version, query, results);
+            Task<IReadOnlyList<OfflineLocationSuggestion>> onlineTask = onlineEnabled
+                ? new NominatimReverseGeocodingService().SearchAsync(query, onlineEndpoint, userConsentGranted: true, limit: 5)
+                : Task.FromResult<IReadOnlyList<OfflineLocationSuggestion>>([]);
+
+            IReadOnlyList<OfflineLocationSuggestion> offline = [];
+            IReadOnlyList<OfflineLocationSuggestion> online = [];
+            bool onlineFailed = false;
+            try { offline = await offlineTask; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { offline = []; }
+            if (onlineEnabled)
+            {
+                try { online = await onlineTask; }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
+                    or IOException or InvalidDataException or ArgumentException or InvalidOperationException
+                    or System.Text.Json.JsonException)
+                { onlineFailed = true; }
+            }
+            if (version != _locationSearchVersion) return;
+
+            var merged = MergeLocationSuggestions(offline, online, 10);
+            CompleteLocationSearch(version, query, merged, onlineEnabled, online.Count > 0, onlineFailed);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -1997,19 +2057,48 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Applies search results to the suggestion list when the version is current.</summary>
-    /// <param name="version">Search generation captured when the request started.</param>
-    /// <param name="query">The query that produced the results.</param>
-    /// <param name="results">Search results to display.</param>
-    private void CompleteLocationSearch(int version, string query, IReadOnlyList<OfflineLocationSuggestion> results)
+    private void CompleteLocationSearch(int version, string query, IReadOnlyList<OfflineLocationSuggestion> results,
+        bool onlineEnabled = false, bool hasOnlineResults = false, bool onlineFailed = false)
     {
         if (_loadingSettings || _allowClose || version != _locationSearchVersion ||
             !string.Equals(query, LocationNameBox.Text.Trim(), StringComparison.Ordinal)) return;
         LocationSuggestionsList.ItemsSource = results;
         LocationSuggestionsList.SelectedIndex = -1;
         LocationSuggestionsPopup.IsOpen = results.Count > 0 && LocationNameBox.IsKeyboardFocusWithin;
-        OfflineReverseGeocodeStatus.Text = results.Count > 0
-            ? "Pilihan nama dari daftar kota lokal. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan."
-            : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
+        if (results.Count > 0)
+        {
+            string source = hasOnlineResults ? "daftar lokal dan Nominatim online"
+                : onlineEnabled && onlineFailed ? "daftar lokal (Nominatim gagal, fallback offline)"
+                : "daftar kota lokal";
+            OfflineReverseGeocodeStatus.Text = $"Pilihan nama dari {source}. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan.";
+        }
+        else
+        {
+            OfflineReverseGeocodeStatus.Text = onlineEnabled
+                ? "Tidak ada nama yang cocok dari data lokal maupun Nominatim. Coba nama lain atau isi manual."
+                : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
+        }
+    }
+
+    private static IReadOnlyList<OfflineLocationSuggestion> MergeLocationSuggestions(
+        IReadOnlyList<OfflineLocationSuggestion> offline,
+        IReadOnlyList<OfflineLocationSuggestion> online,
+        int maxResults)
+    {
+        var merged = new List<OfflineLocationSuggestion>(maxResults);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddRange(IEnumerable<OfflineLocationSuggestion> items)
+        {
+            foreach (OfflineLocationSuggestion item in items)
+            {
+                if (merged.Count >= maxResults) break;
+                string key = $"{Math.Round(item.Latitude, 3)}|{Math.Round(item.Longitude, 3)}|{item.DisplayName}";
+                if (seen.Add(key)) merged.Add(item);
+            }
+        }
+        AddRange(offline);
+        AddRange(online);
+        return merged;
     }
 
     /// <summary>Fills the location form fields from a chosen suggestion.</summary>
@@ -2042,7 +2131,7 @@ public partial class MainWindow : Window
             ApplyAutoCalculationMethod(suggestion.CountryCode, timezone);
         }
         finally { _loadingSettings = false; }
-        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar kota lokal: {suggestion.DisplayName}. Koordinat, mdpl, zona waktu, dan metode hitung mewakili permukiman, bukan alamat persis. Belum disimpan.";
+        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar lokasi: {suggestion.DisplayName}. Koordinat, mdpl, zona waktu, dan metode hitung mewakili permukiman, bukan alamat persis. Belum disimpan.";
         RefreshSettingsSchedulePreview();
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
@@ -2253,6 +2342,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Enables the download button only after the user grants consent.</summary>
+    private void OnlineGeocodingEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        UpdateOnlineGeocodingStatus();
+    }
+
+    private void UpdateOnlineGeocodingStatus()
+    {
+        bool enabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        OfflineReverseGeocodeStatus.Text = enabled
+            ? "Pencarian offline dipakai dulu. Nominatim online opsional aktif; koordinat/nama pencarian dapat dikirim saat diperlukan."
+            : "Pencarian offline memakai koordinat form. Tidak ada data dikirim.";
+    }
+
     private void DownloadFullDataCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_offlineDataDownloadCancellation is not null) return;
@@ -2697,6 +2800,7 @@ public partial class MainWindow : Window
         candidate.WidgetAutoHideOnHover = WidgetAutoHideCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         candidate.TaskbarWidgetMode = "popup";
+        candidate.OnlineGeocodingEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
             widgetModeItem.Tag is not string widgetMode || widgetMode is not ("essential" or "minimalist" or "detail"))
         {
@@ -2800,6 +2904,7 @@ public partial class MainWindow : Window
         destination.TimeZoneId = source.TimeZoneId;
         destination.LocationName = source.LocationName;
         destination.OnlineGeocodingEndpoint = source.OnlineGeocodingEndpoint;
+        destination.OnlineGeocodingEnabled = source.OnlineGeocodingEnabled;
         destination.MethodId = source.MethodId;
         destination.CalculationStandard = source.CalculationStandard;
         destination.Corrections = new Dictionary<string, int>(source.Corrections, StringComparer.OrdinalIgnoreCase);
