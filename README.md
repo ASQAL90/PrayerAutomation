@@ -41,11 +41,16 @@ Tangkapan layar dari build 2.5.0:
 
 | | |
 |---|---|
-| ![Ringkasan jadwal harian — build 2.5.0](site/screenshot-main.png) | ![Tema, pengingat, dan widget](site/screenshot-settings.png) |
-| ![Startup, kunci Windows, dan lock screen](site/screenshot-advanced.png) | ![Kalender Masehi tahunan](site/screenshot-calendar-masehi.png) |
-| ![Kalender Hijriyah tahunan](site/screenshot-calendar-hijriyah.png) | ![Tampilan desktop: widget, panel taskbar, dan jadwal terdekat](site/screenshot-desktop.png) |
+| ![Halaman utama Ayo Jama'ah!](site/screenshot.png) | ![Pengaturan ringkasan, standar perhitungan, dan lokasi](site/screenshot-main.png) |
+| Halaman utama | Ringkasan, standar perhitungan, dan lokasi |
+| ![Tema, pengingat, dan widget](site/screenshot-settings.png) | ![Pengaturan tambahan](site/screenshot-advanced.png) |
+| Tema, pengingat, dan widget | Pengaturan tambahan |
+| ![Kalender Masehi](site/screenshot-calendar-masehi.png) | ![Kalender Hijriyah](site/screenshot-calendar-hijriyah.png) |
+| Kalender Masehi | Kalender Hijriyah |
+| ![Berbagai widget di desktop](site/screenshot-desktop.png) | ![Pengingat sebelum waktu sholat](site/screenshot-reminder.png) |
+| Berbagai widget di desktop | Pengingat sebelum waktu sholat |
 
-Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara; jumlah menit dan isi pesan dapat diatur sendiri.
+Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara, dan hilang sendiri setelah 12 detik. Jumlah menit serta isi pesannya bisa diatur sendiri.
 
 ## Unduh
 
