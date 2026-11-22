@@ -19,13 +19,13 @@
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .meta { margin-top: 14px; color: var(--muted); font-size: .9rem; }
   .notice { margin: 18px auto 0; max-width: 720px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted); font-size: .92rem; }
-  img.shot { display: block; width: 100%; max-width: 760px; margin: 40px auto 0; border-radius: 12px; border: 1px solid var(--border); }
-  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 22px; }
+  img.hero { display: block; width: 100%; max-width: 960px; margin: 18px auto 0; border-radius: 12px; border: 1px solid var(--border); }
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
   @media (max-width: 700px) { .shots { grid-template-columns: 1fr; } }
   .shots figure { margin: 0; }
   .shots img { width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; }
   .shots figcaption { margin-top: 6px; color: var(--muted); font-size: .88rem; }
-  img.reminder { display: block; width: 100%; max-width: 620px; margin: 22px auto 0; border-radius: 12px; border: 1px solid var(--border); }
+  .shots-meta { margin-top: 8px; color: var(--muted); font-size: .9rem; }
   p.note-mock { margin: 16px 0 0; padding: 11px 15px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--card); color: var(--muted); font-size: .9rem; }
   p.note-mock strong { color: var(--fg); }
   .tag { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: .62em; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
@@ -51,36 +51,31 @@
     <p class="notice">Build saat ini <strong>belum ditandatangani</strong>, jadi Windows SmartScreen bisa menampilkan peringatan. Unduhan selalu mengarah ke rilis terbaru.</p>
   </header>
 
-  <img class="shot" src="screenshot.png" alt="Tampilan Ayo Jama'ah!">
+  <p class="tag">Ayo Jama'ah! — jadwal sholat, kalender, dan widget untuk Windows. Versi terbaru 2.5.0.</p>
+  <img class="hero" src="screenshot.png" alt="Ringkasan jadwal harian — build 2.5.0">
 
   <section>
     <h2>Tangkapan layar</h2>
+    <p class="shots-meta"><em>Tangkapan layar dari build 2.5.0.</em></p>
     <div class="shots">
-      <figure><img src="screenshot-main.png" alt="Tampilan ringkasan jadwal"><figcaption>Ringkasan jadwal harian (tema terang).</figcaption></figure>
-      <figure><img src="screenshot-settings.png" alt="Pengaturan tema, pengingat, dan widget"><figcaption>Tema, pengingat, dan widget.</figcaption></figure>
-      <figure><img src="screenshot-advanced.png" alt="Pengaturan tambahan: startup, kunci Windows, dan lock screen"><figcaption>Startup, kunci Windows saat lima waktu sholat, dan gambar lock screen.</figcaption></figure>
+      <figure><img src="screenshot-main.png" alt="Ringkasan jadwal harian"><figcaption>Ringkasan jadwal harian (tema terang).</figcaption></figure>
+      <figure><img src="screenshot-settings.png" alt="Tema, pengingat, dan widget"><figcaption>Pengaturan tema, pengingat, dan widget.</figcaption></figure>
+      <figure><img src="screenshot-advanced.png" alt="Startup, kunci Windows, dan lock screen"><figcaption>Startup, kunci Windows saat lima waktu sholat, dan gambar lock screen.</figcaption></figure>
       <figure><img src="screenshot-calendar-masehi.png" alt="Kalender Masehi tahunan"><figcaption>Kalender Masehi tahunan.</figcaption></figure>
       <figure><img src="screenshot-calendar-hijriyah.png" alt="Kalender Hijriyah tahunan"><figcaption>Kalender Hijriyah tahunan.</figcaption></figure>
-      <figure><img src="screenshot-desktop.png" alt="Pengaturan, widget, dan jadwal di desktop"><figcaption>Pengaturan, widget jadwal, dan daftar waktu di desktop (tema gelap).</figcaption></figure>
+      <figure><img src="screenshot-desktop.png" alt="Desktop: widget, panel taskbar, dan jadwal terdekat"><figcaption>Desktop dengan widget, panel taskbar, dan jadwal terdekat.</figcaption></figure>
+      <figure><img class="reminder" src="screenshot-reminder.png" alt="Pengingat sebelum waktu sholat"><figcaption>Pengingat sebelum waktu sholat (pojok kanan bawah). Teks saja, tanpa suara.</figcaption></figure>
     </div>
-  </section>
-
-  <section>
-    <h2>Pengingat sebelum waktu sholat<span class="tag">mock-up</span></h2>
-    <p>Beberapa menit sebelum waktunya, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara atau adzan. Bisa langsung ditutup, dan hilang sendiri setelah 12 detik.</p>
-    <img class="reminder" src="screenshot-reminder.png" alt="Mock-up pengingat waktu sholat di pojok kanan bawah desktop">
-    <p class="note-mock"><strong>Gambar di atas mock desain, bukan tangkapan layar asli.</strong> Jam, nama sholat, dan isi pesannya hanya contoh. Jumlah menit dan isi pesan sebenarnya bisa diatur sendiri.</p>
   </section>
 
   <section>
     <h2>Fitur utama</h2>
     <ul>
-      <li>Jadwal sholat harian dengan pilihan metode perhitungan, zona waktu, dan koreksi menit.</li>
-      <li>Kalender Masehi dan Hijriyah.</li>
-      <li>Widget Essential, Minimalist, dan Detail dengan beberapa tema.</li>
-      <li>Pengingat teks tanpa suara/adzan.</li>
-      <li>Lokasi manual, perkiraan jaringan, atau Windows Location Services.</li>
-      <li>Pencarian nama permukiman offline memakai data GeoNames.</li>
+      <li>Jadwal sholat harian dengan pilihan metode perhitungan, zona waktu, koreksi menit, dan mdpl.</li>
+      <li>Kalender Masehi dan Hijriyah, widget desktop, serta panel taskbar.</li>
+      <li>Pengingat teks tanpa suara/adzan dan penguncian Windows saat waktu sholat.</li>
+      <li>Lokasi manual, data offline, perkiraan jaringan, atau Windows Location Services; instalasi baru mencoba deteksi lokasi otomatis.</li>
+      <li>Pencarian nama tempat offline (GeoNames + hierarki wilayah Kemendagri). Paket data global lengkap dan Nominatim online bersifat opsional, dengan fallback offline.</li>
     </ul>
   </section>
 
