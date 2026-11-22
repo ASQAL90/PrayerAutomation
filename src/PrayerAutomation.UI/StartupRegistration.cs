@@ -112,6 +112,7 @@ internal static class StartupRegistration
         string? full;
         try { full = Path.GetFullPath(path); }
         catch (ArgumentException) { return false; }
+        string normalizedFull = full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         string root = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DefaultInstallDirectory);
         string? registered = null;
@@ -121,9 +122,14 @@ internal static class StartupRegistration
             registered = key?.GetValue("InstallLocation") as string;
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) { }
-        bool matches(string? directory) => !string.IsNullOrWhiteSpace(directory) &&
-            full.StartsWith(Path.GetFullPath(directory) + Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase);
+        bool matches(string? directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory)) return false;
+            string normalized = Path.GetFullPath(directory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return normalizedFull.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+                normalizedFull.StartsWith(normalized + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
         return matches(root) || matches(registered);
     }
 

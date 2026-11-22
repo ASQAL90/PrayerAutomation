@@ -325,9 +325,9 @@ public partial class App : Application
             _widget?.Hide();
         _widgetSettingEnabled = Settings.WidgetEnabled;
         _widget?.RefreshSchedule();
-        // Recreate the taskbar panel after save so enable/disable takes effect immediately.
-        _taskbarPanel?.Dispose();
-        _taskbarPanel = null;
+        // Sync handles enable/disable/mode changes and refresh; avoid hard
+        // recreate on every refresh because first-run/background refreshes can
+        // tear down a healthy panel.
         SynchronizeTaskbarWidget();
         _mainWindow?.RefreshOverview();
     }
@@ -353,32 +353,42 @@ public partial class App : Application
     /// <summary>Creates, refreshes, or disposes the taskbar panel to match effective settings and support state.</summary>
     private void SynchronizeTaskbarWidget()
     {
-        string mode = EffectiveTaskbarWidgetMode;
-        if (!_isShuttingDown && EffectiveTaskbarWidgetEnabled && TaskbarWidgetSupport.Inspect().CanEnable)
+        try
         {
-            if (_taskbarPanel is not null && _taskbarPanel.RendererMode != mode)
+            string mode = EffectiveTaskbarWidgetMode;
+            if (!_isShuttingDown && EffectiveTaskbarWidgetEnabled && TaskbarWidgetSupport.Inspect().CanEnable)
             {
-                _taskbarPanel.Dispose();
-                _taskbarPanel = null;
+                if (_taskbarPanel is not null && _taskbarPanel.RendererMode != mode)
+                {
+                    _taskbarPanel.Dispose();
+                    _taskbarPanel = null;
+                }
+                if (_taskbarPanel is null)
+                    // Only renderer choice is transient. Clock and schedules always use
+                    // the shared saved settings, including later successful Save updates.
+                    _taskbarPanel = new TaskbarCountdownPanel(new AppSettings { TaskbarWidgetMode = mode },
+                        ShowTaskbarDetail, null,
+                        null, () => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,
+                            PrayerScheduleService.ResolveTimeZone(Settings.TimeZoneId)).DateTime,
+                        date => PrayerScheduleService.ForDate(date, Settings), true);
+                else
+                    _taskbarPanel.RefreshSchedule();
+                _taskbarWidget?.RefreshSchedule();
             }
-            if (_taskbarPanel is null)
-                // Only renderer choice is transient. Clock and schedules always use
-                // the shared saved settings, including later successful Save updates.
-                _taskbarPanel = new TaskbarCountdownPanel(new AppSettings { TaskbarWidgetMode = mode },
-                    ShowTaskbarDetail, null,
-                    null, () => TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,
-                        PrayerScheduleService.ResolveTimeZone(Settings.TimeZoneId)).DateTime,
-                    date => PrayerScheduleService.ForDate(date, Settings), true);
             else
-                _taskbarPanel.RefreshSchedule();
-            _taskbarWidget?.RefreshSchedule();
+            {
+                _taskbarPanel?.Dispose();
+                _taskbarPanel = null;
+                _taskbarWidget?.ClosePermanently();
+                _taskbarWidget = null;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _taskbarPanel?.Dispose();
+            AppLogger.Write("app.taskbar-widget-sync", ex);
+            try { _taskbarPanel?.Dispose(); }
+            catch (Exception disposeEx) { AppLogger.Write("app.taskbar-widget-sync.dispose", disposeEx); }
             _taskbarPanel = null;
-            _taskbarWidget?.ClosePermanently();
-            _taskbarWidget = null;
         }
     }
 

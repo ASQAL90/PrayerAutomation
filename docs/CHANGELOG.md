@@ -10,6 +10,8 @@
 - Ditambahkan deteksi lokasi otomatis saat instalasi baru: prioritas lokasi perangkat/GPS, fallback ke perkiraan jaringan, lalu fallback ke lokasi bawaan; nama, mdpl, zona waktu, lintang, bujur, dan metode diisi otomatis.
 - Disesuaikan preset instalasi baru: metode Muhammadiyah, widget desktop aktif (lima waktu statis, tengah atas, selalu di atas, klik tembus, sembunyi saat kursor mendekat), panel taskbar aktif, mulai tersembunyi, jalankan saat masuk Windows, periksa pembaruan otomatis, kunci Windows lima waktu sholat, dan persetujuan lock screen aktif.
 - Diperbaiki aktivasi widget desktop dan panel taskbar agar langsung diterapkan saat dicentang atau disimpan, tanpa memerlukan keluar-masuk aplikasi.
+- Diperbaiki panel taskbar yang bisa hilang setelah deteksi lokasi otomatis instalasi baru; refresh latar tidak lagi membongkar panel yang sehat dan kegagalan sinkronisasi dicatat tanpa mematikan aplikasi.
+- Diperbaiki sinkronisasi `DisplayVersion` Control Panel/Programs & Features saat root instalasi terdeteksi, termasuk setelah pembaruan diterapkan.
 - Diperbarui atribusi sumber data pada `NOTICE.txt` dan `THIRD_PARTY_NOTICES.md`.
 - Dinaikkan nomor versi aplikasi dan installer ke 2.5.0.
 
