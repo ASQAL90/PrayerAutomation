@@ -1131,6 +1131,15 @@ public partial class MainWindow : Window
         ClockLabel.Text = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Reloads settings form controls from the current app settings.</summary>
+    internal void ReloadSettingsFromApp()
+    {
+        if (!_uiDispatcher.CheckAccess()) { _ = _uiDispatcher.InvokeAsync(ReloadSettingsFromApp); return; }
+        PopulateSettingsForm();
+        RefreshSettingsSchedulePreview();
+        RefreshOverview();
+    }
+
     /// <summary>Loads current settings into the settings form controls.</summary>
     private void PopulateSettingsForm()
     {

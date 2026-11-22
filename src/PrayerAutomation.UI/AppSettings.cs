@@ -99,7 +99,28 @@ internal sealed class AppSettings
     /// <returns>Normalized factory defaults.</returns>
     public static AppSettings CreateFreshInstall()
     {
-        var settings = new AppSettings { CalendarSource = CalendarSourceKhgt };
+        var settings = new AppSettings
+        {
+            CalendarSource = CalendarSourceKhgt,
+            ElevationMeters = 55,
+            MethodId = 99,
+            CalculationStandard = MuhammadiyahMethodLabel,
+            RemindersEnabled = true,
+            LockScreenEnabled = true,
+            LockScreenOptIn = true,
+            AutoLockEnabled = true,
+            StartupEnabled = true,
+            StartHidden = true,
+            WidgetEnabled = true,
+            TaskbarWidgetEnabled = true,
+            UpdateAutoCheck = true,
+            WidgetMode = "essential",
+            WidgetMotion = "static",
+            WidgetPosition = "tc",
+            WidgetAlwaysOnTop = true,
+            WidgetClickThrough = true,
+            WidgetAutoHideOnHover = true
+        };
         settings.Normalize();
         return settings;
     }
@@ -175,10 +196,11 @@ internal static class SettingsStore
     /// <returns>The normalized settings.</returns>
     public static AppSettings Load()
     {
-        var settings = AppSettings.CreateFreshInstall();
+        bool configExists = File.Exists(ConfigPath);
+        var settings = configExists ? new AppSettings() : AppSettings.CreateFreshInstall();
         try
         {
-            if (File.Exists(ConfigPath))
+            if (configExists)
                 settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(ConfigPath), JsonOptions) ?? settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)

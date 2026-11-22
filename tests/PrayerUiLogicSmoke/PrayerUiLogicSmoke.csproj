@@ -6,9 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="GeoTimeZone" Version="6.1.0" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/PrayerScheduleService.cs" Link="PrayerScheduleService.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LocationDefaults.cs" Link="LocationDefaults.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/WidgetMarqueeContent.cs" Link="WidgetMarqueeContent.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
