@@ -430,10 +430,10 @@ internal sealed class NominatimReverseGeocodingService
             string cityName = "";
             if (item.TryGetProperty("address", out JsonElement address) && address.ValueKind == JsonValueKind.Object)
             {
-                countryCode = GetAddressField(address, "country_code").ToUpperInvariant();
-                countryName = GetAddressField(address, "country");
-                regionName = FirstNonEmpty(address, "state", "county", "state_district", "province");
-                cityName = FirstNonEmpty(address, "city", "town", "village", "municipality", "hamlet", "suburb", "county");
+                countryCode = FirstString(address, "country_code").ToUpperInvariant();
+                countryName = FirstString(address, "country");
+                regionName = FirstString(address, "state", "county", "state_district", "province");
+                cityName = FirstString(address, "city", "town", "village", "municipality", "hamlet", "suburb", "county");
             }
             if (string.IsNullOrWhiteSpace(cityName))
                 cityName = displayName.Split(',')[0].Trim();
