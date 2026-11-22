@@ -1,5 +1,18 @@
 # Riwayat perubahan
 
+## v2.5.0
+- Diperluas data lokasi offline dengan daftar global `cities500` dan data Indonesia hybrid Kemendagri–GeoNames yang memuat koordinat, `dem`, nama alternatif, kode fitur, dan populasi.
+- Ditingkatkan ketinggian permukiman dengan sampel Copernicus GLO-90 di samping `dem` GeoNames; sumber dan kualitas ketinggian disimpan pada data.
+- Diperbaiki peringkat pencarian nama lokasi agar nama resmi dan nama alternatif tidak menggabungkan tempat yang berbeda, khususnya `Cibarusa`/`Cibarusah` dan `Cileungsi`/`Cileungsir`.
+- Disatukan katalog metode hitung dan aturan negara/zona waktu untuk semua jalur input lokasi; Muhammadiyah 99 tetap dipertahankan di Indonesia.
+- Ditambahkan opsi paket data global lengkap dengan checkbox izin, tombol unduh, progres, pembatalan, cache permanen, dan verifikasi SHA-256. Kegagalan manifest/jaringan ditangani tanpa menghentikan aplikasi; data bawaan tetap dipakai; direktori staging `v2.partial` dibersihkan setelah instalasi sukses.
+- Ditambahkan opsi Nominatim online opsional (default mati, izin eksplisit lewat checkbox). Saat aktif, koordinat dapat dilengkapi lewat reverse geocoding dan nama lokasi dapat dicari sebagai acuan saran; bila jaringan/layanan gagal, data offline tetap dipakai tanpa menghentikan aplikasi.
+- Ditambahkan deteksi lokasi otomatis saat instalasi baru: prioritas lokasi perangkat/GPS, fallback ke perkiraan jaringan, lalu fallback ke lokasi bawaan; nama, mdpl, zona waktu, lintang, bujur, dan metode diisi otomatis.
+- Disesuaikan preset instalasi baru: metode Muhammadiyah, widget desktop aktif (lima waktu statis, tengah atas, selalu di atas, klik tembus, sembunyi saat kursor mendekat), panel taskbar aktif, mulai tersembunyi, jalankan saat masuk Windows, periksa pembaruan otomatis, kunci Windows lima waktu sholat, dan persetujuan lock screen aktif.
+- Diperbaiki aktivasi widget desktop dan panel taskbar agar langsung diterapkan saat dicentang atau disimpan, tanpa memerlukan keluar-masuk aplikasi.
+- Diperbarui atribusi sumber data pada `NOTICE.txt` dan `THIRD_PARTY_NOTICES.md`.
+- Dinaikkan nomor versi aplikasi dan installer ke 2.5.0.
+
 ## v2.4.3
 - Disinkronkan nilai `DisplayVersion` pada entri uninstall setelah journal pembaruan tersimpan dan saat startup agar sesuai dengan versi biner yang sedang berjalan.
 - Diselaraskan assertion harness visual dengan `AssemblyName` produk, tinggi widget 34 DIP, padding 2, teks bantuan, margin, jarak layout, direktori scratch milik harness, dan jalur Cancel tanpa dialog.

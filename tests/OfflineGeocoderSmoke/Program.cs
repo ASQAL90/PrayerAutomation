@@ -32,15 +32,53 @@ OfflineLocationResult? cicendo = Lookup(-6.91139, 107.60528);
 Require(cicendo is not null && cicendo.IsIndonesiaLayer, "Cicendo should use the detailed Indonesian layer");
 Require(cicendo!.DisplayName == "Cicendo, Kota Bandung, Jawa Barat, Indonesia",
     "the Indonesian layer should use Indonesian regency and province names");
-Require(cicendo.ElevationMeters == 720, "the Indonesian layer should keep its DEM height");
+Require(cicendo.ElevationMeters == 718 && cicendo.ElevationSource == "copernicus-glo-90",
+    "the Indonesian layer should prefer the sampled Copernicus height");
 
 OfflineLocationResult? jakarta = Lookup(-6.21462, 106.84513);
 Require(jakarta is not null && jakarta.CityName == "Jakarta" && jakarta.IsIndonesiaLayer,
     "the bundled Indonesian layer should resolve Jakarta offline");
 Require(jakarta!.DisplayName == "Jakarta, Daerah Khusus Ibukota Jakarta, Indonesia",
     "Jakarta's display name should use the Indonesian province label");
-Require(jakarta.ElevationMeters == 16, "the bundled dataset should carry the Jakarta DEM height");
+Require(jakarta.ElevationMeters == 17 && jakarta.ElevationSource == "copernicus-glo-90",
+    "the bundled dataset should carry the sampled Jakarta height");
 Console.WriteLine("PASS: bundled GeoNames data resolves Indonesian localities, provinces, and elevation offline.");
+
+// Schema v2 keeps the sampled elevation and its provenance.
+string v2Cities = string.Join(Environment.NewLine, new[]
+{
+    string.Join('\t', new[] { "V2 Town", "North", "Sample Country", "11.01", "21.01", "ZZ", "120", "145", "PPL", "5000", "aliasone|aliastwo", "copernicus-glo-90", "median-3x3" }),
+    string.Join('\t', new[] { "V2 Village", "South", "Sample Country", "11.40", "21.40", "ZZ", "-9999", "", "PPL", "0", "", "", "" })
+});
+OfflineReverseGeocoder v2 = OfflineReverseGeocoder.Load(new StringReader(v2Cities));
+OfflineLocationResult? v2Result = v2.FindNearest(11.0, 21.0);
+Require(v2Result is not null && v2Result.ElevationMeters == 145 &&
+        v2Result.ElevationSource == "copernicus-glo-90",
+    "schema v2 must prefer sampled elevation and retain its source");
+OfflineLocationResult? v2Fallback = v2.FindNearest(11.4, 21.4);
+Require(v2Fallback is not null && v2Fallback.ElevationMeters is null,
+    "an unknown DEM sentinel must not become a fabricated height");
+string aliasQuery = v2.Search("aliasone").FirstOrDefault()?.CityName ?? string.Empty;
+Require(aliasQuery == "V2 Town", "GeoNames alternate names must be searchable without rewriting place names");
+Console.WriteLine("PASS: schema v2 elevation provenance, DEM fallback, and alternate-name search.");
+
+// Cibarusa/Cibarusah and Cileungsi/Cileungsir stay distinct; coordinate ranking wins.
+foreach (var (name, regency, latitude, longitude) in new[]
+{
+    ("Cibarusa", "Kabupaten Bekasi", -6.43028, 107.06306),
+    ("Cibarusah", "Kabupaten Sukabumi", -7.2517, 106.6252),
+    ("Cileungsi", "Kabupaten Bogor", -6.71, 106.87861),
+    ("Cileungsir", "Kabupaten Bogor", -6.39472, 106.95917)
+})
+{
+    OfflineLocationResult? place = Lookup(latitude, longitude);
+    Require(place is not null && place.IsIndonesiaLayer && place.CityName == name && place.RegencyName == regency,
+        $"{name} must resolve to its own place in {regency}");
+}
+OfflineLocationSuggestion[] cibarusaResults = OfflineReverseGeocoder.Current.Search("Cibarusa").ToArray();
+Require(cibarusaResults.Length > 0 && cibarusaResults[0].CityName == "Cibarusa",
+    "an exact place name must outrank rows that merely carry it as an alias");
+Console.WriteLine("PASS: similarly named Indonesian places remain distinct and rank by exact name.");
 
 foreach (var point in new[]
 {

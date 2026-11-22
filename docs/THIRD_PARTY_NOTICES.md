@@ -1,6 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.2.1
+# Third-party notices — Ayo Jama'ah! 2.5.0
 
-Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.2.1. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
+Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.5.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
 Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lisensinya dan tidak dicantumkan lagi di repository.
 
@@ -10,7 +10,9 @@ Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lise
 |---|---|---|---|
 | GeoTimeZone | 6.1.0 | Direct; `GeoTimeZone.dll` | MIT untuk kode; ODbL untuk data boundary; atribusi Geohash-net/Geohash-js |
 | TimeZoneConverter | 7.2.0 | Direct; `TimeZoneConverter.dll` | MIT untuk library |
-| Data GeoNames (`cities1000`, `indonesia`) | snapshot 19 November 2026 UTC | Dataset lokal permukiman dan lapisan Indonesia di `src/PrayerAutomation.UI/Data/geonames/` | CC BY 4.0 |
+| Data GeoNames (`cities500`, `indonesia`) | snapshot 22 November 2026 UTC | Dataset lokal permukiman dan lapisan Indonesia di `src/PrayerAutomation.UI/Data/geonames/` | CC BY 4.0 |
+| Data Kemendagri lewat `cahyadsn/wilayah` | Kepmendagri No. 300.2.2-2430 Tahun 2025 | Hierarki dan nama resmi kabupaten/kota pada `indonesia.tsv.gz` | MIT untuk tooling; data tunduk pada sumber resmi |
+| Sampel Copernicus DEM GLO-90 lewat Open-Meteo | GLO-90, snapshot 22 November 2026 | Kolom `sampled_elevation`, `elevation_source`, dan `elevation_quality` | CC BY 4.0; atribusi Copernicus/Open-Meteo wajib |
 | Natural Earth 1:10m Admin 0 Countries | snapshot 20 November 2026 | Poligon batas Indonesia (`indonesia.boundary.bin`) | Public domain |
 | Runtime .NET 10 (self-contained, WPF) | 10.0.9 | `AyoJamaah.exe`, `PresentationFramework*.dll`, `System.Windows.*.dll` | MIT; terms runtime Microsoft berlaku saat redistribusi |
 | Proyeksi Microsoft.Windows.SDK.NET.Ref | 10.0.26100.57 | `Microsoft.Windows.SDK.NET.dll`, `WinRT.Runtime.dll` | Windows SDK terms |
@@ -33,7 +35,15 @@ Source pin: `f96c7a7d167d9ab93bb8c924fc7413b84f52010c`. Copyright library: Matt 
 
 ### GeoNames
 
-Derived `cities1000` and `indonesia`, snapshot 19 November 2026 UTC, **CC BY 4.0** (filter feature-class `P`, pilihan kolom termasuk elevasi `dem`, nama provinsi Indonesia, normalisasi whitespace, kompresi TSV). [NOTICE lengkap](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) disertakan di source dan paket portable; attribution, snapshot, dan perubahan tercantum di sana.
+Derived `cities500` dan `indonesia`, snapshot 22 November 2026 UTC, **CC BY 4.0**. Source: `cities500.zip`, `ID.zip`, `admin1CodesASCII.txt`, `admin2Codes.txt`, `countryInfo.txt`, dan `alternateNamesV2.zip`. Rekaman feature-class `P` disaring; kolom yang dipilih mencakup koordinat WGS84, `dem` asli, kode fitur, populasi, dan nama alternatif. Nama alternatif hanya menjadi kunci pencarian, bukan pengganti nama resmi tempat. Normalisasi whitespace dan kompresi gzip diterapkan oleh pipeline proyek. [NOTICE lengkap](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) disertakan di source dan paket portable; attribution, snapshot, dan perubahan tercantum di sana.
+
+### Kemendagri dan `cahyadsn/wilayah`
+
+Hierarki administrasi Indonesia berasal dari [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah), yang mengikuti Kepmendagri No. 300.2.2-2430 Tahun 2025. Skrip tooling tersebut berlisensi MIT. `wilayah.sql` dan `wilayah_level_1_2.sql` dipakai pada saat build untuk memetakan nama kabupaten/kota resmi dan kode wilayah. Sekitar 95,5% baris Indonesia memperoleh kecocokan resmi; baris tanpa kecocokan mempertahankan nama dari GeoNames. Data resmi tetap tunduk pada ketentuan instansi asal, bukan pada lisensi MIT tooling-nya.
+
+### Copernicus DEM GLO-90 lewat Open-Meteo
+
+Sampel ketinggian diambil saat penyusunan data melalui [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api) dari Copernicus DEM GLO-90. Median jendela `3×3` dipakai untuk menekan puncak DSM dari atap atau kanopi. Sumber dan kualitas ketinggian ditulis pada kolom `elevation_source` dan `elevation_quality`; baris tanpa sampel memakai `dem` GeoNames sebagai fallback. Aplikasi tidak memanggil API ini saat berjalan dan tetap bekerja offline. Atribusi: Copernicus DEM GLO-90 via Open-Meteo; data disediakan "as is" tanpa jaminan akurasi atau kelengkapan.
 
 ### Natural Earth
 
@@ -52,6 +62,7 @@ Aplikasi diterbitkan self-contained (`net10.0-windows10.0.26100.0`); runtime dib
 1. Review kewajiban ODbL (data boundary GeoTimeZone) dan mapping data TimeZoneConverter.
 2. Tutup notice/REDIST proyeksi Windows SDK exact.
 3. Audit toolchain native/statis dan final license source utama.
+4. Terbitkan tag data `data-v2` beserta manifest SHA-256 sebelum paket opsional didistribusikan; berkas data rilis bukan dibuat oleh workflow `Release` aplikasi.
 
 ## Penghalusan status
 

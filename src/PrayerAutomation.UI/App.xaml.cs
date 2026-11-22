@@ -79,6 +79,7 @@ public partial class App : Application
             return;
         }
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        bool firstRun = !File.Exists(SettingsStore.ConfigPath);
         Settings = SettingsStore.Load();
         StartupRegistration.SelfHeal(Settings.StartupEnabled, Environment.ProcessPath);
         StartupRegistration.SyncInstalledVersion(
@@ -89,7 +90,7 @@ public partial class App : Application
         _widgetSettingEnabled = Settings.WidgetEnabled;
         _tray = new TrayService(this);
         _mainWindow = CreateMainWindow();
-        if (!StartupRegistration.ShouldStartHidden(e.Args, Settings.StartHidden))
+        if (firstRun || !StartupRegistration.ShouldStartHidden(e.Args, Settings.StartHidden))
             _mainWindow.Show();
         _reminders = new ReminderScheduler(Settings);
         _reminders.Start();
@@ -129,6 +130,13 @@ public partial class App : Application
             int removed = StorageMaintenance.DeleteOldInstallers();
             if (removed > 0) AppLogger.WriteInfo("storage.cleanup", $"oldInstallersRemoved={removed}");
         });
+        if (firstRun)
+        {
+            try { StartupRegistration.SetEnabled(Settings.StartupEnabled, Settings.StartHidden); }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+            { AppLogger.Write("startup.first-run", ex); }
+            _ = RunFirstRunLocationDetectionAsync();
+        }
         if (Settings.UpdateAutoCheck)
             _ = AutoCheckForUpdatesAsync();
     }
@@ -317,6 +325,9 @@ public partial class App : Application
             _widget?.Hide();
         _widgetSettingEnabled = Settings.WidgetEnabled;
         _widget?.RefreshSchedule();
+        // Recreate the taskbar panel after save so enable/disable takes effect immediately.
+        _taskbarPanel?.Dispose();
+        _taskbarPanel = null;
         SynchronizeTaskbarWidget();
         _mainWindow?.RefreshOverview();
     }
@@ -584,6 +595,123 @@ public partial class App : Application
         }
         cancellationToken.ThrowIfCancellationRequested();
         return true;
+    }
+
+    /// <summary>Detects location on first run and persists the resolved settings.</summary>
+    private async Task RunFirstRunLocationDetectionAsync()
+    {
+        if (_isShuttingDown) return;
+        try
+        {
+            try { SettingsStore.Save(Settings); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+            { AppLogger.Write("settings.first-run-save", ex); }
+
+            bool detected = await TryDetectDeviceLocationForFirstRunAsync().ConfigureAwait(false);
+            if (!detected)
+                detected = await TryDetectNetworkLocationForFirstRunAsync().ConfigureAwait(false);
+
+            if (!detected)
+            {
+                ApplyDefaultFirstRunLocation();
+            }
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (_isShuttingDown) return;
+                try { SettingsStore.Save(Settings); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+                { AppLogger.Write("settings.first-run-save", ex); }
+                _mainWindow?.ReloadSettingsFromApp();
+                RefreshDependentViews();
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("location.first-run", ex);
+        }
+    }
+
+    private void ApplyDefaultFirstRunLocation()
+    {
+        Settings.Latitude = -6.4336368;
+        Settings.Longitude = 107.1934549;
+        Settings.LocationName = "Bojongmangu, Bekasi";
+        Settings.TimeZoneId = "Asia/Jakarta";
+        Settings.ElevationMeters = 55;
+        var method = LocationDefaults.ResolveAutoCalculationMethod("ID", Settings.TimeZoneId, Settings.MethodId);
+        Settings.MethodId = method.Id;
+        Settings.CalculationStandard = method.Name;
+    }
+
+    private async Task<bool> TryDetectDeviceLocationForFirstRunAsync()
+    {
+        try
+        {
+            DeviceLocationResult? result = await Dispatcher.InvokeAsync(async () =>
+            {
+                var service = new DeviceLocationService();
+                return await service.DetectAsync();
+            }).Task.Unwrap();
+            if (result.Status != DeviceLocationStatus.Success || !result.Latitude.HasValue || !result.Longitude.HasValue)
+                return false;
+            return await ApplyFirstRunCoordinatesAsync(result.Latitude.Value, result.Longitude.Value, null).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("location.first-run-device", ex);
+            return false;
+        }
+    }
+
+    private async Task<bool> TryDetectNetworkLocationForFirstRunAsync()
+    {
+        try
+        {
+            var service = new LocationDetectionService();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            NetworkLocationResult result = await service.DetectNetworkLocationAsync(cts.Token).ConfigureAwait(false);
+            ProviderLocation best = result.ProvidersAgree ? result.IpApi : result.IpApi;
+            if (!result.ProvidersAgree)
+            {
+                // Jika provider tidak selaras, tetap coba titik tengah; lebih baik daripada default kasar.
+                var mid = LocationDetectionService.Midpoint(result.IpApi, result.IpWho);
+                best = result.IpApi with { Latitude = mid.Latitude, Longitude = mid.Longitude };
+            }
+            if (!double.IsFinite(best.Latitude) || !double.IsFinite(best.Longitude))
+                return false;
+            string? countryCode = best.CountryCode;
+            return await ApplyFirstRunCoordinatesAsync(best.Latitude, best.Longitude, countryCode).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("location.first-run-network", ex);
+            return false;
+        }
+    }
+
+    private async Task<bool> ApplyFirstRunCoordinatesAsync(double latitude, double longitude, string? countryCodeHint)
+    {
+        try
+        {
+            string tz = LocationDefaults.ResolveTimeZoneForCoordinates(latitude, longitude);
+            OfflineLocationResult? place = await Task.Run(() => OfflineReverseGeocoder.Current.FindNearest(latitude, longitude)).ConfigureAwait(false);
+            Settings.Latitude = latitude;
+            Settings.Longitude = longitude;
+            Settings.TimeZoneId = tz;
+            Settings.LocationName = place?.DisplayName ?? "Lokasi terdeteksi";
+            Settings.ElevationMeters = place?.ElevationMeters is int e ? Math.Clamp(e, 0, 9000) : 55;
+            string? countryCode = place?.CountryCode ?? countryCodeHint;
+            var method = LocationDefaults.ResolveAutoCalculationMethod(countryCode, tz, Settings.MethodId);
+            Settings.MethodId = method.Id;
+            Settings.CalculationStandard = method.Name;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("location.first-run-apply", ex);
+            return false;
+        }
     }
 
     private UpdateWindow? _updateWindow;

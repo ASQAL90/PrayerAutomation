@@ -25,7 +25,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 - Metode Muhammadiyah memakai sudut Subuh/Isya 18°, ihtiyat 1–2 menit, dan ketinggian tempat (mdpl) untuk menyesuaikan terbit dan Maghrib.
 - Ada kalender Masehi & Hijriyah, widget desktop, dan pengingat.
 - Lokasi bisa diisi manual, diperkirakan dari jaringan, atau dari Windows Location Services.
-- Cari nama tempat offline pakai data GeoNames.
+- Cari nama tempat offline pakai data GeoNames dan hierarki wilayah Kemendagri; paket data lengkap dapat diunduh opsional.
 - Pembaruan bisa diperiksa sendiri dari GitHub: tombol "Periksa sekarang" di Pengaturan tambahan atau menu ikon tray.
 - Jadwal yang muncul adalah hasil hitung aplikasi, bukan pengumuman resmi.
 
@@ -53,11 +53,23 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
+### v2.4.3 (stable terbaru)
+
+Sinkronisasi `DisplayVersion` setelah pembaruan otomatis dan saat startup, serta penyesuaian assertion harness visual dengan versi produk saat ini. Rilis [`v2.4.3`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.4.3) dibangun oleh workflow `Release` dan tersedia sebagai stable terbaru.
+
+| Berkas | Keterangan |
+|---|---|
+| [AyoJamaah.Setup-2.4.3.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.4.3/AyoJamaah.Setup-2.4.3.exe) | Installer, dual x64+x86 |
+| [AyoJamaah.Setup-2.4.3.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.4.3/AyoJamaah.Setup-2.4.3.zip) | Installer dalam file zip |
+| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.4.3/AyoJamaah-win-x64.zip) | Portable x64 |
+| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.4.3/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
+| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.4.3/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
+
 ### v2.4.2 (draft internal)
 
 Ringkasan perubahan ditampilkan di popup pembaruan, riwayat seluruh versi tersedia dari halaman Tentang, dan preflight pembaruan menyelesaikan pemulihan lock screen tanpa menahan proses. Pemasang manual menampilkan konfirmasi bila versi terpasang sama atau lebih baru.
 
-Rilis ini sengaja disimpan sebagai draft untuk QC; stable terbaru tetap `v2.4.1`. Tautan aset di bawah hanya dapat diakses oleh pemilik repo. Panduan uji updater: [kanal pembaruan internal](docs/INTERNAL_UPDATE_CHANNEL.md).
+Rilis ini sengaja disimpan sebagai draft untuk QC; stable terbaru adalah `v2.4.3`. Tautan aset di bawah hanya dapat diakses oleh pemilik repo. Panduan uji updater: [kanal pembaruan internal](docs/INTERNAL_UPDATE_CHANNEL.md).
 
 | Berkas | Keterangan |
 |---|---|
@@ -69,9 +81,9 @@ Rilis ini sengaja disimpan sebagai draft untuk QC; stable terbaru tetap `v2.4.1`
 
 Aset pembaruan delta (`AyoJamaah-update-2.4.2-*.json`, `.sig`, dan `AyoJamaah-delta-2.4.2-*.zip`) juga tersedia di [rilis v2.4.2](https://github.com/asqal90/PrayerAutomation/releases/tag/v2.4.2) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/asqal90/PrayerAutomation/releases).
 
-### v2.4.3 (persiapan lokal)
+### v2.5.0 (persiapan lokal)
 
-Versi ini belum dirilis dan belum punya aset unduhan. Perbaikannya mencakup sinkronisasi `DisplayVersion` setelah pembaruan otomatis dan saat startup, serta penyesuaian assertion harness visual dengan versi produk saat ini. Rilis `v2.4.2` tetap draft dan stable terbaru tetap `v2.4.1`.
+Versi ini belum dirilis dan belum punya aset unduhan. Perubahannya mencakup data lokasi offline global `cities500`, hierarki resmi Kemendagri untuk Indonesia, sampel mdpl Copernicus GLO-90 dengan fallback `dem`, peringkat pencarian yang mempertahankan nama tempat mirip, serta paket data lengkap opsional dengan izin, progres, pembatalan, dan cache terverifikasi. Stable terbaru tetap `v2.4.3`; rilis `v2.4.2` tetap draft.
 
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 

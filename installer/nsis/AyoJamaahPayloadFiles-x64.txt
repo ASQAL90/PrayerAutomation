@@ -314,7 +314,7 @@ fr/UIAutomationTypes.resources.dll
 fr/WindowsBase.resources.dll
 fr/WindowsFormsIntegration.resources.dll
 geonames/NOTICE.txt
-geonames/cities1000.tsv.gz
+geonames/cities500.tsv.gz
 hostfxr.dll
 hostpolicy.dll
 it/Microsoft.VisualBasic.Forms.resources.dll

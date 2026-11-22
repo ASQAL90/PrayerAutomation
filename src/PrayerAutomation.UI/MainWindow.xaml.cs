@@ -28,18 +28,6 @@ public partial class MainWindow : Window
 {
     private static readonly CultureInfo IndonesianCulture = CultureInfo.GetCultureInfo("id-ID");
     private static readonly string[] WeekdayShortNames = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-    private static readonly CalculationMethod[] CalculationMethods =
-    [
-        new(20, "Indonesia — Kementerian Agama (Kemenag)", "Asia/Jakarta", 20, 18),
-        new(99, AppSettings.MuhammadiyahMethodLabel, "Asia/Jakarta", 18, 18),
-        new(17, "Malaysia — JAKIM", "Asia/Kuala_Lumpur", 20, 18),
-        new(11, "Singapura — MUIS", "Asia/Singapore", 20, 18),
-        new(4, "Arab Saudi — Umm al-Qura", "Asia/Riyadh", 18.5, 18),
-        new(13, "Turki — Diyanet", "Europe/Istanbul", 18, 17),
-        new(3, "Muslim World League", "Asia/Jakarta", 18, 17),
-        new(2, "Amerika Utara — ISNA", "America/New_York", 15, 15),
-    ];
-
     private readonly AppSettings _settings;
     // Captured on the UI thread; status setters are also called from restore retries.
     private readonly Dispatcher _uiDispatcher;
@@ -96,6 +84,8 @@ public partial class MainWindow : Window
     // The year selectors are filled and moved by code as well; this keeps the
     // SelectionChanged handlers from rendering the same year twice.
     private bool _syncingYearSelectors;
+    private readonly OfflineDataDownloadService _offlineDataDownloadService = new(new HttpClient());
+    private CancellationTokenSource? _offlineDataDownloadCancellation;
 
     /// <summary>Initializes the window with the default settings store and startup registration.</summary>
     /// <param name="settings">Application settings.</param>
@@ -184,6 +174,7 @@ public partial class MainWindow : Window
 
         InitializeYearSelectors();
         PopulateSettingsForm();
+        TryRestoreOfflineDataCache();
         _lastCalendarToday = GetCalendarToday();
         _clockTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -1140,6 +1131,15 @@ public partial class MainWindow : Window
         ClockLabel.Text = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>Reloads settings form controls from the current app settings.</summary>
+    internal void ReloadSettingsFromApp()
+    {
+        if (!_uiDispatcher.CheckAccess()) { _ = _uiDispatcher.InvokeAsync(ReloadSettingsFromApp); return; }
+        PopulateSettingsForm();
+        RefreshSettingsSchedulePreview();
+        RefreshOverview();
+    }
+
     /// <summary>Loads current settings into the settings form controls.</summary>
     private void PopulateSettingsForm()
     {
@@ -1158,7 +1158,7 @@ public partial class MainWindow : Window
             TimeZoneBox.ItemsSource = TimeZoneConverter.TZConvert.KnownIanaTimeZoneNames
                 .Append(_settings.TimeZoneId).Distinct(StringComparer.Ordinal).OrderBy(id => id, StringComparer.Ordinal).ToArray();
             TimeZoneBox.Text = _settings.TimeZoneId;
-            var options = CalculationMethods.ToList();
+            var options = LocationDefaults.Methods.ToList();
             if (!options.Any(item => item.Id == _settings.MethodId))
                 options.Add(new CalculationMethod(_settings.MethodId, $"{_settings.CalculationStandard} (ID {_settings.MethodId})", _settings.TimeZoneId, 18, 18));
             MethodBox.ItemsSource = options;
@@ -1205,6 +1205,8 @@ public partial class MainWindow : Window
             InstalledVersionText.Text = AppBranding.VersionLabel;
             RefreshLockScreenSafety();
             UpdateTaskbarWidgetAvailability();
+            OnlineGeocodingEnabledCheckBox.IsChecked = _settings.OnlineGeocodingEnabled;
+            UpdateOnlineGeocodingStatus();
         }
         finally { _loadingSettings = false; }
         UpdateWidgetOptionStates();
@@ -1858,7 +1860,7 @@ public partial class MainWindow : Window
         {
             int requestVersion = _locationRequestVersion;
             string timeZoneId = _settings.TimeZoneId;
-            try { timeZoneId = GeoTimeZone.TimeZoneLookup.GetTimeZone(latitude, longitude).Result; }
+            try { timeZoneId = LocationDefaults.ResolveTimeZoneForCoordinates(latitude, longitude); }
             catch (Exception) { /* Keep the configured zone for ocean or unresolvable coordinates. */ }
             _loadingSettings = true;
             try
@@ -1872,26 +1874,62 @@ public partial class MainWindow : Window
         RefreshSettingsSchedulePreview();
     }
 
-    /// <summary>Fills the location name, elevation, and method from the offline datasets for entered coordinates.</summary>
+    /// <summary>Fills the location name, elevation, and method from offline datasets, optionally supplemented by Nominatim.</summary>
     /// <param name="latitude">Latitude in degrees.</param>
     /// <param name="longitude">Longitude in degrees.</param>
     /// <param name="timeZoneId">IANA time zone already resolved for the coordinates.</param>
     /// <param name="requestVersion">Request generation captured before the lookup.</param>
     private async Task UpdateLocationNameFromCoordinatesAsync(double latitude, double longitude, string timeZoneId, int requestVersion)
     {
+        bool onlineEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        string onlineEndpoint = _settings.OnlineGeocodingEndpoint;
         try
         {
             OfflineLocationResult? place = await Task.Run(
-                () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
+                () => OfflineReverseGeocoder.Current.FindNearest(latitude, longitude));
             if (requestVersion != _locationRequestVersion) return;
+
+            OnlineLocationResult? online = null;
+            string? onlineError = null;
+            if (onlineEnabled)
+            {
+                try
+                {
+                    var nominatim = new NominatimReverseGeocodingService();
+                    online = await nominatim.ReverseGeocodeCoordinatesAsync(
+                        latitude, longitude, onlineEndpoint, userConsentGranted: true);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
+                    or IOException or InvalidDataException or ArgumentException or InvalidOperationException or System.Text.Json.JsonException)
+                {
+                    onlineError = ex.Message;
+                }
+            }
+            if (requestVersion != _locationRequestVersion) return;
+
             _elevationManuallyEdited = false;
             ApplyAutoElevation(place?.ElevationMeters);
-            SetAutoLocationName(place?.DisplayName ?? "Lokasi manual");
-            _locationNameAutoFilled = place is not null;
+            string displayName = place?.DisplayName ?? online?.DisplayName ?? "Lokasi manual";
+            SetAutoLocationName(displayName);
+            _locationNameAutoFilled = place is not null || online is not null;
             ApplyAutoCalculationMethod(place?.CountryCode, timeZoneId);
-            OfflineReverseGeocodeStatus.Text = place is null
-                ? "Tidak ada permukiman dalam radius 75 km. Nama diisi 'Lokasi manual'; koordinat dan metode tetap lokal, belum disimpan."
-                : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+
+            if (online is not null && place is not null)
+                OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(place)}: {place.DisplayName}. Pelengkap Nominatim: {online.DisplayName}. Belum disimpan.";
+            else if (online is not null)
+                OfflineReverseGeocodeStatus.Text = $"Nama dari Nominatim online: {online.DisplayName}. {online.Attribution}. Belum disimpan.";
+            else if (place is not null && onlineError is not null)
+                OfflineReverseGeocodeStatus.Text = $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Nominatim gagal, data offline dipakai.";
+            else if (place is not null)
+                OfflineReverseGeocodeStatus.Text = onlineEnabled
+                    ? $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Belum disimpan."
+                    : $"{AutoLocationSourceLabel(place)}: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km. Perkiraan, bukan alamat; belum disimpan dan tidak dikirim ke internet.";
+            else if (onlineError is not null)
+                OfflineReverseGeocodeStatus.Text = $"Tidak ada permukiman lokal dalam radius 75 km dan Nominatim gagal. Nama diisi 'Lokasi manual'; tidak ada data dikirim selain percobaan Nominatim yang gagal.";
+            else
+                OfflineReverseGeocodeStatus.Text = onlineEnabled
+                    ? "Tidak ada permukiman lokal/Nominatim yang cocok. Nama diisi 'Lokasi manual'; belum disimpan."
+                    : "Tidak ada permukiman dalam radius 75 km. Nama diisi 'Lokasi manual'; koordinat dan metode tetap lokal, belum disimpan.";
         }
         catch (Exception)
         {
@@ -1899,7 +1937,7 @@ public partial class MainWindow : Window
             SetAutoLocationName("Lokasi manual");
             _locationNameAutoFilled = false;
             ApplyAutoCalculationMethod(null, timeZoneId);
-            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama diisi 'Lokasi manual'; koordinat, zona waktu, dan metode tetap di draf, tidak dikirim ke internet.";
+            OfflineReverseGeocodeStatus.Text = "Dataset lokal tidak dapat dibaca. Nama diisi 'Lokasi manual'; koordinat, zona waktu, dan metode tetap di draf.";
         }
     }
 
@@ -1920,50 +1958,13 @@ public partial class MainWindow : Window
             ? "Nama otomatis dari data desa/kecamatan Indonesia"
             : "Nama otomatis dari daftar kota lokal";
 
-    /// <summary>Chooses the calculation method implied by a location's country and time zone.</summary>
-    /// <param name="countryCode">ISO country code from the offline or network lookup, when known.</param>
-    /// <param name="timeZoneId">IANA time zone already resolved for the location.</param>
-    /// <param name="currentMethodId">Method currently selected, used to preserve an explicit Muhammadiyah choice.</param>
-    /// <returns>The calculation method to apply.</returns>
-    private static CalculationMethod ResolveAutoCalculationMethod(string? countryCode, string timeZoneId, int currentMethodId)
-    {
-        string country = (countryCode ?? string.Empty).Trim().ToUpperInvariant();
-        bool indonesia = country == "ID" ||
-            timeZoneId.StartsWith("Asia/Jakarta", StringComparison.OrdinalIgnoreCase) ||
-            timeZoneId.StartsWith("Asia/Makassar", StringComparison.OrdinalIgnoreCase) ||
-            timeZoneId.StartsWith("Asia/Jayapura", StringComparison.OrdinalIgnoreCase) ||
-            timeZoneId.StartsWith("Asia/Pontianak", StringComparison.OrdinalIgnoreCase);
-        if (indonesia && currentMethodId == 99) return CalculationMethods[1];
-        if (indonesia) return CalculationMethods[0];
-        return country switch
-        {
-            "MY" => CalculationMethods[2],
-            "SG" => CalculationMethods[3],
-            "SA" => CalculationMethods[4],
-            "TR" => CalculationMethods[5],
-            "US" => CalculationMethods[7],
-            _ => MethodForTimeZone(timeZoneId)
-        };
-    }
-
-    /// <summary>Falls back to a country-specific method when only the time zone is known.</summary>
-    /// <param name="timeZoneId">IANA time zone identifier.</param>
-    /// <returns>The matching method, or the general Muslim World League method.</returns>
-    private static CalculationMethod MethodForTimeZone(string timeZoneId) =>
-        timeZoneId.StartsWith("Asia/Kuala_Lumpur", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[2] :
-        timeZoneId.StartsWith("Asia/Singapore", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[3] :
-        timeZoneId.StartsWith("Asia/Riyadh", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[4] :
-        timeZoneId.StartsWith("Europe/Istanbul", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[5] :
-        timeZoneId.StartsWith("America/", StringComparison.OrdinalIgnoreCase) ? CalculationMethods[7] :
-        CalculationMethods[6];
-
     /// <summary>Applies the automatic calculation method without retriggering the form handlers.</summary>
     /// <param name="countryCode">ISO country code from the location lookup, when known.</param>
     /// <param name="timeZoneId">IANA time zone already resolved for the location.</param>
     private void ApplyAutoCalculationMethod(string? countryCode, string timeZoneId)
     {
         int currentId = MethodBox.SelectedItem is CalculationMethod current ? current.Id : _settings.MethodId;
-        CalculationMethod method = ResolveAutoCalculationMethod(countryCode, timeZoneId, currentId);
+        CalculationMethod method = LocationDefaults.ResolveAutoCalculationMethod(countryCode, timeZoneId, currentId);
         if (currentId == method.Id) return;
         bool wasLoading = _loadingSettings;
         _loadingSettings = true;
@@ -2020,11 +2021,33 @@ public partial class MainWindow : Window
         int version = _locationSearchVersion;
         string query = LocationNameBox.Text.Trim();
         if (_loadingSettings || query.Length < 2) return;
+        bool onlineEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        string onlineEndpoint = _settings.OnlineGeocodingEndpoint;
         try
         {
-            IReadOnlyList<OfflineLocationSuggestion> results = await Task.Run(() =>
-                OfflineReverseGeocoder.Bundled.Search(query, maxResults: 8));
-            CompleteLocationSearch(version, query, results);
+            Task<IReadOnlyList<OfflineLocationSuggestion>> offlineTask = Task.Run(() =>
+                OfflineReverseGeocoder.Current.Search(query, maxResults: 8));
+            Task<IReadOnlyList<OfflineLocationSuggestion>> onlineTask = onlineEnabled
+                ? new NominatimReverseGeocodingService().SearchAsync(query, onlineEndpoint, userConsentGranted: true, limit: 5)
+                : Task.FromResult<IReadOnlyList<OfflineLocationSuggestion>>([]);
+
+            IReadOnlyList<OfflineLocationSuggestion> offline = [];
+            IReadOnlyList<OfflineLocationSuggestion> online = [];
+            bool onlineFailed = false;
+            try { offline = await offlineTask; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException) { offline = []; }
+            if (onlineEnabled)
+            {
+                try { online = await onlineTask; }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException
+                    or IOException or InvalidDataException or ArgumentException or InvalidOperationException
+                    or System.Text.Json.JsonException)
+                { onlineFailed = true; }
+            }
+            if (version != _locationSearchVersion) return;
+
+            var merged = MergeLocationSuggestions(offline, online, 10);
+            CompleteLocationSearch(version, query, merged, onlineEnabled, online.Count > 0, onlineFailed);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -2034,19 +2057,48 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Applies search results to the suggestion list when the version is current.</summary>
-    /// <param name="version">Search generation captured when the request started.</param>
-    /// <param name="query">The query that produced the results.</param>
-    /// <param name="results">Search results to display.</param>
-    private void CompleteLocationSearch(int version, string query, IReadOnlyList<OfflineLocationSuggestion> results)
+    private void CompleteLocationSearch(int version, string query, IReadOnlyList<OfflineLocationSuggestion> results,
+        bool onlineEnabled = false, bool hasOnlineResults = false, bool onlineFailed = false)
     {
         if (_loadingSettings || _allowClose || version != _locationSearchVersion ||
             !string.Equals(query, LocationNameBox.Text.Trim(), StringComparison.Ordinal)) return;
         LocationSuggestionsList.ItemsSource = results;
         LocationSuggestionsList.SelectedIndex = -1;
         LocationSuggestionsPopup.IsOpen = results.Count > 0 && LocationNameBox.IsKeyboardFocusWithin;
-        OfflineReverseGeocodeStatus.Text = results.Count > 0
-            ? "Pilihan nama dari daftar kota lokal. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan."
-            : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
+        if (results.Count > 0)
+        {
+            string source = hasOnlineResults ? "daftar lokal dan Nominatim online"
+                : onlineEnabled && onlineFailed ? "daftar lokal (Nominatim gagal, fallback offline)"
+                : "daftar kota lokal";
+            OfflineReverseGeocodeStatus.Text = $"Pilihan nama dari {source}. Pilih untuk mengisi koordinat dan zona waktu; perubahan masih draf sampai Simpan.";
+        }
+        else
+        {
+            OfflineReverseGeocodeStatus.Text = onlineEnabled
+                ? "Tidak ada nama yang cocok dari data lokal maupun Nominatim. Coba nama lain atau isi manual."
+                : "Tidak ada nama yang cocok dalam data kota/permukiman lokal. Coba nama lain atau isi nama dan koordinat sendiri; tidak ada pencarian internet.";
+        }
+    }
+
+    private static IReadOnlyList<OfflineLocationSuggestion> MergeLocationSuggestions(
+        IReadOnlyList<OfflineLocationSuggestion> offline,
+        IReadOnlyList<OfflineLocationSuggestion> online,
+        int maxResults)
+    {
+        var merged = new List<OfflineLocationSuggestion>(maxResults);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddRange(IEnumerable<OfflineLocationSuggestion> items)
+        {
+            foreach (OfflineLocationSuggestion item in items)
+            {
+                if (merged.Count >= maxResults) break;
+                string key = $"{Math.Round(item.Latitude, 3)}|{Math.Round(item.Longitude, 3)}|{item.DisplayName}";
+                if (seen.Add(key)) merged.Add(item);
+            }
+        }
+        AddRange(offline);
+        AddRange(online);
+        return merged;
     }
 
     /// <summary>Fills the location form fields from a chosen suggestion.</summary>
@@ -2057,8 +2109,7 @@ public partial class MainWindow : Window
         string timezone;
         try
         {
-            timezone = GeoTimeZone.TimeZoneLookup.GetTimeZone(suggestion.Latitude, suggestion.Longitude).Result;
-            _ = PrayerScheduleService.ResolveTimeZone(timezone);
+            timezone = LocationDefaults.ResolveTimeZoneForCoordinates(suggestion.Latitude, suggestion.Longitude);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or TimeZoneNotFoundException or InvalidTimeZoneException)
         {
@@ -2080,7 +2131,7 @@ public partial class MainWindow : Window
             ApplyAutoCalculationMethod(suggestion.CountryCode, timezone);
         }
         finally { _loadingSettings = false; }
-        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar kota lokal: {suggestion.DisplayName}. Koordinat, mdpl, zona waktu, dan metode hitung mewakili permukiman, bukan alamat persis. Belum disimpan.";
+        OfflineReverseGeocodeStatus.Text = $"Dipilih dari daftar lokasi: {suggestion.DisplayName}. Koordinat, mdpl, zona waktu, dan metode hitung mewakili permukiman, bukan alamat persis. Belum disimpan.";
         RefreshSettingsSchedulePreview();
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
@@ -2275,6 +2326,98 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>Restores a previously downloaded offline data pack without network access.</summary>
+    private void TryRestoreOfflineDataCache()
+    {
+        try
+        {
+            if (_offlineDataDownloadService.TryLoadCached())
+                DownloadFullDataStatus.Text = "Paket data lengkap tersedia dari cache; dipakai untuk pencarian offline.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            DownloadFullDataStatus.Text = "Cache data lengkap tidak dapat dibaca; memakai data bawaan.";
+            _logSettingsError("Membaca cache data offline", ex);
+        }
+    }
+
+    /// <summary>Enables the download button only after the user grants consent.</summary>
+    private void OnlineGeocodingEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        UpdateOnlineGeocodingStatus();
+    }
+
+    private void UpdateOnlineGeocodingStatus()
+    {
+        bool enabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
+        OfflineReverseGeocodeStatus.Text = enabled
+            ? "Pencarian offline dipakai dulu. Nominatim online opsional aktif; koordinat/nama pencarian dapat dikirim saat diperlukan."
+            : "Pencarian offline memakai koordinat form. Tidak ada data dikirim.";
+    }
+
+    private void DownloadFullDataCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_offlineDataDownloadCancellation is not null) return;
+        DownloadFullDataButton.IsEnabled = DownloadFullDataCheckBox.IsChecked == true;
+    }
+
+    /// <summary>Downloads, verifies, and activates the optional complete data pack.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private async void DownloadFullData_Click(object sender, RoutedEventArgs e)
+    {
+        if (DownloadFullDataCheckBox.IsChecked != true) return;
+        if (_offlineDataDownloadCancellation is not null)
+        {
+            _offlineDataDownloadCancellation.Cancel();
+            DownloadFullDataButton.Content = "Membatalkan…";
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _offlineDataDownloadCancellation = cancellation;
+        DownloadFullDataButton.Content = "Batalkan unduhan";
+        DownloadFullDataProgress.Visibility = Visibility.Visible;
+        DownloadFullDataProgress.Value = 0;
+        var progress = new Progress<OfflineDownloadProgress>(update =>
+        {
+            try
+            {
+                DownloadFullDataStatus.Text = update.TotalBytes > 0
+                    ? $"{update.Phase} {update.BytesDownloaded * 100 / update.TotalBytes}%"
+                    : update.Phase;
+                if (update.TotalBytes > 0)
+                    DownloadFullDataProgress.Value = Math.Clamp(
+                        update.BytesDownloaded * 100.0 / update.TotalBytes, 0, 100);
+            }
+            catch (Exception ex) { AppLogger.Write("settings.download-full-data-progress", ex); }
+        });
+        try
+        {
+            OfflineDataInstallResult result = await _offlineDataDownloadService
+                .DownloadAsync(progress, cancellation.Token).ConfigureAwait(true);
+            DownloadFullDataStatus.Text = result.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            DownloadFullDataStatus.Text = "Unduhan dibatalkan. Data bawaan tetap dipakai.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("settings.download-full-data", ex);
+            DownloadFullDataStatus.Text = "Unduhan gagal. Data bawaan tetap dipakai.";
+        }
+        finally
+        {
+            _offlineDataDownloadCancellation.Dispose();
+            _offlineDataDownloadCancellation = null;
+            DownloadFullDataButton.Content = "Unduh paket data lengkap";
+            DownloadFullDataButton.IsEnabled = DownloadFullDataCheckBox.IsChecked == true;
+            DownloadFullDataProgress.Visibility = Visibility.Collapsed;
+        }
+    }
+
     /// <summary>Detects approximate location via IP geolocation providers and fills the form.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
@@ -2298,6 +2441,9 @@ public partial class MainWindow : Window
 
             string providerName = CombineLocationName(result.IpApi, result.IpWho);
             (double latitude, double longitude) = LocationDetectionService.Midpoint(result.IpApi, result.IpWho);
+            string coordinateTimeZone = result.IpApi.TimeZoneId ?? _settings.TimeZoneId;
+            try { coordinateTimeZone = LocationDefaults.ResolveTimeZoneForCoordinates(latitude, longitude); }
+            catch (Exception) { /* Keep the provider zone when coordinates cannot be resolved. */ }
             bool wasLoading = _loadingSettings;
             _loadingSettings = true;
             try
@@ -2306,8 +2452,8 @@ public partial class MainWindow : Window
                 _locationNameAutoFilled = true;
                 LatitudeBox.Text = latitude.ToString("G", CultureInfo.InvariantCulture);
                 LongitudeBox.Text = longitude.ToString("G", CultureInfo.InvariantCulture);
-                TimeZoneBox.Text = result.IpApi.TimeZoneId!;
-                ApplyAutoCalculationMethod(result.IpApi.CountryCode, TimeZoneBox.Text);
+                TimeZoneBox.Text = coordinateTimeZone;
+                ApplyAutoCalculationMethod(result.IpApi.CountryCode, coordinateTimeZone);
             }
             finally { _loadingSettings = wasLoading; }
 
@@ -2316,7 +2462,7 @@ public partial class MainWindow : Window
             try
             {
                 offlinePlace = await Task.Run(
-                    () => OfflineReverseGeocoder.Bundled.FindNearest(latitude, longitude));
+                    () => OfflineReverseGeocoder.Current.FindNearest(latitude, longitude));
             }
             catch (Exception)
             {
@@ -2396,8 +2542,8 @@ public partial class MainWindow : Window
             _loadingSettings = true;
             try
             {
-                TimeZoneBox.Text = GeoTimeZone.TimeZoneLookup.GetTimeZone(
-                    result.Latitude!.Value, result.Longitude!.Value).Result;
+                TimeZoneBox.Text = LocationDefaults.ResolveTimeZoneForCoordinates(
+                    result.Latitude!.Value, result.Longitude!.Value);
                 SetAutoLocationName(DeviceLocationLogic.FormatLocalLocationName(
                     result.Source, result.Latitude!.Value, result.Longitude!.Value));
                 _locationNameAutoFilled = true;
@@ -2413,7 +2559,7 @@ public partial class MainWindow : Window
             bool offlineLookupFailed = false;
             try
             {
-                offlinePlace = await Task.Run(() => OfflineReverseGeocoder.Bundled.FindNearest(
+                offlinePlace = await Task.Run(() => OfflineReverseGeocoder.Current.FindNearest(
                     result.Latitude!.Value, result.Longitude!.Value));
             }
             catch (Exception)
@@ -2654,6 +2800,7 @@ public partial class MainWindow : Window
         candidate.WidgetAutoHideOnHover = WidgetAutoHideCheckBox.IsChecked == true;
         candidate.TaskbarWidgetEnabled = TaskbarWidgetEnabledCheckBox.IsChecked == true && TaskbarWidgetSupport.Inspect().CanEnable;
         candidate.TaskbarWidgetMode = "popup";
+        candidate.OnlineGeocodingEnabled = OnlineGeocodingEnabledCheckBox.IsChecked == true;
         if (WidgetModeBox.SelectedItem is not ComboBoxItem widgetModeItem ||
             widgetModeItem.Tag is not string widgetMode || widgetMode is not ("essential" or "minimalist" or "detail"))
         {
@@ -2757,6 +2904,7 @@ public partial class MainWindow : Window
         destination.TimeZoneId = source.TimeZoneId;
         destination.LocationName = source.LocationName;
         destination.OnlineGeocodingEndpoint = source.OnlineGeocodingEndpoint;
+        destination.OnlineGeocodingEnabled = source.OnlineGeocodingEnabled;
         destination.MethodId = source.MethodId;
         destination.CalculationStandard = source.CalculationStandard;
         destination.Corrections = new Dictionary<string, int>(source.Corrections, StringComparer.OrdinalIgnoreCase);
@@ -2999,6 +3147,4 @@ public partial class MainWindow : Window
     private static SolidColorBrush MakeBrush(string color) =>
         (SolidColorBrush)new BrushConverter().ConvertFromString(color)!;
 
-    /// <summary>Calculation method catalog entry: native ID, name, time zone, and Fajr/Isha angles.</summary>
-    private sealed record CalculationMethod(int Id, string Name, string TimeZoneId, double FajrAngle, double IshaAngle);
 }

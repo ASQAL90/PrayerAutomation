@@ -14,7 +14,7 @@ internal sealed class AppSettings
     /// <summary>Calendar source value for the official KHGT month table.</summary>
     public const string CalendarSourceKhgt = "khgt";
     /// <summary>Label of the Muhammadiyah prayer-time method.</summary>
-    public const string MuhammadiyahMethodLabel = "Indonesia — Muhammadiyah";
+    public const string MuhammadiyahMethodLabel = LocationDefaults.MuhammadiyahLabel;
     /// <summary>Default reminder notification message template.</summary>
     public const string DefaultReminderMessage = "Sebentar lagi waktu sholat {prayer} ({minutes_before} menit lagi).";
     /// <summary>Maximum allowed length of a reminder message.</summary>
@@ -54,6 +54,8 @@ internal sealed class AppSettings
     [JsonPropertyName("start_hidden")] public bool StartHidden { get; set; }
     /// <summary>Base URL of the online reverse-geocoding service.</summary>
     [JsonPropertyName("online_geocoding_endpoint")] public string OnlineGeocodingEndpoint { get; set; } = DefaultOnlineGeocodingEndpoint;
+    /// <summary>Whether optional online reverse geocoding is enabled after explicit user consent.</summary>
+    [JsonPropertyName("online_geocoding_enabled")] public bool OnlineGeocodingEnabled { get; set; }
     /// <summary>Whether the floating schedule widget is enabled.</summary>
     [JsonPropertyName("widget")] public bool WidgetEnabled { get; set; }
     /// <summary>Whether the taskbar countdown panel is enabled.</summary>
@@ -99,7 +101,28 @@ internal sealed class AppSettings
     /// <returns>Normalized factory defaults.</returns>
     public static AppSettings CreateFreshInstall()
     {
-        var settings = new AppSettings { CalendarSource = CalendarSourceKhgt };
+        var settings = new AppSettings
+        {
+            CalendarSource = CalendarSourceKhgt,
+            ElevationMeters = 55,
+            MethodId = 99,
+            CalculationStandard = MuhammadiyahMethodLabel,
+            RemindersEnabled = true,
+            LockScreenEnabled = true,
+            LockScreenOptIn = true,
+            AutoLockEnabled = true,
+            StartupEnabled = true,
+            StartHidden = true,
+            WidgetEnabled = true,
+            TaskbarWidgetEnabled = true,
+            UpdateAutoCheck = true,
+            WidgetMode = "essential",
+            WidgetMotion = "static",
+            WidgetPosition = "tc",
+            WidgetAlwaysOnTop = true,
+            WidgetClickThrough = true,
+            WidgetAutoHideOnHover = true
+        };
         settings.Normalize();
         return settings;
     }
@@ -175,10 +198,11 @@ internal static class SettingsStore
     /// <returns>The normalized settings.</returns>
     public static AppSettings Load()
     {
-        var settings = AppSettings.CreateFreshInstall();
+        bool configExists = File.Exists(ConfigPath);
+        var settings = configExists ? new AppSettings() : AppSettings.CreateFreshInstall();
         try
         {
-            if (File.Exists(ConfigPath))
+            if (configExists)
                 settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(ConfigPath), JsonOptions) ?? settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)

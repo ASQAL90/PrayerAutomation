@@ -688,7 +688,8 @@ int gpsHandlerStart = codeBehind.IndexOf("private async void DetectGpsLocation_C
 int gpsHandlerEnd = codeBehind.IndexOf("private static string DescribeLocationProvider", gpsHandlerStart, StringComparison.Ordinal);
 Assert(gpsHandlerStart >= 0 && gpsHandlerEnd > gpsHandlerStart &&
        codeBehind[gpsHandlerStart..gpsHandlerEnd].Contains("DeviceLocationLogic.FormatLocalLocationName", StringComparison.Ordinal) &&
-       codeBehind[gpsHandlerStart..gpsHandlerEnd].Contains("GeoTimeZone.TimeZoneLookup.GetTimeZone", StringComparison.Ordinal),
+       (codeBehind[gpsHandlerStart..gpsHandlerEnd].Contains("GeoTimeZone.TimeZoneLookup.GetTimeZone", StringComparison.Ordinal) ||
+        codeBehind[gpsHandlerStart..gpsHandlerEnd].Contains("LocationDefaults.ResolveTimeZoneForCoordinates", StringComparison.Ordinal)),
     "GPS detection must update the local source/coordinate label and map timezone offline from coordinates.");
 Assert(codeBehind.Contains("TodayRing-", StringComparison.Ordinal) &&
        codeBehind.Contains("HijriTodayRing-", StringComparison.Ordinal),

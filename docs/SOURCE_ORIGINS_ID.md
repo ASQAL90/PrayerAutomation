@@ -12,6 +12,13 @@ Aplikasi memakai beberapa referensi teknis dan dependency yang perlu disebut. Da
 
 GeoTimeZone memuat Geohash-net (Sharon Lourduraj) dan port Geohash-js (David Troy) di dalamnya. Kredit ada pada [LICENSE GeoTimeZone](third-party/licenses/GeoTimeZone-6.1.0-LICENSE.txt); keduanya source di dalam dependency, bukan bukti tiga salinan langsung ke source aplikasi. Data timezone ODbL tetap terpisah; lihat [third-party notices](THIRD_PARTY_NOTICES.md).
 
+## GeoNames, Kemendagri, dan Copernicus DEM
+
+- Dataset lokasi offline 2.5.0 memakai [GeoNames](https://www.geonames.org/) **CC BY 4.0** untuk koordinat, `dem`, kode fitur, populasi, dan nama alternatif. Nama alternatif hanya dipakai sebagai kunci pencarian; `Cibarusa`/`Cibarusah` serta `Cileungsi`/`Cileungsir` tidak digabungkan.
+- Nama kabupaten/kota dan provinsi Indonesia mengikuti hierarki [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah) berdasarkan Kepmendagri No. 300.2.2-2430 Tahun 2025. Tooling repositori berlisensi MIT; data resmi tetap berada di bawah ketentuan instansi asal.
+- Sampel mdpl berasal dari [Copernicus DEM GLO-90](https://registry.opendata.aws/copernicus-dem/) melalui [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Pengambilan terjadi saat build dengan median `3×3`; aplikasi tidak mengirim permintaan lokasi atau ketinggian saat memakai data offline.
+- Atribusi lengkap, snapshot, dan daftar berkas ada pada [NOTICE data geonames](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) dan [third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Algoritma internal
 
 - Perhitungan jadwal sholat (`prayer-core`) memakai algoritma standar yang umum dipakai (posisi matahari/kalender hijriah); implementasinya ditulis sendiri di Rust.

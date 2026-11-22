@@ -2,10 +2,11 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Threading;
 
 namespace PrayerAutomation.UI;
 
-/// <summary>Reverse-geocodes coordinates against bundled offline GeoNames datasets.</summary>
+/// <summary>Reverse-geocodes coordinates against bundled or downloaded offline GeoNames datasets.</summary>
 internal sealed class OfflineReverseGeocoder
 {
     private const double DefaultMaximumDistanceKm = 75.0;
@@ -15,12 +16,22 @@ internal sealed class OfflineReverseGeocoder
     private const double IndonesiaBoundaryToleranceKm = 2.0;
     private const int MaximumSearchResults = 50;
     private const int MaximumSearchQueryLength = 128;
-    private const string GlobalDataFileName = "cities1000.tsv.gz";
+    private const string GlobalDataFileName = "cities500.tsv.gz";
+    private const string LegacyGlobalDataFileName = "cities1000.tsv.gz";
+    private const string DownloadedGlobalDataFileName = "global.tsv.gz";
     private const string IndonesiaDataFileName = "indonesia.tsv.gz";
     private const string IndonesiaBoundaryFileName = "indonesia.boundary.bin";
+    // Explicitly low-population localities (hamlets, sections) lose to real
+    // settlements unless they are much closer. Legacy rows without population are
+    // treated as normal settlements so existing datasets keep their behaviour.
+    private const double LocalityDistancePenalty = 12.0;
+    private const double PopulationBoostRadiusKm = 1.0;
+
     private static readonly Lazy<OfflineReverseGeocoder> BundledData = new(
         LoadBundledData,
         LazyThreadSafetyMode.ExecutionAndPublication);
+    private static OfflineReverseGeocoder? _downloaded;
+
     private readonly IReadOnlyList<OfflineCity> _cities;
     private readonly IndonesiaPlace[] _indonesiaPlaces;
     private readonly string[] _regencies;
@@ -44,9 +55,23 @@ internal sealed class OfflineReverseGeocoder
     /// <summary>The lazily loaded shared instance backed by the bundled datasets.</summary>
     internal static OfflineReverseGeocoder Bundled => BundledData.Value;
 
+    /// <summary>The active instance: a verified download when installed, otherwise bundled data.</summary>
+    internal static OfflineReverseGeocoder Current => Volatile.Read(ref _downloaded) ?? Bundled;
+
+    /// <summary>Installs a verified downloaded dataset as the active geocoder.</summary>
+    /// <param name="geocoder">The fully loaded downloaded dataset.</param>
+    internal static void UseDownloaded(OfflineReverseGeocoder geocoder)
+    {
+        ArgumentNullException.ThrowIfNull(geocoder);
+        Volatile.Write(ref _downloaded, geocoder);
+    }
+
+    /// <summary>Removes the downloaded dataset after a failed or obsolete cache check.</summary>
+    internal static void ClearDownloaded() => Volatile.Write(ref _downloaded, null);
+
     /// <summary>Loads an offline dataset from tab-separated text.</summary>
-    /// <param name="reader">Reader for the TSV dataset (name, region, country, lat, lon, code, optional DEM metres).</param>
-    /// <param name="indonesiaReader">Optional Indonesian layer reader (name, regency, province, lat, lon, DEM metres).</param>
+    /// <param name="reader">Reader for the TSV dataset (legacy 6/7 columns or schema v2).</param>
+    /// <param name="indonesiaReader">Optional Indonesian layer reader.</param>
     /// <param name="indonesiaBoundary">Optional Indonesia boundary used to select the Indonesian layer.</param>
     /// <returns>The loaded geocoder.</returns>
     /// <exception cref="InvalidDataException">A row is invalid or the dataset contains no settlements.</exception>
@@ -61,17 +86,45 @@ internal sealed class OfflineReverseGeocoder
         var regencies = Array.Empty<string>();
         var provinces = Array.Empty<string>();
         if (indonesiaReader is not null)
-        {
             (places, regencies, provinces) = ParseIndonesia(indonesiaReader);
-        }
         return new OfflineReverseGeocoder(cities, places, regencies, provinces, indonesiaBoundary);
     }
 
-    /// <summary>Finds the nearest settlement to a coordinate within a maximum distance.</summary>
+    /// <summary>Loads a verified download directory, falling back to bundled Indonesian data.</summary>
+    /// <param name="directory">Directory containing the downloaded TSV and boundary files.</param>
+    /// <returns>The loaded geocoder.</returns>
+    /// <exception cref="InvalidDataException">The downloaded global dataset is invalid.</exception>
+    internal static OfflineReverseGeocoder LoadFromDirectory(string directory)
+    {
+        IReadOnlyList<OfflineCity> cities = ReadGzip(
+            Path.Combine(directory, DownloadedGlobalDataFileName),
+            ParseCities);
+
+        var places = Array.Empty<IndonesiaPlace>();
+        var regencies = Array.Empty<string>();
+        var provinces = Array.Empty<string>();
+        IndonesiaBoundary? boundary = null;
+        try
+        {
+            (places, regencies, provinces) = ReadGzip(
+                Path.Combine(directory, IndonesiaDataFileName),
+                ParseIndonesia);
+            using var boundaryStream = File.OpenRead(Path.Combine(directory, IndonesiaBoundaryFileName));
+            boundary = IndonesiaBoundary.Load(boundaryStream);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
+        {
+            (places, regencies, provinces, boundary) = LoadBundledIndonesiaLayer();
+        }
+
+        return new OfflineReverseGeocoder(cities, places, regencies, provinces, boundary);
+    }
+
+    /// <summary>Finds the nearest meaningful settlement to a coordinate.</summary>
     /// <param name="latitude">Latitude in degrees.</param>
     /// <param name="longitude">Longitude in degrees.</param>
     /// <param name="maximumDistanceKm">Maximum distance in kilometers; negative or non-finite values throw.</param>
-    /// <returns>The nearest settlement, or null when none is within range.</returns>
+    /// <returns>The best settlement, or null when none is within range.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Coordinates or distance are invalid.</exception>
     internal OfflineLocationResult? FindNearest(
         double latitude,
@@ -99,6 +152,7 @@ internal sealed class OfflineReverseGeocoder
                 }
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .Distinct(StringComparer.OrdinalIgnoreCase));
+            int? elevation = place.ElevationMeters == IndonesiaPlace.UnknownElevation ? null : place.ElevationMeters;
             return new OfflineLocationResult(
                 place.Name,
                 province,
@@ -106,9 +160,10 @@ internal sealed class OfflineReverseGeocoder
                 "ID",
                 displayName,
                 placeDistanceKm,
-                place.ElevationMeters == IndonesiaPlace.UnknownElevation ? null : place.ElevationMeters,
+                elevation,
                 regency,
-                IsIndonesiaLayer: true);
+                IsIndonesiaLayer: true,
+                ElevationSource: place.ElevationSource);
         }
 
         OfflineCity? nearest = null;
@@ -123,14 +178,16 @@ internal sealed class OfflineReverseGeocoder
             if (outsideIndonesia && string.Equals(city.CountryCode, "ID", StringComparison.OrdinalIgnoreCase))
                 continue;
             double distanceKm = DistanceKm(latitude, longitude, city.Latitude, city.Longitude);
-            if (distanceKm < nearestDistanceKm)
+            if (distanceKm > maximumDistanceKm) continue;
+            if (nearest is null || IsBetter(distanceKm, city.Population, city.FeatureCode,
+                    nearestDistanceKm, nearest.Population, nearest.FeatureCode))
             {
                 nearest = city;
                 nearestDistanceKm = distanceKm;
             }
         }
 
-        if (nearest is null || nearestDistanceKm > maximumDistanceKm)
+        if (nearest is null)
             return null;
 
         string countryName = TranslateCountry(nearest.CountryName, nearest.CountryCode);
@@ -149,14 +206,15 @@ internal sealed class OfflineReverseGeocoder
             nearest.CountryCode,
             globalDisplayName,
             nearestDistanceKm,
-            nearest.ElevationMeters);
+            nearest.ElevationMeters,
+            ElevationSource: nearest.ElevationSource);
     }
 
     // Settlement names only, not exhaustive street/village coverage. All query words
-    // must prefix a word in city/region/country/code; city matches rank ahead of context.
-    // Require two letters/digits, at most 128 UTF-16 units after trimming, and cap at 50.
-    /// <summary>Searches settlements by name prefix words; city matches rank ahead of context.</summary>
-    /// <param name="query">Search text; all words must prefix a word in city/region/country/code.</param>
+    // must prefix a word in name/context/alias. Indonesian records are merged with the
+    // global list; a locality is never rewritten into a different place by an alias.
+    /// <summary>Searches settlements by name, alias, and administrative context.</summary>
+    /// <param name="query">Search text; all words must prefix a word in the indexed text.</param>
     /// <param name="maxResults">Maximum results to return (capped at 50).</param>
     /// <returns>Matching suggestions, or an empty list for blank/short/oversized queries.</returns>
     internal IReadOnlyList<OfflineLocationSuggestion> Search(string query, int maxResults = 8)
@@ -171,89 +229,122 @@ internal sealed class OfflineReverseGeocoder
         if (name.EnumerateRunes().Count(Rune.IsLetterOrDigit) < 2)
             return Array.Empty<OfflineLocationSuggestion>();
         string[] words = name.Split(' ');
-        return _cities.Where(city => words.All(word => MatchesWordPrefix(city.SearchText, word)))
-            .OrderBy(city => city.SearchName == name ||
-                name.StartsWith(city.SearchName + " ", StringComparison.Ordinal) ? 0 :
-                city.SearchName.StartsWith(name, StringComparison.Ordinal) ||
-                city.SearchName.StartsWith(words[0], StringComparison.Ordinal) ? 1 :
-                words.Any(word => MatchesWordPrefix(city.SearchName, word)) ? 2 : 3)
-            .ThenByDescending(city => words.Count(word => MatchesWordPrefix(city.SearchName, word)))
-            .ThenBy(city => city.SearchName, StringComparer.Ordinal)
-            .ThenBy(city => city.RegionName, StringComparer.Ordinal)
-            .ThenBy(city => city.CountryName, StringComparer.Ordinal)
-            .ThenBy(city => city.CountryCode, StringComparer.Ordinal)
-            .ThenBy(city => city.Latitude)
-            .ThenBy(city => city.Longitude)
-            .ThenBy(city => city.CityName, StringComparer.Ordinal)
-            .Take(Math.Min(maxResults, MaximumSearchResults))
-            .Select(city => new OfflineLocationSuggestion(
-                city.CityName,
-                city.RegionName,
-                TranslateCountry(city.CountryName, city.CountryCode),
-                city.CountryCode,
-                string.Join(", ", new[]
-                    {
-                        city.CityName,
-                        city.RegionName,
-                        TranslateCountry(city.CountryName, city.CountryCode)
-                    }
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)),
-                city.Latitude,
-                city.Longitude,
-                city.ElevationMeters))
+        int take = Math.Min(maxResults, MaximumSearchResults);
+        var candidates = new List<SearchCandidate>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (IndonesiaPlace place in _indonesiaPlaces)
+        {
+            if (!words.All(word => MatchesWordPrefix(place.SearchText, word))) continue;
+            if (!seen.Add(PlaceKey(place.Name, place.Latitude, place.Longitude))) continue;
+            string regency = _regencies[place.RegencyId];
+            string province = _provinces[place.ProvinceId];
+            string displayName = string.Join(", ", new[] { place.Name, regency, province, "Indonesia" }
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+            int? elevation = place.ElevationMeters == IndonesiaPlace.UnknownElevation ? null : place.ElevationMeters;
+            candidates.Add(new SearchCandidate(
+                Rank(name, words, place.SearchName, place.AliasSearchText, place.SearchText),
+                place.Population,
+                displayName,
+                new OfflineLocationSuggestion(
+                    place.Name,
+                    regency,
+                    "Indonesia",
+                    "ID",
+                    displayName,
+                    place.Latitude,
+                    place.Longitude,
+                    elevation,
+                    place.ElevationSource)));
+        }
+
+        foreach (OfflineCity city in _cities)
+        {
+            if (!words.All(word => MatchesWordPrefix(city.SearchText, word))) continue;
+            if (!seen.Add(PlaceKey(city.CityName, city.Latitude, city.Longitude))) continue;
+            string countryName = TranslateCountry(city.CountryName, city.CountryCode);
+            string displayName = string.Join(", ", new[] { city.CityName, city.RegionName, countryName }
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+            candidates.Add(new SearchCandidate(
+                Rank(name, words, city.SearchName, city.AliasSearchText, city.SearchText),
+                city.Population,
+                displayName,
+                new OfflineLocationSuggestion(
+                    city.CityName,
+                    city.RegionName,
+                    countryName,
+                    city.CountryCode,
+                    displayName,
+                    city.Latitude,
+                    city.Longitude,
+                    city.ElevationMeters,
+                    city.ElevationSource)));
+        }
+
+        return candidates
+            .OrderBy(candidate => candidate.Rank)
+            .ThenByDescending(candidate => candidate.Population)
+            .ThenBy(candidate => candidate.DisplayName, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.Suggestion.Latitude)
+            .ThenBy(candidate => candidate.Suggestion.Longitude)
+            .Take(take)
+            .Select(candidate => candidate.Suggestion)
             .ToArray();
     }
 
-    /// <summary>Parses the global cities1000 layer.</summary>
+    /// <summary>Parses the global layer, accepting legacy 6/7-column and schema-v2 rows.</summary>
     /// <param name="reader">TSV reader.</param>
     /// <returns>Parsed cities.</returns>
     private static IReadOnlyList<OfflineCity> ParseCities(TextReader reader)
     {
         ArgumentNullException.ThrowIfNull(reader);
-        var cities = new List<OfflineCity>();
+        var cities = new List<OfflineCity>(200_000);
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
+            if (string.IsNullOrWhiteSpace(line)) continue;
             string[] fields = line.Split('\t');
-            if (fields.Length is not (6 or 7) ||
+            if (fields.Length is < 6 or > 13 ||
                 string.IsNullOrWhiteSpace(fields[0]) ||
                 !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double latitude) ||
                 !double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double longitude) ||
                 !ValidCoordinates(latitude, longitude))
-            {
                 throw new InvalidDataException("Dataset geonames lokal memiliki baris yang tidak valid.");
-            }
 
-            int? elevationMeters = null;
-            if (fields.Length == 7 && !string.IsNullOrWhiteSpace(fields[6]) &&
-                int.TryParse(fields[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dem) &&
-                dem is >= -500 and <= 9000)
-            {
-                elevationMeters = dem;
-            }
+            bool legacy = fields.Length is 6 or 7;
+            if (!legacy && fields.Length < 13)
+                throw new InvalidDataException("Dataset geonames lokal memiliki baris yang tidak valid.");
+
+            (int? elevation, string? source) = legacy
+                ? ParseLegacyElevation(fields.Length == 7 ? fields[6] : string.Empty)
+                : ParseElevation(fields[6], fields[7], fields.Length == 13 ? fields[11] : null);
+            string featureCode = legacy ? string.Empty : Clean(fields[8]);
+            long population = legacy ? 0 : ParsePopulation(fields[9]);
+            string aliases = legacy ? string.Empty : fields[10];
 
             cities.Add(new OfflineCity(
-                fields[0],
-                fields[1],
-                fields[2],
+                Clean(fields[0]),
+                Clean(fields[1]),
+                Clean(fields[2]),
                 latitude,
                 longitude,
-                fields[5],
-                elevationMeters));
+                Clean(fields[5]),
+                elevation,
+                source,
+                featureCode,
+                population,
+                BuildAliasSearchText(aliases)));
         }
 
         if (cities.Count == 0)
             throw new InvalidDataException("Dataset geonames lokal tidak berisi permukiman.");
-
         return cities;
     }
 
-    /// <summary>Parses the Indonesian layer and interns its regency and province names.</summary>
-    /// <param name="reader">TSV reader (name, regency, province, lat, lon, DEM metres).</param>
+    /// <summary>Parses the Indonesian layer, accepting legacy and schema-v2 rows.</summary>
+    /// <param name="reader">TSV reader.</param>
     /// <returns>The place array plus the regency and province string tables.</returns>
     private static (IndonesiaPlace[] Places, string[] Regencies, string[] Provinces) ParseIndonesia(TextReader reader)
     {
@@ -266,69 +357,77 @@ internal sealed class OfflineReverseGeocoder
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
+            if (string.IsNullOrWhiteSpace(line)) continue;
             string[] fields = line.Split('\t');
-            if (fields.Length != 6 ||
+            if (fields.Length is < 6 or > 15 ||
                 string.IsNullOrWhiteSpace(fields[0]) ||
                 !double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double latitude) ||
                 !double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double longitude) ||
                 !ValidCoordinates(latitude, longitude))
-            {
                 throw new InvalidDataException("Dataset lokasi Indonesia memiliki baris yang tidak valid.");
-            }
 
-            if (!regencyIds.TryGetValue(fields[1], out ushort regencyId))
+            bool legacy = fields.Length == 6;
+            if (!legacy && fields.Length < 15)
+                throw new InvalidDataException("Dataset lokasi Indonesia memiliki baris yang tidak valid.");
+
+            (int? elevation, string? source) = legacy
+                ? ParseLegacyElevation(fields[5])
+                : ParseElevation(fields[5], fields[6], fields[13]);
+            string featureCode = legacy ? string.Empty : Clean(fields[7]);
+            long population = legacy ? 0 : ParsePopulation(fields[8]);
+            string aliases = legacy ? string.Empty : fields[9];
+            string district = legacy ? string.Empty : Clean(fields[10]);
+            string regionCode = legacy ? string.Empty : Clean(fields[11]);
+            bool officialMatch = legacy || fields[12] == "1";
+
+            string regencyName = Clean(fields[1]);
+            string provinceName = Clean(fields[2]);
+            if (!regencyIds.TryGetValue(regencyName, out ushort regencyId))
             {
                 if (regencies.Count > ushort.MaxValue)
                     throw new InvalidDataException("Terlalu banyak kabupaten/kota pada dataset Indonesia.");
                 regencyId = (ushort)regencies.Count;
-                regencyIds.Add(fields[1], regencyId);
-                regencies.Add(fields[1]);
+                regencyIds.Add(regencyName, regencyId);
+                regencies.Add(regencyName);
             }
-
-            if (!provinceIds.TryGetValue(fields[2], out byte provinceId))
+            if (!provinceIds.TryGetValue(provinceName, out byte provinceId))
             {
                 if (provinces.Count > byte.MaxValue)
                     throw new InvalidDataException("Terlalu banyak provinsi pada dataset Indonesia.");
                 provinceId = (byte)provinces.Count;
-                provinceIds.Add(fields[2], provinceId);
-                provinces.Add(fields[2]);
+                provinceIds.Add(provinceName, provinceId);
+                provinces.Add(provinceName);
             }
 
-            int elevation = IndonesiaPlace.UnknownElevation;
-            if (!string.IsNullOrWhiteSpace(fields[5]) &&
-                int.TryParse(fields[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out int dem) &&
-                dem is >= -500 and <= 9000)
-            {
-                elevation = dem;
-            }
-
+            string placeName = Clean(fields[0]);
+            string aliasText = BuildAliasSearchText(aliases);
             places.Add(new IndonesiaPlace
             {
-                Name = fields[0],
+                Name = placeName,
                 RegencyId = regencyId,
                 ProvinceId = provinceId,
                 Latitude = latitude,
                 Longitude = longitude,
-                ElevationMeters = elevation
+                ElevationMeters = elevation ?? IndonesiaPlace.UnknownElevation,
+                ElevationSource = source,
+                FeatureCode = featureCode,
+                Population = population,
+                District = district,
+                RegionCode = regionCode,
+                OfficialMatch = officialMatch,
+                SearchName = NormalizeSearchText(placeName),
+                AliasSearchText = aliasText,
+                SearchText = NormalizeSearchText(
+                    $"{placeName} {district} {regencyName} {provinceName} Indonesia {regionCode} {aliases.Replace('|', ' ')}")
             });
         }
 
         if (places.Count == 0)
             throw new InvalidDataException("Dataset lokasi Indonesia tidak berisi permukiman.");
-
         return (places.ToArray(), regencies.ToArray(), provinces.ToArray());
     }
 
-    /// <summary>Finds the nearest Indonesian place within the Indonesian layer radius.</summary>
-    /// <param name="latitude">Latitude in degrees.</param>
-    /// <param name="longitude">Longitude in degrees.</param>
-    /// <param name="maximumDistanceKm">Caller limit, already capped to the Indonesian layer radius.</param>
-    /// <param name="place">The nearest place when found.</param>
-    /// <param name="distanceKm">Its distance in kilometers.</param>
-    /// <returns>True when a place is within range.</returns>
+    /// <summary>Finds the best Indonesian place, preferring real settlements over unnamed localities.</summary>
     private bool TryFindNearestIndonesia(
         double latitude,
         double longitude,
@@ -341,39 +440,76 @@ internal sealed class OfflineReverseGeocoder
         foreach (IndonesiaPlace candidate in _indonesiaPlaces)
         {
             double candidateDistance = DistanceKm(latitude, longitude, candidate.Latitude, candidate.Longitude);
-            if (candidateDistance < distanceKm)
+            if (candidateDistance > maximumDistanceKm) continue;
+            if (double.IsPositiveInfinity(distanceKm) || IsBetter(candidateDistance, candidate.Population,
+                    candidate.FeatureCode, distanceKm, place.Population, place.FeatureCode))
             {
                 place = candidate;
                 distanceKm = candidateDistance;
             }
         }
-
-        return distanceKm <= maximumDistanceKm;
+        return !double.IsPositiveInfinity(distanceKm);
     }
 
+    /// <summary>Returns true when a candidate outranks the current best place.</summary>
+    private static bool IsBetter(
+        double candidateDistance, long candidatePopulation, string? candidateFeature,
+        double bestDistance, long bestPopulation, string? bestFeature)
+    {
+        double candidateScore = candidateDistance * PlaceDistanceFactor(candidatePopulation, candidateFeature);
+        double bestScore = bestDistance * PlaceDistanceFactor(bestPopulation, bestFeature);
+        if (Math.Abs(candidateScore - bestScore) > 1e-9)
+            return candidateScore < bestScore;
+        if (candidatePopulation > 0 && bestPopulation > 0 &&
+            candidateDistance <= bestDistance + PopulationBoostRadiusKm &&
+            candidatePopulation >= bestPopulation * 10)
+            return true;
+        return candidateDistance < bestDistance;
+    }
+
+    /// <summary>Low-population localities need to be much closer to beat a settlement.</summary>
+    private static double PlaceDistanceFactor(long population, string? featureCode)
+    {
+        if (population >= 1000) return 1.0;
+        if (featureCode == "PPLC" || (featureCode?.StartsWith("PPLA", StringComparison.Ordinal) ?? false)) return 1.0;
+        if (featureCode is "PPLL" or "PPLX" or "PPLQ" or "PPLH" or "PPLW") return LocalityDistancePenalty;
+        // Legacy rows have no population or feature code; keep their old nearest behaviour.
+        if (population == 0 && string.IsNullOrEmpty(featureCode)) return 1.0;
+        return population > 0 ? 1.0 : LocalityDistancePenalty;
+    }
+
+    /// <summary>Computes a search rank: exact name, exact alias, prefix name, prefix alias, then context.</summary>
+    private static int Rank(string query, string[] words, string searchName, string aliasText, string searchText)
+    {
+        if (searchName == query || query.StartsWith(searchName + " ", StringComparison.Ordinal)) return 0;
+        if (!string.IsNullOrEmpty(aliasText) && aliasText == query) return 1;
+        if (searchName.StartsWith(query, StringComparison.Ordinal) ||
+            searchName.StartsWith(words[0], StringComparison.Ordinal)) return 2;
+        if (!string.IsNullOrEmpty(aliasText) && words.All(word => MatchesWordPrefix(aliasText, word))) return 3;
+        if (words.Any(word => MatchesWordPrefix(searchName, word))) return 4;
+        return words.All(word => MatchesWordPrefix(searchText, word)) ? 5 : 6;
+    }
+
+    /// <summary>Builds a de-duplication key that keeps near-identical rows from one place.</summary>
+    private static string PlaceKey(string name, double latitude, double longitude) =>
+        string.Concat(
+            NormalizeSearchText(name),
+            "|",
+            latitude.ToString("F3", CultureInfo.InvariantCulture),
+            ",",
+            longitude.ToString("F3", CultureInfo.InvariantCulture));
+
     /// <summary>Returns true when text starts with the word or contains it after a space.</summary>
-    /// <param name="text">Normalized search text.</param>
-    /// <param name="word">Normalized word to match.</param>
-    /// <returns>True on prefix match.</returns>
     private static bool MatchesWordPrefix(string text, string word) =>
         text.StartsWith(word, StringComparison.Ordinal) ||
         text.Contains(" " + word, StringComparison.Ordinal);
 
     /// <summary>Normalizes text for search: strips diacritics, upper-cases, collapses separators.</summary>
-    /// <param name="value">Raw input text.</param>
-    /// <returns>The normalized text; empty when normalization fails.</returns>
     private static string NormalizeSearchText(string value)
     {
         string decomposed;
-        try
-        {
-            decomposed = value.Normalize(NormalizationForm.FormD);
-        }
-        catch (ArgumentException)
-        {
-            // Search must not introduce a new validation failure in the TSV loader.
-            return string.Empty;
-        }
+        try { decomposed = value.Normalize(NormalizationForm.FormD); }
+        catch (ArgumentException) { return string.Empty; }
         var normalized = new StringBuilder(value.Length);
         bool separator = false;
         foreach (Rune rune in decomposed.EnumerateRunes())
@@ -387,23 +523,63 @@ internal sealed class OfflineReverseGeocoder
                 separator = normalized.Length > 0;
                 continue;
             }
-            if (separator)
-                normalized.Append(' ');
+            if (separator) normalized.Append(' ');
             normalized.Append(Rune.ToUpperInvariant(rune).ToString());
             separator = false;
         }
         return normalized.ToString();
     }
 
+    /// <summary>Parses the DEM and sampled elevation columns, preferring the sampled value.</summary>
+    private static (int? Meters, string? Source) ParseElevation(string demField, string sampledField, string? sourceField)
+    {
+        if (TryParseElevation(sampledField, out int sampled))
+        {
+            string source = Clean(sourceField ?? string.Empty);
+            return (sampled, source.Length == 0 ? "copernicus-glo-90" : source);
+        }
+        if (TryParseElevation(demField, out int dem))
+            return (dem, "geonames-dem");
+        return (null, null);
+    }
+
+    /// <summary>Parses the legacy single elevation column.</summary>
+    private static (int? Meters, string? Source) ParseLegacyElevation(string field) =>
+        TryParseElevation(field, out int value) ? (value, "geonames-dem") : (null, null);
+
+    private static bool TryParseElevation(string field, out int value) =>
+        int.TryParse(field, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value is >= -500 and <= 9000;
+
+    private static long ParsePopulation(string field) =>
+        long.TryParse(field, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value) && value is >= 0 and <= 100_000_000
+            ? value : 0;
+
+    /// <summary>Joins alternate names into a normalized search text; '|' is the TSV inner separator.</summary>
+    private static string BuildAliasSearchText(string aliases)
+    {
+        if (string.IsNullOrWhiteSpace(aliases)) return string.Empty;
+        return NormalizeSearchText(aliases.Replace('|', ' '));
+    }
+
+    private static string Clean(string value) => string.Join(" ", value.Split()).Trim();
+
     /// <summary>Loads the bundled datasets from the application directory.</summary>
     /// <returns>The loaded geocoder; the Indonesian layer is optional and never breaks the global layer.</returns>
     private static OfflineReverseGeocoder LoadBundledData()
     {
         string directory = Path.Combine(AppContext.BaseDirectory, "geonames");
-        IReadOnlyList<OfflineCity> cities = ReadGzip(
-            Path.Combine(directory, GlobalDataFileName),
-            ParseCities);
+        string globalPath = Path.Combine(directory, GlobalDataFileName);
+        if (!File.Exists(globalPath)) globalPath = Path.Combine(directory, LegacyGlobalDataFileName);
+        IReadOnlyList<OfflineCity> cities = ReadGzip(globalPath, ParseCities);
+        var (places, regencies, provinces, boundary) = LoadBundledIndonesiaLayer();
+        return new OfflineReverseGeocoder(cities, places, regencies, provinces, boundary);
+    }
 
+    /// <summary>Loads only the bundled Indonesian layer, used as a fallback for downloaded data.</summary>
+    private static (IndonesiaPlace[] Places, string[] Regencies, string[] Provinces, IndonesiaBoundary? Boundary)
+        LoadBundledIndonesiaLayer()
+    {
+        string directory = Path.Combine(AppContext.BaseDirectory, "geonames");
         var places = Array.Empty<IndonesiaPlace>();
         var regencies = Array.Empty<string>();
         var provinces = Array.Empty<string>();
@@ -419,20 +595,11 @@ internal sealed class OfflineReverseGeocoder
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
         {
             // The global list still provides a usable label; keep the feature honest.
-            places = Array.Empty<IndonesiaPlace>();
-            regencies = Array.Empty<string>();
-            provinces = Array.Empty<string>();
-            boundary = null;
         }
-
-        return new OfflineReverseGeocoder(cities, places, regencies, provinces, boundary);
+        return (places, regencies, provinces, boundary);
     }
 
     /// <summary>Reads a gzip-compressed dataset with the given parser.</summary>
-    /// <typeparam name="T">Parser result type.</typeparam>
-    /// <param name="path">Dataset path.</param>
-    /// <param name="parser">Parser to apply.</param>
-    /// <returns>The parsed dataset.</returns>
     private static T ReadGzip<T>(string path, Func<TextReader, T> parser)
     {
         using var file = File.OpenRead(path);
@@ -442,19 +609,11 @@ internal sealed class OfflineReverseGeocoder
     }
 
     /// <summary>Checks WGS84 latitude/longitude ranges.</summary>
-    /// <param name="latitude">Latitude in degrees.</param>
-    /// <param name="longitude">Longitude in degrees.</param>
-    /// <returns>True when both are finite and in range.</returns>
     private static bool ValidCoordinates(double latitude, double longitude) =>
         double.IsFinite(latitude) && latitude is >= -90 and <= 90 &&
         double.IsFinite(longitude) && longitude is >= -180 and <= 180;
 
     /// <summary>Computes the great-circle distance between two points using the haversine formula.</summary>
-    /// <param name="latitude1">Latitude of the first point in degrees.</param>
-    /// <param name="longitude1">Longitude of the first point in degrees.</param>
-    /// <param name="latitude2">Latitude of the second point in degrees.</param>
-    /// <param name="longitude2">Longitude of the second point in degrees.</param>
-    /// <returns>Distance in kilometers.</returns>
     private static double DistanceKm(double latitude1, double longitude1, double latitude2, double longitude2)
     {
         const double earthRadiusKm = 6371.0088;
@@ -467,22 +626,14 @@ internal sealed class OfflineReverseGeocoder
         return earthRadiusKm * 2 * Math.Asin(Math.Sqrt(Math.Clamp(haversine, 0, 1)));
     }
 
-    /// <summary>Converts degrees to radians.</summary>
-    /// <param name="degrees">Value in degrees.</param>
-    /// <returns>Value in radians.</returns>
     private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180.0);
 
     /// <summary>Translates the most common country names to Indonesian.</summary>
-    /// <param name="englishName">GeoNames English country name.</param>
-    /// <param name="countryCode">ISO 3166-1 alpha-2 code.</param>
-    /// <returns>The Indonesian name when known, otherwise the original name.</returns>
     private static string TranslateCountry(string englishName, string countryCode)
     {
         if (!string.IsNullOrWhiteSpace(countryCode) &&
             CountryNames.TryGetValue(countryCode.ToUpperInvariant(), out string? name))
-        {
             return name;
-        }
         return englishName;
     }
 
@@ -519,13 +670,15 @@ internal sealed class OfflineReverseGeocoder
         double Latitude,
         double Longitude,
         string CountryCode,
-        int? ElevationMeters)
+        int? ElevationMeters,
+        string? ElevationSource,
+        string FeatureCode,
+        long Population,
+        string AliasSearchText)
     {
-        /// <summary>Normalized city name used for search ranking.</summary>
         internal string SearchName { get; } = NormalizeSearchText(CityName);
-        /// <summary>Normalized "city region country code" text used for matching.</summary>
         internal string SearchText { get; } = NormalizeSearchText(
-            $"{CityName} {RegionName} {CountryName} {TranslateCountry(CountryName, CountryCode)} {CountryCode}");
+            $"{CityName} {RegionName} {CountryName} {TranslateCountry(CountryName, CountryCode)} {CountryCode} {AliasSearchText}");
     }
 
     /// <summary>A compact Indonesian place record; regency and province are interned.</summary>
@@ -538,7 +691,18 @@ internal sealed class OfflineReverseGeocoder
         internal double Latitude;
         internal double Longitude;
         internal int ElevationMeters;
+        internal string? ElevationSource;
+        internal string FeatureCode;
+        internal long Population;
+        internal string District;
+        internal string RegionCode;
+        internal bool OfficialMatch;
+        internal string SearchName;
+        internal string AliasSearchText;
+        internal string SearchText;
     }
+
+    private sealed record SearchCandidate(int Rank, long Population, string DisplayName, OfflineLocationSuggestion Suggestion);
 }
 
 /// <summary>A settlement suggestion returned by search.</summary>
@@ -550,7 +714,8 @@ internal sealed record OfflineLocationSuggestion(
     string DisplayName,
     double Latitude,
     double Longitude,
-    int? ElevationMeters);
+    int? ElevationMeters,
+    string? ElevationSource = null);
 
 /// <summary>The result of a nearest-settlement lookup.</summary>
 internal sealed record OfflineLocationResult(
@@ -562,4 +727,5 @@ internal sealed record OfflineLocationResult(
     double DistanceKm,
     int? ElevationMeters,
     string? RegencyName = null,
-    bool IsIndonesiaLayer = false);
+    bool IsIndonesiaLayer = false,
+    string? ElevationSource = null);
