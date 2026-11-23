@@ -85,6 +85,32 @@ REQUIRED_FILES = {
 }
 
 
+def ensure_publish_folder(source: Path, repo: Path) -> Path:
+    """Refuses to prune anything that is not a self-contained publish output.
+
+    This script deletes files. A wrong --source (repository root, home folder,
+    drive root, or a folder that happens to contain a checkout) must fail before
+    anything is touched.
+    """
+    resolved = source.resolve()
+    if not resolved.is_dir():
+        raise SystemExit(f"Folder publish tidak ditemukan: {resolved}")
+
+    root = Path(resolved.anchor)
+    home = Path.home().resolve()
+    if resolved == root or resolved == home:
+        raise SystemExit(f"Refusing to prune a filesystem or home root: {resolved}")
+    if resolved == repo or resolved == repo.parent or resolved in repo.parents:
+        raise SystemExit(f"Refusing to prune a repository folder: {resolved}")
+    if (resolved / ".git").exists():
+        raise SystemExit(f"Refusing to prune a folder that contains .git: {resolved}")
+    if not (resolved / "AyoJamaah.exe").is_file():
+        raise SystemExit(
+            f"Refusing to prune a folder without AyoJamaah.exe (bukan output publish): {resolved}"
+        )
+    return resolved
+
+
 def removed_files(source: Path) -> list[Path]:
     """Returns files matched by the deny-list, without touching the disk."""
     matched: list[Path] = []
@@ -155,11 +181,7 @@ def main() -> int:
                         help="List what would be removed without deleting")
     args = parser.parse_args()
 
-    source: Path = args.source.resolve()
-    if not source.is_dir():
-        raise SystemExit(f"Folder publish tidak ditemukan: {source}")
-    if source == repo or source == repo.parent:
-        raise SystemExit(f"Refusing to prune a repository folder: {source}")
+    source = ensure_publish_folder(args.source, repo)
 
     before = sum(p.stat().st_size for p in source.rglob("*") if p.is_file())
     candidates = sorted(removed_files(source))

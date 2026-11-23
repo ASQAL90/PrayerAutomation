@@ -12,10 +12,13 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    # Lindungi artefak rilis: konfigurasikan environment ini dengan required
+    # reviewers dan secret signing di level environment, bukan level repo.
+    environment: release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
@@ -31,8 +34,9 @@ jobs:
           }
           "NOTES_PATH=$notes" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca  # dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable
           targets: x86_64-pc-windows-msvc, i686-pc-windows-msvc
 
       - name: Install NSIS
@@ -113,16 +117,18 @@ jobs:
             --baseline installer/update/baseline-2.3.0-x64.json `
             --portable-zip AyoJamaah-win-x64.zip `
             --installer out/installer/AyoJamaah.Setup-$version-x64.exe `
-            --output-dir out/update
+            --output-dir out/update `
+            --require-signature
           python installer/build_update_payload.py --version $version --arch x86 `
             --source out/portable-x86 `
             --baseline installer/update/baseline-2.3.0-x86.json `
             --portable-zip AyoJamaah-win-x86.zip `
             --installer out/installer/AyoJamaah.Setup-$version-x86.exe `
-            --output-dir out/update
+            --output-dir out/update `
+            --require-signature
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # actions/upload-artifact@v4
         with:
           name: AyoJamaah-release
           path: |
@@ -137,7 +143,7 @@ jobs:
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # softprops/action-gh-release@v2
         with:
           body_path: ${{ env.NOTES_PATH }}
           files: |

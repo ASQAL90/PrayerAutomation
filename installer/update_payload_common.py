@@ -2,10 +2,42 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from pathlib import Path
 
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+
+def iter_payload_files(source: Path) -> list[Path]:
+    """Lists payload files without following symlinks.
+
+    Nothing outside the publish folder may be hashed, zipped or installed, so a
+    symlink (to a file or a directory) is rejected instead of being copied.
+    """
+    if source.is_symlink():
+        raise ValueError(f"Folder sumber adalah symlink: {source}")
+    if not source.is_dir():
+        raise ValueError(f"Folder sumber tidak ditemukan: {source}")
+
+    files: list[Path] = []
+    for root, directories, names in os.walk(source, followlinks=False):
+        root_path = Path(root)
+        for name in sorted(directories):
+            candidate = root_path / name
+            if candidate.is_symlink():
+                raise ValueError(
+                    f"Symlink di payload: {candidate.relative_to(source).as_posix()}"
+                )
+        for name in sorted(names):
+            candidate = root_path / name
+            if candidate.is_symlink():
+                raise ValueError(
+                    f"Symlink di payload: {candidate.relative_to(source).as_posix()}"
+                )
+            if candidate.is_file():
+                files.append(candidate)
+    return files
 
 
 def is_safe_relative(rel: str) -> bool:
@@ -28,12 +60,8 @@ def sha256_file(path: Path) -> str:
 
 def relative_files(source: Path) -> dict[str, str]:
     """Maps every published file to its SHA-256 using explicit, safe POSIX paths."""
-    if not source.is_dir():
-        raise ValueError(f"Folder sumber tidak ditemukan: {source}")
     result: dict[str, str] = {}
-    for path in sorted(source.rglob("*")):
-        if not path.is_file() or path.is_symlink():
-            continue
+    for path in iter_payload_files(source):
         rel = path.relative_to(source).as_posix()
         if not is_safe_relative(rel):
             raise ValueError(f"Path payload tidak aman: {rel}")

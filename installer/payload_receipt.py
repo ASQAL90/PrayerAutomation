@@ -7,7 +7,11 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path, PurePosixPath
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from update_payload_common import iter_payload_files  # noqa: E402
 
 UI_NAME = "AyoJamaah.dll"
 
@@ -21,7 +25,7 @@ def validated_payload(receipt: Path, source: Path) -> dict[str, str]:
         raise ValueError("Not the technically reviewed Ayo Jama'ah! payload receipt")
     if payload.get(UI_NAME) != data["ui_sha256"] or not re.fullmatch(r"[0-9a-f]{64}", data["ui_sha256"]):
         raise ValueError("Reviewed UI pin does not match the payload")
-    actual = {p.relative_to(source).as_posix() for p in source.rglob("*") if p.is_file()}
+    actual = {p.relative_to(source).as_posix() for p in iter_payload_files(source)}
     if actual != set(payload):
         raise ValueError(f"Payload names differ: missing={set(payload)-actual}, extra={actual-set(payload)}")
     for rel, expected in payload.items():

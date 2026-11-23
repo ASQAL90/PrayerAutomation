@@ -1,0 +1,68 @@
+name: Laporan Bug
+description: Laporkan bug yang dapat direproduksi (bukan masalah keamanan).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Jangan gunakan formulir ini untuk masalah keamanan. Ikuti `SECURITY.md`.
+        Jangan menyertakan token, kunci, atau data pribadi.
+  - type: input
+    id: version
+    attributes:
+      label: Versi aplikasi
+      description: Terlihat di jendela About.
+      placeholder: "2.5.1"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Versi Windows dan arsitektur
+      placeholder: "Windows 11 24H2 x64"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Cara menjalankan
+      options:
+        - Terpasang (installer)
+        - Portable (ZIP)
+        - Hasil build sendiri
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah reproduksi
+      description: Tuliskan langkah sampai bug muncul.
+      placeholder: |
+        1. Buka ...
+        2. Klik ...
+        3. Terjadi ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Perilaku yang diharapkan
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log atau tangkapan layar (opsional)
+      description: >
+        Log ada di %LOCALAPPDATA%\PrayerAutomation\prayer_automation.log.
+        Hapus koordinat, nama lokasi, dan path pengguna sebelum menempel.
+      render: text
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Konfirmasi
+      options:
+        - label: Saya sudah mencari issue yang serupa.
+          required: true
+        - label: Laporan ini bukan masalah keamanan.
+          required: true
