@@ -41,6 +41,10 @@ internal sealed class SignedUpdateManifest
 /// <summary>Verifies RSA-SHA256 signatures over the exact bytes of a downloaded manifest.</summary>
 internal static class UpdateManifest
 {
+    // Rilis 2.4.0 ke atas wajib memakai manifest bertanda tangan. Rilis yang
+    // lebih lama boleh memakai jalur legacy tanpa manifest.
+    internal static readonly Version SignedManifestRequiredFrom = new(2, 4, 0, 0);
+
     // SubjectPublicKeyInfo (DER), base64. The private key never ships with the app.
     internal const string PublicKeyBase64 =
         "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5wEd5c/WaPx3xXeREQ/su7Ylb1nAGeBWjdvGnLwq+FNm9Z4xui1SSac8JaOlpRr7tg0rUbTxBnpKCBDjH09JTWfAOT5aPYL7ALJYr2fJsSvhP8STbl49BbU9TLoHIj2/2SJNIzAwGOS1RRnLuydSZgWKqIvjA9Fnt6jQdXI0XB1ilvls0Nr/k5k76FxtBS5Dce1zcxG4SFDmWedJeTwtdhL8c6/ZfUxE/XdjQsPV7X8Obt/ZdGZ+uMGuycBCcuLWzYcrgzKrsBBptl9hoSkfBQPPR6NgIK5uUvYR4RPz3L677nRIbi0k7TwXu2u2ysvi8hI24Qww5SviWNyRjv4zUQIDAQAB";
@@ -72,8 +76,14 @@ internal static class UpdateManifest
             if (parsed.Files.Any(file => !IsSafeRelativePath(file.Path) ||
                     file.Size < 0 || !IsSha256(file.Sha256))) return false;
             if (parsed.Deleted.Any(path => !IsSafeRelativePath(path))) return false;
-            if (!IsSha256(parsed.DeltaSha256) || !IsSha256(parsed.FallbackSha256)) return false;
-            if (parsed.DeltaSize <= 0 || parsed.FallbackSize <= 0) return false;
+            // Setiap nama aset dipakai sebagai nama fail lokal oleh updater.
+            // Nama yang memuat pemisah path/traversal harus ditolak sejak
+            // manifest diverifikasi, bukan saat fail sedang ditulis.
+            if (!IsSafeAssetName(parsed.DeltaAsset) || !IsSafeAssetName(parsed.FallbackAsset) ||
+                !IsSafeAssetName(parsed.InstallerAsset)) return false;
+            if (!IsSha256(parsed.DeltaSha256) || !IsSha256(parsed.FallbackSha256) ||
+                !IsSha256(parsed.InstallerSha256)) return false;
+            if (parsed.DeltaSize <= 0 || parsed.FallbackSize <= 0 || parsed.InstallerSize <= 0) return false;
             manifest = parsed;
             return true;
         }
@@ -82,6 +92,23 @@ internal static class UpdateManifest
         {
             return false;
         }
+    }
+
+    /// <summary>True when a release must provide a verifiable signed manifest.</summary>
+    /// <param name="version">Release version or tag.</param>
+    /// <returns>True for 2.4.0 and newer, the first releases with signed manifests.</returns>
+    internal static bool RequiresSignedManifest(string? version) =>
+        UpdateVersion.TryParse(version, out Version parsed) && parsed >= SignedManifestRequiredFrom;
+
+    /// <summary>True for a bare file name that is safe to use as a local download name.</summary>
+    /// <param name="name">Asset name from the release API or signed manifest.</param>
+    /// <returns>True when the name cannot traverse directories or hide an alternate stream.</returns>
+    internal static bool IsSafeAssetName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 200) return false;
+        if (name is "." or ".." || name.Contains("..", StringComparison.Ordinal)) return false;
+        if (name.IndexOfAny(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) >= 0) return false;
+        return !name.Any(character => char.IsControl(character));
     }
 
     /// <summary>True for a relative POSIX path that cannot escape the application root.</summary>

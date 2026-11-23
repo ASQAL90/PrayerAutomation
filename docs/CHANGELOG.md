@@ -1,5 +1,8 @@
 # Riwayat perubahan
 
+## Belum dirilis
+- Diperkeras jalur pembaruan: nama aset divalidasi sebagai nama berkas polos sehingga tidak bisa dipakai untuk traversal direktori, manifest bertanda tangan dengan nama aset berbahaya ditolak, dan rilis 2.4.0 ke atas bersifat *fail-closed* (pembaruan dibatalkan bila manifest/tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned).
+
 ## v2.5.1
 - Diperkecil ukuran paket self-contained lewat optimasi Tier 1: payload publish memangkas berkas runtime/framework yang tidak diperlukan aplikasi, memverifikasi berkas wajib, dan membersihkan/remap `deps.json`.
 - Dihapus dependensi WinForms lewat optimasi Tier 2: tray icon memakai native `Shell_NotifyIconW` dengan menu konteks WPF, sehingga `UseWindowsForms` tidak lagi diperlukan.
