@@ -19,3 +19,23 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
+
+  dotnet-build:
+    name: Build aplikasi (Release, x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # actions/checkout@v7.0.1
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73  # actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca  # dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      # Sama seperti release.yml: RustTarget msvc memakai linker Visual Studio
+      # yang sudah ada di windows-latest, jadi tidak perlu cross-linker MinGW.
+      - name: Build WPF (Release, x64)
+        run: dotnet build src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release -p:Arch=x64 -p:RustTarget=x86_64-pc-windows-msvc
