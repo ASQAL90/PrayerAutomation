@@ -34,6 +34,20 @@ string root = Path.Combine(Path.GetTempPath(), "ayojamaah-update-smoke-" + Guid.
 Directory.CreateDirectory(root);
 try
 {
+    // Hardening cs/zipslip: only contained, normalized entry names reach the plan.
+    string zipRoot = Path.Combine(root, "zip");
+    Directory.CreateDirectory(zipRoot);
+    Check(ZipEntryPath.TryGetSafeRelative("geonames/cities1000.tsv.gz", zipRoot, out string safeZipPath) &&
+          safeZipPath == "geonames/cities1000.tsv.gz", "entri ZIP relatif diterima apa adanya");
+    Check(!ZipEntryPath.TryGetSafeRelative("../escaped.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("a/../../escaped.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("a\\b.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("/abs.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("a//b.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("a/./b.txt", zipRoot, out _) &&
+          !ZipEntryPath.TryGetSafeRelative("C:/abs.txt", zipRoot, out _),
+        "entri ZIP traversal, absolut, backslash, dan path kosong ditolak");
+
     const string relative = "AyoJamaah.dll";
     string file = Path.Combine(root, relative);
     File.WriteAllText(file, "payload uji");
@@ -233,6 +247,11 @@ Check(updateServiceSource.Contains("UpdateManifest.IsSafeAssetName(asset.Name)")
       updateServiceSource.Contains("manifest.FallbackAsset") &&
       updateServiceSource.Contains("manifest.InstallerAsset"),
     "Updater harus memvalidasi nama aset dan tidak memakai fallback unsigned untuk rilis bertanda tangan.");
+Check(updateServiceSource.Contains("ZipEntryPath.TryGetSafeRelative(entry.FullName, root, out string relative)") &&
+      updateServiceSource.Contains("DeltaCoversPlan(deltaPath, plan, root)") &&
+      !updateServiceSource.Contains("Path = entry.FullName") &&
+      !updateServiceSource.Contains("archive.Entries.Select(entry => entry.FullName)"),
+    "Updater harus menyaring entri ZIP lewat ZipEntryPath sebelum memakai nama berkas.");
 Check(updateServiceSource.Contains("AYOJAMAAH_UPDATE_URL") &&
       updateServiceSource.Contains("AYOJAMAAH_UPDATE_TOKEN") &&
       updateServiceSource.Contains("#if AYOJAMAAH_INTERNAL_UPDATE") &&

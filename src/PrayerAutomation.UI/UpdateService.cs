@@ -170,7 +170,7 @@ internal sealed class UpdateService
                 string? deltaPath = await DownloadAssetAsync(delta, folder, progress, cancellationToken)
                     .ConfigureAwait(false);
                 if (deltaPath is not null && VerifyLocalDigest(deltaPath, manifest.DeltaSha256) &&
-                    DeltaCoversPlan(deltaPath, plan))
+                    DeltaCoversPlan(deltaPath, plan, root))
                     return new UpdatePreparation(UpdateInstallMode.Delta, deltaPath, plan,
                         "Pembaruan kecil sudah diunduh dan diperiksa.");
             }
@@ -298,14 +298,18 @@ internal sealed class UpdateService
     /// <summary>True when the delta zip actually contains every file this device still needs.</summary>
     /// <param name="deltaPath">Downloaded delta zip.</param>
     /// <param name="plan">Planned file changes.</param>
+    /// <param name="root">Application root used to reject escaping entry names.</param>
     /// <returns>True when the delta is sufficient for this device.</returns>
-    private static bool DeltaCoversPlan(string deltaPath, UpdatePlan plan)
+    private static bool DeltaCoversPlan(string deltaPath, UpdatePlan plan, string root)
     {
         try
         {
             using ZipArchive archive = ZipFile.OpenRead(deltaPath);
-            var names = new HashSet<string>(
-                archive.Entries.Select(entry => entry.FullName), StringComparer.OrdinalIgnoreCase);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (ZipArchiveEntry entry in archive.Entries)
+            {
+                if (ZipEntryPath.TryGetSafeRelative(entry.FullName, root, out string relative)) names.Add(relative);
+            }
             return plan.Needed.All(file => names.Contains(file.Path));
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -330,12 +334,12 @@ internal sealed class UpdateService
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (entry.FullName.EndsWith('/') || !UpdateManifest.IsSafeRelativePath(entry.FullName)) continue;
+                if (!ZipEntryPath.TryGetSafeRelative(entry.FullName, root, out string relative)) continue;
                 await using Stream stream = entry.Open();
                 byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
                 files.Add(new ManifestFile
                 {
-                    Path = entry.FullName,
+                    Path = relative,
                     Size = entry.Length,
                     Sha256 = Convert.ToHexString(hash).ToLowerInvariant()
                 });
