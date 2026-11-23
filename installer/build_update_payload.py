@@ -12,35 +12,76 @@ artifact is needed. Stdlib only (openssl is used for RSA signing).
 from __future__ import annotations
 
 import argparse
+import atexit
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from update_payload_common import canonical_json, relative_files, sha256_file  # noqa: E402
 
 
-def resolve_signing_key(explicit: Path | None) -> Path | None:
+def _remove_quietly(path: Path) -> None:
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def resolve_signing_key(explicit: Path | None) -> tuple[Path | None, Callable[[], None]]:
+    """Resolves the RSA key and returns a cleanup callback for temporary material.
+
+    The private key is never left behind: a temporary directory is created with
+    owner-only permissions, and both the DER input and the PEM copy are removed
+    at process exit even when signing fails.
+    """
     if explicit is not None:
         if not explicit.is_file():
             raise ValueError(f"Kunci penandatangan tidak ditemukan: {explicit}")
-        return explicit
+        return explicit, lambda: None
+
     encoded = os.environ.get("AYOJAMAAH_UPDATE_SIGNING_KEY_B64", "").strip()
     if not encoded:
-        return None
-    temp = Path(os.environ.get("RUNNER_TEMP", "."))
+        return None, lambda: None
+
+    temp_root = os.environ.get("RUNNER_TEMP", "").strip()
+    if temp_root:
+        temp = Path(temp_root)
+        temp.mkdir(parents=True, exist_ok=True)
+        directory: Path | None = None
+    else:
+        temp = Path(tempfile.mkdtemp(prefix="ayojamaah-sign-"))
+        directory = temp
+    try:
+        os.chmod(temp, 0o700)
+    except OSError:
+        pass
+
     der = temp / "ayojamaah-update-key.der"
-    der.write_bytes(base64.b64decode(encoded, validate=True))
     key = temp / "ayojamaah-update-key.pem"
-    subprocess.run(["openssl", "pkey", "-inform", "DER", "-in", str(der),
-                    "-out", str(key)], check=True)
-    der.unlink()
-    return key
+
+    def cleanup() -> None:
+        _remove_quietly(der)
+        _remove_quietly(key)
+        if directory is not None:
+            shutil.rmtree(directory, ignore_errors=True)
+
+    atexit.register(cleanup)
+    der.write_bytes(base64.b64decode(encoded, validate=True))
+    try:
+        subprocess.run(["openssl", "pkey", "-inform", "DER", "-in", str(der),
+                        "-out", str(key)], check=True)
+    finally:
+        _remove_quietly(der)
+    return key, cleanup
 
 
 def sign_manifest(manifest_path: Path, key: Path) -> Path:
@@ -66,7 +107,12 @@ def main() -> None:
     parser.add_argument("--installer", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--signing-key", type=Path, default=None)
+    parser.add_argument("--require-signature", action="store_true",
+                        help="Gagal bila kunci penandatangan tidak tersedia")
     args = parser.parse_args()
+
+    if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
+        raise ValueError(f"Versi tidak valid (harus x.y.z): {args.version}")
 
     tag = args.tag or f"v{args.version}"
     baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
@@ -120,13 +166,21 @@ def main() -> None:
     manifest_name = f"AyoJamaah-update-{args.version}-{args.arch}.json"
     manifest_path = output_dir / manifest_name
     manifest_bytes = canonical_json(manifest)
-    manifest_path.write_bytes(manifest_bytes)
 
-    key = resolve_signing_key(args.signing_key)
-    signature_name = ""
-    if key is not None:
-        signature_name = f"AyoJamaah-update-{args.version}-{args.arch}.sig"
-        sign_manifest(manifest_path, key)
+    key, cleanup_key = resolve_signing_key(args.signing_key)
+    try:
+        if key is None and args.require_signature:
+            raise ValueError(
+                "Manifest pembaruan wajib ditandatangani: sediakan --signing-key "
+                "atau AYOJAMAAH_UPDATE_SIGNING_KEY_B64"
+            )
+        manifest_path.write_bytes(manifest_bytes)
+        signature_name = ""
+        if key is not None:
+            signature_name = f"AyoJamaah-update-{args.version}-{args.arch}.sig"
+            sign_manifest(manifest_path, key)
+    finally:
+        cleanup_key()
 
     print(json.dumps({
         "status": "PASS",

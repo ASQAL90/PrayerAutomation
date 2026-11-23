@@ -9,6 +9,9 @@ import json
 import sys
 from pathlib import Path, PurePosixPath
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from update_payload_common import iter_payload_files  # noqa: E402
+
 UI_NAME = "AyoJamaah.dll"
 EXE_NAME = "AyoJamaah.exe"
 DEFAULT_REVIEW_STATUS = "TECHNICAL_CHECKS_PASSED_UI_ACCEPTANCE_PENDING"
@@ -29,14 +32,8 @@ def pe_machine(path: Path) -> str:
 
 
 def collect_payload(source: Path) -> dict[str, str]:
-    if not source.is_dir():
-        raise ValueError(f"Payload source is not a directory: {source}")
     payload: dict[str, str] = {}
-    for path in sorted(source.rglob("*")):
-        if path.is_symlink():
-            raise ValueError(f"Symlink in payload: {path.relative_to(source).as_posix()}")
-        if not path.is_file():
-            continue
+    for path in iter_payload_files(source):
         rel = path.relative_to(source).as_posix()
         parts = PurePosixPath(rel).parts
         if not parts or ".." in parts or PurePosixPath(rel).is_absolute() or any(c in rel for c in '";{}:\\'):
