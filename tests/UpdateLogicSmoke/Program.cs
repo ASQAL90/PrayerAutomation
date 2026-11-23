@@ -17,6 +17,18 @@ Check(UpdateManifest.IsSafeRelativePath("geonames/cities1000.tsv.gz"), "path rel
 Check(!UpdateManifest.IsSafeRelativePath("../data.txt"), "traversal ditolak");
 Check(!UpdateManifest.IsSafeRelativePath("C:\\data.txt"), "path absolut ditolak");
 Check(!UpdateManifest.IsSafeRelativePath("a\\b.txt"), "backslash ditolak");
+Check(UpdateManifest.IsSafeAssetName("AyoJamaah-delta-2.5.1-x64.zip"), "nama aset wajar diterima");
+Check(!UpdateManifest.IsSafeAssetName("../evil.zip") &&
+      !UpdateManifest.IsSafeAssetName("a\\b.exe") &&
+      !UpdateManifest.IsSafeAssetName("C:\\evil.exe") &&
+      !UpdateManifest.IsSafeAssetName("..") &&
+      !UpdateManifest.IsSafeAssetName("evil:stream.exe") &&
+      !UpdateManifest.IsSafeAssetName("evil\u0000.exe"),
+    "nama aset traversal, absolut, ADS, dan kontrol ditolak");
+Check(!UpdateManifest.RequiresSignedManifest("2.3.1") &&
+      UpdateManifest.RequiresSignedManifest("2.4.0") &&
+      UpdateManifest.RequiresSignedManifest("v2.5.1"),
+    "manifest bertanda tangan wajib mulai rilis 2.4.0");
 
 string root = Path.Combine(Path.GetTempPath(), "ayojamaah-update-smoke-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
@@ -57,6 +69,26 @@ try
     Check(!UpdateManifest.TryVerify(tampered, Convert.ToBase64String(signature), out _, publicKey),
         "manifest yang diubah ditolak");
 
+    // PA-01: even a correctly signed manifest must not name a traversal asset.
+    byte[] unsafeBytes = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>(manifestValue)
+    {
+        ["delta_asset"] = "../evil.zip"
+    });
+    byte[] unsafeSignature = rsa.SignData(unsafeBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+    Check(!UpdateManifest.TryVerify(unsafeBytes, Convert.ToBase64String(unsafeSignature), out _, publicKey),
+        "manifest bertanda tangan dengan nama aset traversal ditolak");
+    byte[] unsafeInstallerBytes = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>(manifestValue)
+    {
+        ["installer_asset"] = "C:\\evil.exe"
+    });
+    byte[] unsafeInstallerSignature = rsa.SignData(unsafeInstallerBytes, HashAlgorithmName.SHA256,
+        RSASignaturePadding.Pkcs1);
+    Check(!UpdateManifest.TryVerify(unsafeInstallerBytes, Convert.ToBase64String(unsafeInstallerSignature),
+            out _, publicKey),
+        "manifest bertanda tangan dengan nama installer absolut ditolak");
+    Check(UpdateManifest.TryVerify(bytes, Convert.ToBase64String(signature), out _, publicKey),
+        "manifest dengan nama aset aman tetap diterima");
+
     using CancellationTokenSource cts = new();
     UpdatePlan delta = await UpdatePlanner.CreateAsync(manifest!, "2.3.0", root, false, cts.Token);
     Check(delta.UseDelta, "versi 2.3.0 memakai delta");
@@ -94,9 +126,9 @@ Check(mainWindowSource.Contains("_uiDispatcher = Dispatcher", StringComparison.O
       mainWindowSource.Contains("if (!_uiDispatcher.CheckAccess())", StringComparison.Ordinal) &&
       !mainWindowSource.Contains("!Dispatcher.CheckAccess()", StringComparison.Ordinal),
     "Status setter MainWindow harus memakai Dispatcher yang ditangkap di thread UI.");
-Check(traySource.Contains("_uiDispatcher = WpfApplication.Current.Dispatcher", StringComparison.Ordinal) &&
-      !traySource.Contains("WpfApplication.Current.Dispatcher.CheckAccess()", StringComparison.Ordinal),
-    "TrayService tidak boleh membaca Dispatcher Application.Current dari thread latar.");
+Check(traySource.Contains("_uiDispatcher = Application.Current.Dispatcher", StringComparison.Ordinal) &&
+      !traySource.Contains("Application.Current.Dispatcher.CheckAccess()", StringComparison.Ordinal),
+    "TrayService harus menangkap Dispatcher sekali di konstruktor UI, bukan dari thread latar.");
 Check(appSource.Contains("Dispatcher ui = Dispatcher;", StringComparison.Ordinal) &&
       appSource.Contains("ui.BeginInvoke(() => ShowUpdateWindow(release))", StringComparison.Ordinal) &&
       !appSource.Contains("_ = Dispatcher.BeginInvoke(() => ShowUpdateWindow(release))", StringComparison.Ordinal),
@@ -195,6 +227,12 @@ Check(changelog.Contains("## v2.5.1", StringComparison.Ordinal) &&
     "Changelog memuat semua versi dan catatan rilis 2.5.1 memakai bahasa pihak ketiga.");
 
 string updateServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateService.cs"));
+Check(updateServiceSource.Contains("UpdateManifest.IsSafeAssetName(asset.Name)") &&
+      updateServiceSource.Contains("UpdateManifest.RequiresSignedManifest(release.Version)") &&
+      updateServiceSource.Contains("if (!verified && signedRequired) return null;") &&
+      updateServiceSource.Contains("manifest.FallbackAsset") &&
+      updateServiceSource.Contains("manifest.InstallerAsset"),
+    "Updater harus memvalidasi nama aset dan tidak memakai fallback unsigned untuk rilis bertanda tangan.");
 Check(updateServiceSource.Contains("AYOJAMAAH_UPDATE_URL") &&
       updateServiceSource.Contains("AYOJAMAAH_UPDATE_TOKEN") &&
       updateServiceSource.Contains("#if AYOJAMAAH_INTERNAL_UPDATE") &&

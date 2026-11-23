@@ -31,6 +31,6 @@ Tiap rilis dengan dukungan delta mengunggah, per arsitektur:
 - `AyoJamaah-update-<versi>-<arch>.sig` — tanda tangan base64 atas **byte persis** file manifest.
 - `AyoJamaah-delta-<versi>-<arch>.zip` — hanya berkas yang berubah sejak baseline.
 
-Baseline 2.3.0 disimpan sebagai `installer/update/baseline-2.3.0-<arch>.json`, sehingga CI tidak perlu mengunduh zip lama. Jika secret tidak diisi atau manifest gagal diverifikasi, aplikasi jatuh ke zip penuh (portable) atau installer NSIS (instalasi). Rilis v2.4.0 sudah mengunggah manifest, `.sig`, dan delta untuk kedua arsitektur memakai baseline 2.3.0 serta kunci yang sama dengan `PublicKeyBase64` di `UpdateManifest.cs`.
+Baseline 2.3.0 disimpan sebagai `installer/update/baseline-2.3.0-<arch>.json`, sehingga CI tidak perlu mengunduh zip lama. Untuk rilis **2.4.0 ke atas**, aplikasi bersifat *fail-closed*: manifest dan `.sig` wajib ada, tanda tangannya harus sah, dan aset yang dipakai harus nama berkas polos yang tercantum di manifest beserta hash-nya. Bila salah satu gagal, pembaruan dibatalkan — aplikasi **tidak** jatuh ke zip penuh atau installer NSIS yang tidak bertanda tangan. Rilis sebelum 2.4.0 tetap memakai jalur legacy tanpa manifest. Rilis v2.4.0 sudah mengunggah manifest, `.sig`, dan delta untuk kedua arsitektur memakai baseline 2.3.0 serta kunci yang sama dengan `PublicKeyBase64` di `UpdateManifest.cs`.
 
 Workflow `Release` mempublikasikan rilis bila dijalankan dari tag `v*`; v2.4.0 dipublish dari tag `v2.4.0`, bukan dari cabang `master`.

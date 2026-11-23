@@ -99,11 +99,13 @@ internal sealed class UpdateService
             : null;
         string arch = Environment.Is64BitProcess ? "x64" : "x86";
         var assets = new Dictionary<string, ReleaseAsset>(StringComparer.OrdinalIgnoreCase);
+        bool unsafeAssetNameSeen = false;
         foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
         {
             string? name = asset.GetProperty("name").GetString();
             string? url = asset.GetProperty("browser_download_url").GetString();
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(url)) continue;
+            if (!UpdateManifest.IsSafeAssetName(name)) { unsafeAssetNameSeen = true; continue; }
             string? apiUrl = asset.TryGetProperty("url", out JsonElement apiElement) ? apiElement.GetString() : null;
             string? digest = null;
             if (asset.TryGetProperty("digest", out JsonElement digestElement))
@@ -114,6 +116,10 @@ internal sealed class UpdateService
 
         assets.TryGetValue($"AyoJamaah-update-{version}-{arch}.json", out ReleaseAsset? manifest);
         assets.TryGetValue($"AyoJamaah-update-{version}-{arch}.sig", out ReleaseAsset? signature);
+        // Fail closed: since 2.4.0 a release without a complete, safely named
+        // signed-manifest pair is not offered as an update at all.
+        if (UpdateManifest.RequiresSignedManifest(tag) &&
+            (unsafeAssetNameSeen || manifest is null || signature is null)) return null;
         if (manifest is null || signature is null)
         {
             // Old releases without signed manifests still support the NSIS fallback.
@@ -134,31 +140,76 @@ internal sealed class UpdateService
     internal async Task<UpdatePreparation?> PrepareAsync(UpdateRelease release, string currentVersion,
         string root, string folder, IProgress<double> progress, CancellationToken cancellationToken)
     {
+        bool signedRequired = UpdateManifest.RequiresSignedManifest(release.Version);
+        if (signedRequired && (release.Manifest is null || release.Signature is null)) return null;
+
+        SignedUpdateManifest? manifest = null;
         if (release.Manifest is not null && release.Signature is not null)
         {
             byte[] manifestBytes = await DownloadBytesAsync(release.Manifest, folder, cancellationToken)
                 .ConfigureAwait(false);
             byte[] signatureBytes = await DownloadBytesAsync(release.Signature, folder, cancellationToken)
                 .ConfigureAwait(false);
-            if (manifestBytes.Length > 0 && signatureBytes.Length > 0 &&
+            bool verified = manifestBytes.Length > 0 && signatureBytes.Length > 0 &&
                 DigestMatches(release.Manifest, manifestBytes) && DigestMatches(release.Signature, signatureBytes) &&
-                UpdateManifest.TryVerify(manifestBytes, Encoding.UTF8.GetString(signatureBytes), out SignedUpdateManifest? manifest) &&
-                manifest is not null)
-            {
-                UpdatePlan plan = await UpdatePlanner.CreateAsync(manifest, currentVersion, root,
-                    release.IsInstalled, cancellationToken).ConfigureAwait(false);
-                if (plan.UseDelta && release.Assets.TryGetValue(plan.Manifest.DeltaAsset, out ReleaseAsset? delta))
-                {
-                    string? deltaPath = await DownloadAssetAsync(delta, folder, progress, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (deltaPath is not null && VerifyLocalDigest(deltaPath, plan.Manifest.DeltaSha256) &&
-                        DeltaCoversPlan(deltaPath, plan))
-                        return new UpdatePreparation(UpdateInstallMode.Delta, deltaPath, plan,
-                            "Pembaruan kecil sudah diunduh dan diperiksa.");
-                }
-            }
+                UpdateManifest.TryVerify(manifestBytes, Encoding.UTF8.GetString(signatureBytes), out manifest) &&
+                manifest is not null;
+            // Fail closed: a release that promises a signed manifest must never
+            // silently continue with an unsigned installer or portable zip.
+            if (!verified && signedRequired) return null;
         }
 
+        if (manifest is not null)
+        {
+            UpdatePlan plan = await UpdatePlanner.CreateAsync(manifest, currentVersion, root,
+                release.IsInstalled, cancellationToken).ConfigureAwait(false);
+            if (plan.UseDelta &&
+                release.Assets.TryGetValue(manifest.DeltaAsset, out ReleaseAsset? delta) &&
+                UpdateManifest.IsSafeAssetName(delta.Name))
+            {
+                string? deltaPath = await DownloadAssetAsync(delta, folder, progress, cancellationToken)
+                    .ConfigureAwait(false);
+                if (deltaPath is not null && VerifyLocalDigest(deltaPath, manifest.DeltaSha256) &&
+                    DeltaCoversPlan(deltaPath, plan))
+                    return new UpdatePreparation(UpdateInstallMode.Delta, deltaPath, plan,
+                        "Pembaruan kecil sudah diunduh dan diperiksa.");
+            }
+
+            // Fallback assets are taken from the signed manifest only. Their
+            // digests are signed too, so a tampered release cannot substitute
+            // an arbitrary installer or portable zip here.
+            if (release.IsInstalled)
+            {
+                if (release.Assets.TryGetValue(manifest.InstallerAsset, out ReleaseAsset? installer) &&
+                    UpdateManifest.IsSafeAssetName(installer.Name))
+                {
+                    string? path = await DownloadAssetAsync(installer, folder, progress, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (path is not null && VerifyLocalDigest(path, manifest.InstallerSha256))
+                        return new UpdatePreparation(UpdateInstallMode.Installer, path, null,
+                            "Pembaruan lengkap sudah diunduh dan diperiksa.");
+                }
+            }
+            else if (release.Assets.TryGetValue(manifest.FallbackAsset, out ReleaseAsset? fallback) &&
+                     UpdateManifest.IsSafeAssetName(fallback.Name))
+            {
+                string? path = await DownloadAssetAsync(fallback, folder, progress, cancellationToken)
+                    .ConfigureAwait(false);
+                if (path is not null && VerifyLocalDigest(path, manifest.FallbackSha256))
+                {
+                    UpdatePlan? signedFullPlan = await BuildFullZipPlanAsync(path, release.Version, root,
+                        cancellationToken).ConfigureAwait(false);
+                    if (signedFullPlan is not null)
+                        return new UpdatePreparation(UpdateInstallMode.FullZip, path, signedFullPlan,
+                            "Pembaruan lengkap sudah diunduh dan diperiksa.");
+                }
+            }
+            // A verified manifest with no usable signed payload is still a
+            // failed update; do not fall through to unsigned legacy assets.
+            return null;
+        }
+
+        // Legacy releases (before signed manifests) only.
         if (release.IsInstalled)
         {
             ReleaseAsset? installer = FindInstaller(release.Assets, release.Version);
@@ -194,6 +245,9 @@ internal sealed class UpdateService
     internal async Task<string?> DownloadAssetAsync(ReleaseAsset asset, string folder,
         IProgress<double>? progress, CancellationToken cancellationToken)
     {
+        // asset.Name becomes a local file name below, so reject traversal here
+        // even if it came from a signed manifest or a trusted-looking API.
+        if (!UpdateManifest.IsSafeAssetName(asset.Name)) return null;
         Directory.CreateDirectory(folder);
         string path = Path.Combine(folder, asset.Name);
         string partial = path + ".part";
