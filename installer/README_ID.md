@@ -39,7 +39,7 @@ Payload tidak dibangun ulang oleh installer. Kalau portable berubah, buat receip
 
 ## Perilaku installer
 
-- Per-user; bisa dijalankan tanpa atau dengan elevasi (mis. komputer satu akun administrator), tetap dipasang ke `%LOCALAPPDATA%\Programs\PrayerAutomation`.
+- Per-user; bisa dijalankan tanpa atau dengan elevasi (mis. komputer satu akun administrator), tetap dipasang ke `%LOCALAPPDATA%\Programs\PrayerAutomation`. Bila dijalankan lewat **Run as administrator**, pemasang menampilkan peringatan singkat: **Lanjut** tetap memasang, **Batal** membatalkan. Ini hanya peringatan, bukan pemblokiran.
 - Halaman info, halaman opsional **Mulai dari baru**, halaman progres, dan halaman akhir.
 - Pilihan Jalankan aplikasi dan pintasan desktop tidak dicentang.
 - Payload x64/x86 dipilih otomatis dari arsitektur Windows.
