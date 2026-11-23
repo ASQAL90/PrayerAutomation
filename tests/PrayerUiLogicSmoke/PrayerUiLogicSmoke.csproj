@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="GeoTimeZone" Version="6.1.0" />
+    <PackageReference Include="GeoTimeZone" Version="7.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />

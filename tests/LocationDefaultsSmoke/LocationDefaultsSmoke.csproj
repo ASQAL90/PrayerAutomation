@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/PrayerAutomation.UI/LocationDefaults.cs" Link="LocationDefaults.cs" />
-    <PackageReference Include="GeoTimeZone" Version="6.1.0" />
+    <PackageReference Include="GeoTimeZone" Version="7.0.0" />
   </ItemGroup>
 </Project>
