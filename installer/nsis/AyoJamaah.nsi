@@ -121,6 +121,7 @@ Var UpdateMode
 Var UpdateWait
 Var InstalledVersion
 Var VersionResult
+Var IsElevated
 
 Section "Aplikasi" SEC_INSTALL_MAIN
   SectionIn RO
@@ -297,6 +298,22 @@ Function .onInit
     ${EndIf}
   guard_ready:
 
+  ; NS-01 (warn-only): an elevated installer is allowed, but the per-user install
+  ; can leave Administrator-owned files in the user profile and complicate the
+  ; next update. Warn once for manual GUI runs; /UPDATEMODE is silent and must
+  ; never wait on a modal dialog.
+  ${If} $UpdateMode == 0
+    Call IsProcessElevated
+    ${If} $IsElevated == 1
+      MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION|MB_DEFBUTTON2 \
+        "Pemasang ini sedang berjalan dengan hak Administrator.$\r$\n$\r$\nPemasangan tetap dilakukan untuk pengguna saat ini, tetapi berkas di folder pengguna bisa menjadi milik Administrator dan menyulitkan pembaruan berikutnya.$\r$\n$\r$\nSebaiknya jalankan pemasang seperti biasa, tanpa 'Run as administrator'.$\r$\n$\r$\nTetap lanjutkan?" \
+        IDOK elevation_warn_continue
+      SetErrorLevel 3
+      Quit
+      elevation_warn_continue:
+    ${EndIf}
+  ${EndIf}
+
   Call CheckUnsafeCommandLine
   ${If} $SafetyProblem != ""
     MessageBox MB_ICONSTOP "$SafetyProblem"
@@ -371,6 +388,18 @@ FunctionEnd
 
 Function .onGUIEnd
   Call ReleaseSafetyMutex
+FunctionEnd
+
+; NS-01 helper: an elevated token makes `fltmc` exit with code 0. Anything else
+; (non-elevated, tool missing, spawn error) is treated as not elevated. This is a
+; read-only query and never changes the system.
+Function IsProcessElevated
+  StrCpy $IsElevated 0
+  nsExec::Exec '"$SYSDIR\fltmc.exe"'
+  Pop $0
+  ${If} $0 == "0"
+    StrCpy $IsElevated 1
+  ${EndIf}
 FunctionEnd
 
 Function InfoPageCreate

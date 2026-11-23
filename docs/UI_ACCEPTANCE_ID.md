@@ -5,7 +5,7 @@ Panduan ini untuk acceptance manual build C# WPF + Rust. Hasil tes otomatis ters
 ## Sebelum membuka aplikasi
 
 - Gunakan satu PC uji dahulu, bukan komputer yang sedang mengendalikan proses/equipment.
-- Pakai akun Windows biasa. Pemasang juga bisa dijalankan sebagai administrator (mis. komputer satu akun administrator); pemasangan tetap untuk pengguna saat ini. Jangan memasukkan kredensial ke chat.
+- Pakai akun Windows biasa. Pemasang juga bisa dijalankan sebagai administrator (mis. komputer satu akun administrator); pemasangan tetap untuk pengguna saat ini, tetapi akan muncul peringatan singkat dengan pilihan **Lanjut** atau **Batal**. Jangan memasukkan kredensial ke chat.
 - Pertahankan seluruh folder portable; jangan hanya menyalin EXE.
 - Build membaca profil lama di `%APPDATA%\PrayerAutomation\config.json`. Pada pemeriksaan build ini, auto-lock tersimpan aktif. Folder portable baru **tidak** membuat profil kosong.
 - Buka jauh dari waktu sholat berikutnya. Jika tidak menerima risiko sesi terkunci, jangan buka dahulu; minta peninjauan profil secara terpisah. Verifikasi build tidak mengubah profil Anda.
