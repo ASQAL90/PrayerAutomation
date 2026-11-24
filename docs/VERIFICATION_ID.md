@@ -146,6 +146,13 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Belum dijalankan: build WPF/Rust penuh dan uji pembaruan nyata di Windows.
 
 
+### Rilis 2.5.4 — 24 November 2026
+
+- Tag `v2.5.3` dibuat sebelum perbaikan tampilan riwayat perubahan (PR #14) masuk, jadi versi dinaikkan ke `2.5.4` dengan `docs/release-notes/2.5.4.md` sebagai body rilis.
+- `ReleaseNotesWindow` tidak lagi memotong bullet pada 220 karakter dan membersihkan tanda Markdown; `ReleaseNotesParser` memakai batas item 1200 karakter. Catatan rilis 2.5.2/2.5.3 dipecah menjadi baris pendek.
+- Verifikasi lokal: build WPF Release x64 berhasil, `UpdateLogicSmoke` build + run PASS, semua baris pada `docs/release-notes/2.5.2.md` dan `2.5.3.md` ≤ 220 karakter.
+- Run Release `v2.5.3` (`45331805259`) dibatalkan agar hanya satu rilis baru yang menunggu approval.
+
 ### Rilis 2.5.3 — 24 November 2026
 
 - Tag `v2.5.2` dibuat di `24cc63a` sebelum PR #11 (batas respons + `NonBacktracking`) dan PR #12 (PA-05 resolver native) masuk ke `master`. Keduanya sudah merged di `72f12b8`, jadi nomor versi dinaikkan ke `2.5.3` agar paket rilis memuat seluruh perbaikan; `docs/release-notes/2.5.3.md` menjadi body rilis.

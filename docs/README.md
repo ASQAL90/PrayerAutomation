@@ -1,8 +1,8 @@
 # Indeks dokumentasi Ayo Jama'ah!
 
-## Mulai di sini — ringkasan 2.5.3
+## Mulai di sini — ringkasan 2.5.4
 
-> **Catatan 2.5.3:** stable terbaru adalah `v2.5.3`. Rilis ini membawa pembatasan ukuran respons pembaruan, parser catatan rilis waktu-linear, dan resolver `prayer_core` yang hanya memuat pustaka dari folder aplikasi. Catatan 2.5.2 dan 2.5.1 di bawah tetap berlaku sebagai riwayat.
+> **Catatan 2.5.4:** stable terbaru adalah `v2.5.4`. Rilis ini merapikan tampilan riwayat perubahan yang sebelumnya terpotong dan tetap membawa seluruh pengerasan dari 2.5.2/2.5.3. Catatan versi lama di bawah tetap berlaku sebagai riwayat.
 >
 > **Catatan 2.5.1:** stable 2.5.1. Rilis ini memfokuskan optimasi ukuran paket self-contained (Tier 1 prune payload, Tier 2 tray native `Shell_NotifyIconW` tanpa WinForms) dan menyediakan tiga varian installer (universal/x64/x86). Angka versi sebelumnya di dokumen lain adalah riwayat.
 
