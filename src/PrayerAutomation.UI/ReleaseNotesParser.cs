@@ -18,6 +18,10 @@ internal static class ReleaseNotesParser
     private const int MaxItems = 40;
     private const int MaxItemLength = 220;
     private const int MaxTotalLength = 4000;
+    // The caller already trims the GitHub body, but Parse is also used by the
+    // smoke test and future callers. A bound here keeps the whole pass linear
+    // even if someone hands over a very large document.
+    private const int MaxBodyLength = 64 * 1024;
 
     private static readonly Dictionary<string, string> SectionNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -32,11 +36,15 @@ internal static class ReleaseNotesParser
         ["Notes"] = "Catatan"
     };
 
-    private static readonly Regex HtmlComment = new("<!--.*?-->", RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly Regex Link = new(@"!?\[([^\]]+)\]\([^)]+\)", RegexOptions.Compiled);
-    private static readonly Regex HtmlTag = new(@"<[^>]+>", RegexOptions.Compiled);
-    private static readonly Regex Emphasis = new(@"[*`_~]{1,3}", RegexOptions.Compiled);
-    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
+    // NonBacktracking keeps a hostile or malformed release body from turning
+    // these patterns into catastrophic backtracking. The expressions are all
+    // regular (no backreferences or lookarounds), so the semantics are
+    // unchanged; they run on the linear-time engine instead.
+    private static readonly Regex HtmlComment = new("<!--.*?-->", RegexOptions.Singleline | RegexOptions.NonBacktracking);
+    private static readonly Regex Link = new(@"!?\[([^\]]+)\]\([^)]+\)", RegexOptions.NonBacktracking);
+    private static readonly Regex HtmlTag = new(@"<[^>]+>", RegexOptions.NonBacktracking);
+    private static readonly Regex Emphasis = new(@"[*`_~]{1,3}", RegexOptions.NonBacktracking);
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.NonBacktracking);
 
     /// <summary>Parses a GitHub release body into display sections.</summary>
     /// <param name="body">Raw release body, or null when unavailable.</param>
@@ -44,6 +52,7 @@ internal static class ReleaseNotesParser
     internal static IReadOnlyList<ReleaseNotesSection> Parse(string? body)
     {
         if (string.IsNullOrWhiteSpace(body)) return Array.Empty<ReleaseNotesSection>();
+        if (body.Length > MaxBodyLength) body = body[..MaxBodyLength];
 
         var sections = new List<ReleaseNotesSection>();
         string? current = null;
