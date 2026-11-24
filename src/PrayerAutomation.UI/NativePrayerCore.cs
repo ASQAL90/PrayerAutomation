@@ -1,4 +1,5 @@
 // P/Invoke wrapper around the native prayer_core library for Hijri calendar and prayer-time calculations.
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace PrayerAutomation.UI;
@@ -81,9 +82,33 @@ internal static class NativePrayerCore
     /// <exception cref="InvalidOperationException">Thrown when the ABI version does not match.</exception>
     static NativePrayerCore()
     {
+        // PA-05: resolve prayer_core ourselves so the load is limited to
+        // NativeLibraryPath (the application folder). This runs before the
+        // first native call below, so no default probe can happen first.
+        NativeLibrary.SetDllImportResolver(typeof(NativePrayerCore).Assembly, ResolveNativeLibrary);
         uint version = GetAbiVersion();
         if (version != 2)
             throw new InvalidOperationException($"ABI prayer-core tidak cocok (ditemukan {version}, dibutuhkan 2).");
+    }
+
+    /// <summary>Loads prayer_core from the application folder, and nothing else.</summary>
+    /// <param name="name">Library name from the <c>DllImport</c> attribute.</param>
+    /// <param name="assembly">Assembly requesting the symbol; unused.</param>
+    /// <param name="searchPath">Default search path; deliberately ignored.</param>
+    /// <returns>Handle for prayer_core; zero for every other native library.</returns>
+    /// <exception cref="DllNotFoundException">Thrown when the validated file is missing.</exception>
+    private static IntPtr ResolveNativeLibrary(string name, Assembly assembly, DllImportSearchPath? searchPath)
+    {
+        _ = assembly;
+        _ = searchPath;
+        if (!string.Equals(name, NativeLibraryPath.LibraryName, StringComparison.Ordinal)) return IntPtr.Zero;
+        string? path = NativeLibraryPath.Locate(AppContext.BaseDirectory);
+        // Failing loudly here is intentional: returning zero would hand the
+        // request back to the default probe, which is what PA-05 removes.
+        if (path is null)
+            throw new DllNotFoundException(
+                $"prayer_core tidak ditemukan di folder aplikasi ({AppContext.BaseDirectory}). Instalasi tidak lengkap.");
+        return NativeLibrary.Load(path);
     }
 
     /// <summary>First Hijri year in the embedded official KHGT table.</summary>

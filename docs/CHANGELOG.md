@@ -1,6 +1,7 @@
 # Riwayat perubahan
 
 ## Belum dirilis
+- Pemuatan `prayer_core` kini lewat resolver P/Invoke yang dipasang sebelum panggilan native pertama. Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar, menolak berkas kosong atau reparse point, dan gagal dengan `DllNotFoundException` alih-alih jatuh kembali ke pencarian bawaan.
 - Diperkeras jalur pembaruan: nama aset divalidasi sebagai nama berkas polos sehingga tidak bisa dipakai untuk traversal direktori, manifest bertanda tangan dengan nama aset berbahaya ditolak, dan rilis 2.4.0 ke atas bersifat *fail-closed* (pembaruan dibatalkan bila manifest/tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned).
 
 ## v2.5.2

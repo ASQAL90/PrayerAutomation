@@ -17,6 +17,7 @@
     <Compile Include="../../src/PrayerAutomation.UI/WidgetMarqueeContent.cs" Link="WidgetMarqueeContent.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/NativeLibraryPath.cs" Link="NativeLibraryPath.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/DeviceLocationLogic.cs" Link="DeviceLocationLogic.cs" />
     <None Include="../../src/PrayerAutomation.UI/App.xaml" Link="App.xaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml" Link="MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />

@@ -48,6 +48,28 @@ try
           !ZipEntryPath.TryGetSafeRelative("C:/abs.txt", zipRoot, out _),
         "entri ZIP traversal, absolut, backslash, dan path kosong ditolak");
 
+    // PA-05: only the application folder may supply prayer_core, and the file
+    // must be a real, non-empty regular file before NativeLibrary.Load is called.
+    string nativeDir = Path.Combine(root, "native");
+    Directory.CreateDirectory(nativeDir);
+    string nativeName = NativeLibraryPath.FileName;
+    string nativePath = Path.Combine(nativeDir, nativeName);
+    File.WriteAllBytes(Path.Combine(root, nativeName), [1, 2, 3]);
+    Check(NativeLibraryPath.Locate(nativeDir) is null,
+        "folder aplikasi tanpa pustaka native harus ditolak");
+    File.WriteAllBytes(nativePath, []);
+    Check(NativeLibraryPath.Locate(nativeDir) is null,
+        "berkas native kosong harus ditolak");
+    File.WriteAllBytes(nativePath, [1, 2, 3]);
+    Check(NativeLibraryPath.Locate(nativeDir) == nativePath &&
+          NativeLibraryPath.Locate(Path.Combine(root, "tidak-ada")) is null &&
+          NativeLibraryPath.Locate(null) is null,
+        "hanya berkas prayer_core bukan kosong di folder aplikasi yang diterima");
+    Check(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "NativePrayerCore.cs"))
+              .Contains("NativeLibrary.SetDllImportResolver(typeof(NativePrayerCore).Assembly, ResolveNativeLibrary)",
+                  StringComparison.Ordinal),
+        "resolver harus dipasang sebelum P/Invoke prayer_core pertama");
+
     const string relative = "AyoJamaah.dll";
     string file = Path.Combine(root, relative);
     File.WriteAllText(file, "payload uji");

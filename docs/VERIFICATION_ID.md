@@ -131,6 +131,14 @@ dotnet tests/LocationDefaultsSmoke/bin/Release/net10.0/LocationDefaultsSmoke.dll
 dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 ```
 
+
+### PA-05 — resolver pustaka native
+
+- `NativeLibraryPath` hanya menerima `prayer_core.dll`/`libprayer_core.so`/`libprayer_core.dylib` tepat di `AppContext.BaseDirectory`, menolak berkas kosong, symlink/junction, dan path di luar folder aplikasi.
+- `NativePrayerCore` memasang `NativeLibrary.SetDllImportResolver` di static constructor sebelum `GetAbiVersion`; resolver mengembalikan `IntPtr.Zero` untuk pustaka selain `prayer_core` dan melempar `DllNotFoundException` bila berkas valid tidak ada (tidak ada fallback ke pencarian bawaan).
+- Verifikasi lokal: build WPF Release x64 `0 Warning(s)`, `0 Error(s)` lewat proot Debian dengan toolchain Rust `/opt/cargo`; `UpdateLogicSmoke` PASS, termasuk uji folder kosong, berkas kosong, berkas di luar folder, dan assertion resolver terpasang. Build `CalendarSmoke` lokal menemui kegagalan bawaan (`LocationDefaults` tidak tersedia di csproj smoke itu), bukan regresi resolver.
+- Belum dijalankan: uji runtime Windows untuk memastikan ABI dan resolusi path pada instalasi nyata.
+
 ### Persiapan 2.5.2 — lokal, belum dirilis
 
 - NS-07: `installer/build_installer_nsis.py` membaca `<Version>` dari `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu meneruskannya sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`; `AyoJamaah.nsi` tidak lagi menyimpan nomor versi dan berhenti dengan pesan jelas bila `makensis` dijalankan tanpa define tersebut.
