@@ -1,19 +1,25 @@
 # Riwayat perubahan
 
-## Belum dirilis
-- Belum ada perubahan.
-
 ## v2.5.3
-- Pemuatan `prayer_core` kini lewat resolver P/Invoke yang dipasang sebelum panggilan native pertama. Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar, menolak berkas kosong atau reparse point, dan gagal dengan `DllNotFoundException` alih-alih jatuh kembali ke pencarian bawaan.
-- Dibatasi ukuran respons pembaruan yang dibaca ke memori sebelum diverifikasi: JSON rilis maksimum 1 MiB, manifest bertanda tangan 512 KiB, dan tanda tangan 16 KiB. Batas diperiksa dari `Content-Length` lalu ditegakkan lagi saat streaming, sehingga endpoint yang rusak atau jahat tidak bisa menghabiskan memori sebelum digest/tanda tangan diperiksa.
-- Regex ringkasan rilis memakai `RegexOptions.NonBacktracking` (waktu linear) dan body dibatasi 64 KiB sebelum diurai, sehingga catatan rilis yang aneh tidak bisa memicu backtracking eksponensial.
-- Diperkeras jalur pembaruan: nama aset divalidasi sebagai nama berkas polos sehingga tidak bisa dipakai untuk traversal direktori, manifest bertanda tangan dengan nama aset berbahaya ditolak, dan rilis 2.4.0 ke atas bersifat *fail-closed* (pembaruan dibatalkan bila manifest/tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned).
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.3 agar perbaikan di atas masuk ke paket rilis; isi rilis v2.5.2 tetap menjadi riwayat.
+- Pemuatan `prayer_core` kini memakai resolver P/Invoke yang dipasang sebelum panggilan native pertama.
+- Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar; berkas kosong dan reparse point ditolak.
+- Bila pustaka tidak valid, resolver melempar `DllNotFoundException` tanpa fallback ke pencarian bawaan.
+- Respons pembaruan dibatasi sebelum diverifikasi: JSON rilis 1 MiB, manifest 512 KiB, dan tanda tangan 16 KiB.
+- Batas diperiksa dari `Content-Length` dan ditegakkan lagi saat streaming, sehingga endpoint yang rusak tidak bisa menghabiskan memori.
+- Parser catatan rilis memakai `RegexOptions.NonBacktracking` dan body dibatasi 64 KiB sebelum diurai.
+- Nama aset divalidasi sebagai nama berkas polos; manifest dengan nama aset berbahaya ditolak.
+- Rilis 2.4.0 ke atas bersifat fail-closed bila manifest atau tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned.
+- Teks riwayat perubahan tidak lagi dipotong pada batas 220 karakter di jendela About maupun panel pembaruan.
+- Dinaikkan nomor versi aplikasi dan installer ke 2.5.3 agar seluruh perbaikan masuk paket rilis; isi v2.5.2 tetap menjadi riwayat.
 
 ## v2.5.2
-- Disatukan sumber nomor versi: `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` dipakai skrip build installer untuk nama keluaran dan dikirim ke NSIS sebagai `-DAPP_VERSION`; `AyoJamaah.nsi` tidak lagi menyimpan versi sendiri dan menolak kompilasi langsung tanpa define itu.
-- Diperketat parsing argumen installer: `/UPDATEMODE` hanya dikenali sebagai satu argumen utuh, dan `/D=` ditolak sebelum halaman pertama.
-- Ditambahkan halaman uninstall yang menanyakan simpan pengaturan (default) atau hapus semua data pengguna; jurnal pemulihan lock screen tetap tidak disentuh.
+- Nomor versi hanya punya satu sumber: `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj`.
+- Skrip installer membaca nilai itu untuk nama berkas keluaran dan meneruskannya ke NSIS sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`.
+- `AyoJamaah.nsi` tidak lagi menyimpan versi sendiri dan menolak kompilasi langsung tanpa define tersebut.
+- `/UPDATEMODE` hanya dikenali sebagai satu argumen utuh, sehingga potongan teks di path tidak mengaktifkan mode pembaruan senyap.
+- `/D=` ditolak sebelum halaman pertama karena NSIS menerapkannya setelah `.onInit`.
+- Uninstaller menanyakan simpan pengaturan (default) atau hapus semua data pengguna.
+- Penghapusan data hanya berjalan bila pilihan hapus dipilih; jurnal pemulihan lock screen tetap tidak disentuh.
 - Dinaikkan nomor versi aplikasi dan installer ke 2.5.2.
 
 ## v2.5.1

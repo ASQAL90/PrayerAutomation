@@ -246,8 +246,9 @@ Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal
 Check(notesWindowXaml.Contains("VerticalScrollBarVisibility=\"Auto\"", StringComparison.Ordinal) &&
       notesWindowXaml.Contains("HorizontalScrollBarVisibility=\"Disabled\"", StringComparison.Ordinal) &&
       notesWindowSource.Contains("GetManifestResourceStream", StringComparison.Ordinal) &&
+      !notesWindowSource.Contains("text[..219]", StringComparison.Ordinal) &&
       aboutXaml.Contains("AboutReleaseNotesButton", StringComparison.Ordinal),
-    "Riwayat perubahan dibuka dari About, bersumber resource lokal, dan bergulir vertikal saja.");
+    "Riwayat perubahan dibuka dari About, bersumber resource lokal, bergulir vertikal, dan tidak memotong baris pada 220 karakter.");
 Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordinal) &&
       releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
       !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),

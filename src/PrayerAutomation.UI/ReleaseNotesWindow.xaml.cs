@@ -56,14 +56,27 @@ internal partial class ReleaseNotesWindow : Window
             }
             else if (trimmed.StartsWith("- ", StringComparison.Ordinal))
             {
-                string text = trimmed[2..];
+                string text = PlainText(trimmed[2..]);
                 if (text.Length == 0) continue;
-                if (text.Length > 220) text = text[..219].TrimEnd() + "…";
+                // The TextBlock wraps, so keep the whole bullet. The old 220-character
+                // cut made newer changelog entries unreadable ("..."), even though the
+                // source document was complete.
+                if (text.Length > 2000) text = text[..1999].TrimEnd() + "…";
                 lines.Add(new ReleaseNoteDisplay("• " + text, new Thickness(12, 0, 0, 2), FontWeights.Normal));
             }
         }
         return lines;
     }
+
+    /// <summary>Removes Markdown decoration while keeping identifiers such as <c>&lt;Version&gt;</c>.</summary>
+    /// <param name="value">Raw bullet text from the changelog.</param>
+    /// <returns>Plain text ready for a wrapping TextBlock.</returns>
+    private static string PlainText(string value) => value
+        .Replace("`", string.Empty, StringComparison.Ordinal)
+        .Replace("**", string.Empty, StringComparison.Ordinal)
+        .Replace("*", string.Empty, StringComparison.Ordinal)
+        .Replace("~~", string.Empty, StringComparison.Ordinal)
+        .Replace("_", string.Empty, StringComparison.Ordinal);
 
     /// <summary>Closes the window.</summary>
     /// <param name="sender">Event source.</param>
