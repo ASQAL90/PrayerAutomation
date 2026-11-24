@@ -14,6 +14,7 @@
     <Compile Include="../../src/PrayerAutomation.UI/AppBranding.cs" Link="AppBranding.cs" />
     <Compile Include="../../src/Shared/PrayerIconPaths.cs" Link="Shared/PrayerIconPaths.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/NativeLibraryPath.cs" Link="NativeLibraryPath.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/PrayerScheduleService.cs" Link="PrayerScheduleService.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/CorrectionInputBehavior.cs" Link="CorrectionInputBehavior.cs" />

@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/NativeLibraryPath.cs" Link="NativeLibraryPath.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
