@@ -1,5 +1,10 @@
 # Riwayat perubahan
 
+## v2.5.4
+- Teks riwayat perubahan tidak lagi dipotong pada batas 220 karakter di jendela About maupun panel pratinjau pembaruan; Markdown decoration dibersihkan agar kalimat mudah dibaca.
+- Catatan rilis 2.5.2 dan 2.5.3 dipecah menjadi satu gagasan per baris sehingga tidak ada kalimat terpotong.
+- Dinaikkan nomor versi aplikasi dan installer ke 2.5.4 agar perbaikan tampilan ini masuk paket rilis resmi.
+
 ## v2.5.3
 - Pemuatan `prayer_core` kini memakai resolver P/Invoke yang dipasang sebelum panggilan native pertama.
 - Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar; berkas kosong dan reparse point ditolak.
@@ -9,7 +14,6 @@
 - Parser catatan rilis memakai `RegexOptions.NonBacktracking` dan body dibatasi 64 KiB sebelum diurai.
 - Nama aset divalidasi sebagai nama berkas polos; manifest dengan nama aset berbahaya ditolak.
 - Rilis 2.4.0 ke atas bersifat fail-closed bila manifest atau tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned.
-- Teks riwayat perubahan tidak lagi dipotong pada batas 220 karakter di jendela About maupun panel pembaruan.
 - Dinaikkan nomor versi aplikasi dan installer ke 2.5.3 agar seluruh perbaikan masuk paket rilis; isi v2.5.2 tetap menjadi riwayat.
 
 ## v2.5.2
