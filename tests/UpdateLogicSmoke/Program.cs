@@ -209,6 +209,20 @@ Check(parsedNotes.Count == 2 && parsedNotes[0].Heading == "Fitur baru" &&
 Check(ReleaseNotesParser.Parse(null).Count == 0 && ReleaseNotesParser.Parse("- tanpa heading").Count == 0,
     "Catatan kosong atau tanpa heading tidak boleh menampilkan panel.");
 
+// Regex NonBacktracking: input yang berulang dan panjang tetap selesai cepat,
+// dan pemotongan body menjaga biaya parsing linear.
+string paddedNotes = "## Catatan\n- " + string.Concat(Enumerable.Repeat("[x](https://contoh.invalid) ", 1500)) +
+                     "\n- Baris normal";
+var notesWatch = System.Diagnostics.Stopwatch.StartNew();
+var paddedSections = ReleaseNotesParser.Parse(paddedNotes);
+notesWatch.Stop();
+Check(paddedSections.Count == 1 && paddedSections[0].Items.Count == 2 &&
+      paddedSections[0].Items[1] == "Baris normal" &&
+      notesWatch.Elapsed < TimeSpan.FromSeconds(5),
+    "Parser harus memakai jalur linear dan tetap benar pada input berulang.");
+Check(ReleaseNotesParser.Parse(new string('x', 200_000)).Count == 0,
+    "Body yang sangat besar harus dipotong tanpa melempar pengecualian.");
+
 string updateXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateWindow.xaml"));
 string notesWindowXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ReleaseNotesWindow.xaml"));
 string notesWindowSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ReleaseNotesWindow.xaml.cs"));
@@ -293,6 +307,14 @@ Check(updateServiceSource.Contains("UpdateManifest.IsSafeAssetName(asset.Name)")
       updateServiceSource.Contains("manifest.FallbackAsset") &&
       updateServiceSource.Contains("manifest.InstallerAsset"),
     "Updater harus memvalidasi nama aset dan tidak memakai fallback unsigned untuk rilis bertanda tangan.");
+Check(updateServiceSource.Contains("MaxReleaseJsonBytes", StringComparison.Ordinal) &&
+      updateServiceSource.Contains("MaxManifestBytes", StringComparison.Ordinal) &&
+      updateServiceSource.Contains("MaxSignatureBytes", StringComparison.Ordinal) &&
+      updateServiceSource.Contains("ReadBoundedBytesAsync(response.Content, maxBytes, cancellationToken)") &&
+      updateServiceSource.Contains("buffer.Length + read > maxBytes") &&
+      !updateServiceSource.Contains("ReadAsByteArrayAsync(cancellationToken)") &&
+      !updateServiceSource.Contains("JsonDocument.ParseAsync(jsonStream"),
+    "Respons JSON rilis, manifest, dan tanda tangan harus dibatasi sebelum disimpan di memori.");
 Check(updateServiceSource.Contains("ZipEntryPath.TryGetSafeRelative(entry.FullName, root, out string relative)") &&
       updateServiceSource.Contains("DeltaCoversPlan(deltaPath, plan, root)") &&
       !updateServiceSource.Contains("Path = entry.FullName") &&

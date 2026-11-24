@@ -60,6 +60,16 @@ internal sealed class UpdateService
     private const string InternalUrlVariable = "AYOJAMAAH_UPDATE_URL";
     private const string InternalTokenVariable = "AYOJAMAAH_UPDATE_TOKEN";
     private const string GitHubApiHost = "api.github.com";
+
+    // Hard limits for responses that are read into memory before they are
+    // verified. They are deliberately generous: the real release JSON is a few
+    // hundred KB and the signed manifest is around 100 KB. Without a bound a
+    // hostile or broken endpoint could stream indefinitely and exhaust memory
+    // before the digest or signature check ever runs.
+    private const int MaxReleaseJsonBytes = 1024 * 1024;
+    private const int MaxManifestBytes = 512 * 1024;
+    private const int MaxSignatureBytes = 16 * 1024;
+
     private static readonly HttpClient ChannelHttp = CreateChannelClient();
     private static readonly string? InternalUpdateUrl = ReadInternalSetting(InternalUrlVariable);
     private static readonly string? InternalToken = ReadInternalSetting(InternalTokenVariable);
@@ -82,9 +92,10 @@ internal sealed class UpdateService
         using HttpResponseMessage response = await SendWithInternalAuthAsync(UpdateUrl, cancellationToken)
             .ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) return null;
-        await using Stream jsonStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using JsonDocument document = await JsonDocument.ParseAsync(jsonStream, cancellationToken: cancellationToken)
+        byte[]? jsonBytes = await ReadBoundedBytesAsync(response.Content, MaxReleaseJsonBytes, cancellationToken)
             .ConfigureAwait(false);
+        if (jsonBytes is null || jsonBytes.Length == 0) return null;
+        using JsonDocument document = JsonDocument.Parse(jsonBytes);
         JsonElement root = document.RootElement;
         string tag = root.GetProperty("tag_name").GetString() ?? string.Empty;
         if (!UpdateVersion.TryParse(tag, out Version? latest) ||
@@ -146,9 +157,9 @@ internal sealed class UpdateService
         SignedUpdateManifest? manifest = null;
         if (release.Manifest is not null && release.Signature is not null)
         {
-            byte[] manifestBytes = await DownloadBytesAsync(release.Manifest, folder, cancellationToken)
+            byte[] manifestBytes = await DownloadBytesAsync(release.Manifest, MaxManifestBytes, cancellationToken)
                 .ConfigureAwait(false);
-            byte[] signatureBytes = await DownloadBytesAsync(release.Signature, folder, cancellationToken)
+            byte[] signatureBytes = await DownloadBytesAsync(release.Signature, MaxSignatureBytes, cancellationToken)
                 .ConfigureAwait(false);
             bool verified = manifestBytes.Length > 0 && signatureBytes.Length > 0 &&
                 DigestMatches(release.Manifest, manifestBytes) && DigestMatches(release.Signature, signatureBytes) &&
@@ -367,24 +378,52 @@ internal sealed class UpdateService
 
     /// <summary>Downloads a small asset into memory for signature verification.</summary>
     /// <param name="asset">Asset to download.</param>
-    /// <param name="folder">Folder used only to keep the API shape consistent.</param>
+    /// <param name="maxBytes">Largest response body the caller is willing to hold in memory.</param>
     /// <param name="cancellationToken">Cancels the download.</param>
-    /// <returns>Exact response bytes, or an empty array on failure.</returns>
-    private async Task<byte[]> DownloadBytesAsync(ReleaseAsset asset, string folder,
+    /// <returns>Exact response bytes, or an empty array on failure or overflow.</returns>
+    private async Task<byte[]> DownloadBytesAsync(ReleaseAsset asset, int maxBytes,
         CancellationToken cancellationToken)
     {
-        _ = folder;
+        // The advertised size is checked first so an obviously oversized asset
+        // is refused before a connection is opened. A missing or wrong size is
+        // still caught while streaming below.
+        if (asset.Size > maxBytes) return [];
         try
         {
             using HttpResponseMessage response = await SendAssetAsync(AssetDownloadUrl(asset), cancellationToken)
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            return await ReadBoundedBytesAsync(response.Content, maxBytes, cancellationToken).ConfigureAwait(false)
+                ?? [];
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
             return [];
         }
+    }
+
+    /// <summary>Reads a response body, refusing anything larger than <paramref name="maxBytes"/>.</summary>
+    /// <param name="content">Response content.</param>
+    /// <param name="maxBytes">Hard limit for the body.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>Body bytes, or null when the declared or actual size exceeds the limit.</returns>
+    private static async Task<byte[]?> ReadBoundedBytesAsync(HttpContent content, int maxBytes,
+        CancellationToken cancellationToken)
+    {
+        long? declared = content.Headers.ContentLength;
+        if (declared is > 0 && declared.Value > maxBytes) return null;
+
+        int capacity = declared is > 0 and <= int.MaxValue ? (int)declared.Value : 16 * 1024;
+        using var buffer = new MemoryStream(capacity);
+        byte[] chunk = new byte[16 * 1024];
+        await using Stream source = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        int read;
+        while ((read = await source.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            if (buffer.Length + read > maxBytes) return null;
+            buffer.Write(chunk, 0, read);
+        }
+        return buffer.ToArray();
     }
 
     private static string AssetDownloadUrl(ReleaseAsset asset) =>

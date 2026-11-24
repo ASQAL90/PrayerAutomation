@@ -139,6 +139,13 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Verifikasi lokal: build WPF Release x64 `0 Warning(s)`, `0 Error(s)` lewat proot Debian dengan toolchain Rust `/opt/cargo`; `UpdateLogicSmoke` PASS, termasuk uji folder kosong, berkas kosong, berkas di luar folder, dan assertion resolver terpasang. Build `CalendarSmoke` lokal menemui kegagalan bawaan (`LocationDefaults` tidak tersedia di csproj smoke itu), bukan regresi resolver.
 - Belum dijalankan: uji runtime Windows untuk memastikan ABI dan resolusi path pada instalasi nyata.
 
+### Pengerasan lanjutan — batas respons dan parser ringkasan
+- `UpdateService` membatasi byte yang disimpan di memori: JSON rilis `MaxReleaseJsonBytes` (1 MiB), manifest `MaxManifestBytes` (512 KiB), tanda tangan `MaxSignatureBytes` (16 KiB). `ReadBoundedBytesAsync` memeriksa `Content-Length` lalu menghitung byte saat streaming; kelebihan mengembalikan `null`/array kosong sehingga pembaruan dibatalkan (fail-closed).
+- `ReleaseNotesParser` memakai `RegexOptions.NonBacktracking` untuk kelima regex dan memotong body ke 64 KiB sebelum diurai.
+- Verifikasi lokal: `UpdateService.cs` + dependensi dikompilasi terpisah di proot Debian (`0 Warning(s)`, `0 Error(s)`); `UpdateLogicSmoke` dibangun ulang dan PASS, termasuk assertion sumber untuk ketiga batas dan uji input berulang/200 KB pada parser.
+- Belum dijalankan: build WPF/Rust penuh dan uji pembaruan nyata di Windows.
+
+
 ### Persiapan 2.5.2 — lokal, belum dirilis
 
 - NS-07: `installer/build_installer_nsis.py` membaca `<Version>` dari `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu meneruskannya sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`; `AyoJamaah.nsi` tidak lagi menyimpan nomor versi dan berhenti dengan pesan jelas bila `makensis` dijalankan tanpa define tersebut.
