@@ -24,11 +24,12 @@ ayojamaah-build installer --check-only
 
 Alur yang dijalankan:
 
-1. `receipt-x64.json`/`receipt-x86.json` dibaca dan arsitekturnya dicocokkan.
-2. Setiap file di receipt di-hash ulang terhadap `portable-x64`/`portable-x86`. Perbedaan satu byte menghentikan proses.
-3. `installer/generate_nsis_payload.py` menulis ulang `installer/nsis/AyoJamaahPayload-dual.nsh`: section payload, manifest install, dan daftar hapus uninstall. Tidak ada wildcard.
-4. `makensis` dijalankan. Di Termux ini memakai proot Debian (NSIS 3.11); di Windows memakai `makensis` native atau `--makensis <path>`.
-5. Output default: `<AYOJAMAAH_OUT>/installer/AyoJamaah.Setup-2.2.1.exe` (default `AYOJAMAAH_OUT` adalah `../AyoJamaah-build`).
+1. `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` dibaca; nilai itu dipakai untuk nama output, `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`, dan metadata versi `.exe`. `AyoJamaah.nsi` tidak menyimpan nomor versi sendiri.
+2. `receipt-x64.json`/`receipt-x86.json` dibaca dan arsitekturnya dicocokkan.
+3. Setiap file di receipt di-hash ulang terhadap `portable-x64`/`portable-x86`. Perbedaan satu byte menghentikan proses.
+4. `installer/generate_nsis_payload.py` menulis ulang `installer/nsis/AyoJamaahPayload-dual.nsh`: section payload, manifest install, dan daftar hapus uninstall. Tidak ada wildcard.
+5. `makensis` dijalankan. Di Termux ini memakai proot Debian (NSIS 3.11); di Windows memakai `makensis` native atau `--makensis <path>`.
+6. Output default: `<AYOJAMAAH_OUT>/installer/AyoJamaah.Setup-<versi-csproj>.exe` (default `AYOJAMAAH_OUT` adalah `../AyoJamaah-build`).
 
 Payload tidak dibangun ulang oleh installer. Kalau payload sengaja dibangun ulang, receipt harus dibuat ulang dengan `--force` dan include NSIS direview sebelum build berikutnya. Jangan mengganti file payload secara manual.
 
@@ -47,7 +48,15 @@ Payload tidak dibangun ulang oleh installer. Kalau payload sengaja dibangun ulan
 4. Payload, shortcut Start Menu, uninstaller, dan registry HKCU ditulis. Uninstaller terdaftar dengan AppId lama `{8B76B6D5-1B3C-4E13-9A39-000000000001}`.
 5. Pilihan **Jalankan aplikasi** tersedia di halaman akhir dan tidak dicentang.
 
-Tidak ada silent install/uninstall, `/ALLUSERS`, impor opsi, restart otomatis, atau pemasangan ke direktori lain. Argumen `/S`, `/LOADINF`, `/CLOSEAPPLICATIONS`, `/FORCECLOSEAPPLICATIONS`, `/RESTARTAPPLICATIONS`, `/ALLUSERS`, `/NOCANCEL`, dan `/NCRC` ditolak.
+## Alur uninstall
+
+1. Halaman konfirmasi MUI.
+2. Halaman **Pengaturan dan data** menanyakan apakah pengaturan dan data pengguna disimpan (default) atau dihapus semuanya. Halaman ini dilewati bila folder profil sudah tidak ada.
+3. Halaman progres menghapus union path payload, shortcut, manifest, uninstaller, dan registry HKCU. Pilihan **Hapus semua** juga menghapus `%APPDATA%\PrayerAutomation` dan `%LOCALAPPDATA%\PrayerAutomation`, termasuk log, unduhan pembaruan, dan folder lock screen yang sudah kosong.
+4. Jurnal pemulihan lock screen tidak pernah dihapus. Guard di `un.onInit` sudah membatalkan uninstall selama jurnal masih ada, jadi pilihan hapus data tidak bisa menghilangkan pemulihan yang belum selesai.
+5. Uninstall tetap menolak mode senyap dan memakai boundary check yang sama dengan instalasi.
+
+Tidak ada silent install/uninstall, `/ALLUSERS`, impor opsi, restart otomatis, atau pemasangan ke direktori lain. Argumen `/S`, `/LOADINF`, `/CLOSEAPPLICATIONS`, `/FORCECLOSEAPPLICATIONS`, `/RESTARTAPPLICATIONS`, `/ALLUSERS`, `/NOCANCEL`, `/NCRC`, dan `/D=` ditolak. `/UPDATEMODE` hanya dikenali bila berdiri sendiri sebagai satu argumen, bukan sebagai potongan path atau opsi lain.
 
 ## Pengaman dan batasannya
 
@@ -61,7 +70,7 @@ Perilaku pengaman (yang diport dari desain pengaman Inno yang kini dihapus):
 - Mutex global `Global\PrayerAutomation.Desktop.SingleInstance` diperiksa, lalu installer menahan mutex itu selama tahap tulis/hapus dan memeriksa ulang boundary.
 - Setiap file target diperiksa dengan `CreateFileW` read+write tanpa share; file yang terkunci, reparse point, atau tidak terbaca memblokir operasi.
 - Sebelum menulis payload NSIS baru, entri manifest lama dihapus agar file stale tidak tertinggal — kecuali berkas yang juga ada di payload baru (akan ditimpa di tempat; daftar payload per arsitektur dibundel sebagai `AyoJamaahPayloadFiles-x64.txt`/`-x86.txt`). Penghapusan berkas stale memakai `DeleteFileW` dengan percobaan ulang (4×, 250 ms) dan melaporkan kode galat Windows. Untuk instalasi Inno lama tanpa manifest NSIS, `$INSTDIR` dibersihkan setelah boundary check.
-- Hanya union path payload yang dihapus saat uninstall; `%APPDATA%\PrayerAutomation` dan data pengguna tidak disentuh.
+- Uninstall menghapus union path payload. Folder profil hanya dihapus bila pengguna memilih **Hapus semua** pada halaman data; defaultnya dipertahankan.
 
 Batasan:
 
@@ -76,7 +85,7 @@ Batasan:
 - Instalasi Python, folder, dan startup lama tidak dibersihkan otomatis. Jika folder tujuan masih berisi Python lama, pemasangan diblokir.
 - Identitas installer tetap AppId lama. Metadata uninstall HKCU dengan ID sama diperbarui tanpa prompt terpisah; jangan menjalankan uninstaller Python lama pada folder versi baru.
 - Startup tidak dibuat/dipindahkan oleh installer. Setelah pengguna menjalankan aplikasi, perilaku startup tersimpan ditangani aplikasi.
-- Uninstall memakai boundary check yang sama dan tidak menghapus profil/startup lama.
+- Uninstall memakai boundary check yang sama. Profil pengguna hanya dihapus lewat pilihan eksplisit **Hapus semua**; value Run `PrayerAutomation` dihapus hanya jika masih menunjuk instalasi ini.
 
 ## Yang masih harus diuji di Windows
 

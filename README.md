@@ -37,7 +37,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 
 ## Tangkapan layar
 
-Tangkapan layar dari build 2.5.1:
+Tangkapan layar dari build 2.5.2:
 
 | | |
 |---|---|
@@ -54,20 +54,20 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
-### v2.5.1 (stable terbaru)
+### v2.5.2 (stable terbaru)
 
-Ukuran paket self-contained diperkecil lewat optimasi Tier 1+2: payload publish memangkas berkas runtime/framework yang tidak diperlukan, `deps.json` dibersihkan/remap, dan tray icon dipindah ke native `Shell_NotifyIconW` sehingga dependensi WinForms tidak lagi diperlukan. Installer NSIS kini tersedia dalam tiga varian (universal, x64, x86) dan aplikasi tetap self-contained tanpa perlu .NET Runtime terpisah. Rilis [`v2.5.1`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.5.1) dibangun oleh workflow `Release`.
+Installer kini memakai satu sumber nomor versi dari proyek aplikasi, menolak opsi `/D=` dan hanya mengenali `/UPDATEMODE` sebagai argumen utuh, dan menanyakan saat uninstall apakah pengaturan serta data pengguna disimpan (default) atau dihapus semuanya. Aplikasi tetap self-contained tanpa perlu .NET Runtime terpisah. Rilis [`v2.5.2`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.5.2) dibangun oleh workflow `Release`.
 
 | Berkas | Keterangan |
 |---|---|
-| [AyoJamaah.Setup-2.5.1.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/AyoJamaah.Setup-2.5.1.exe) | Installer universal (x64+x86) |
-| [AyoJamaah.Setup-2.5.1-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/AyoJamaah.Setup-2.5.1-x64.exe) | Installer x64 |
-| [AyoJamaah.Setup-2.5.1-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/AyoJamaah.Setup-2.5.1-x86.exe) | Installer x86 (32-bit) |
-| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/AyoJamaah-win-x64.zip) | Portable x64 |
-| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
-| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.1/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
+| [AyoJamaah.Setup-2.5.2.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/AyoJamaah.Setup-2.5.2.exe) | Installer universal (x64+x86) |
+| [AyoJamaah.Setup-2.5.2-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/AyoJamaah.Setup-2.5.2-x64.exe) | Installer x64 |
+| [AyoJamaah.Setup-2.5.2-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/AyoJamaah.Setup-2.5.2-x86.exe) | Installer x86 (32-bit) |
+| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/AyoJamaah-win-x64.zip) | Portable x64 |
+| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
+| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.5.2/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
 
-Aset pembaruan delta (`AyoJamaah-update-2.5.1-*.json`, `.sig`, dan `AyoJamaah-delta-2.5.1-*.zip`) juga tersedia di [rilis v2.5.1](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.5.1) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
+Aset pembaruan delta (`AyoJamaah-update-2.5.2-*.json`, `.sig`, dan `AyoJamaah-delta-2.5.2-*.zip`) juga tersedia di [rilis v2.5.2](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.5.2) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
 
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 

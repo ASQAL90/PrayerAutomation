@@ -18,13 +18,13 @@ ayojamaah-build installer
 ayojamaah-build installer --check-only
 ```
 
-Output default: `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.1.exe`. Build root dapat diganti dengan `AYOJAMAAH_OUT`. Di Termux, `makensis` dijalankan lewat `proot-distro login debian`; di Windows, skrip memakai `makensis` di `PATH` atau `--makensis <path>`.
+Output default: `../AyoJamaah-build/installer/AyoJamaah.Setup-2.2.1.exe`. Build root dapat diganti dengan `AYOJAMAAH_OUT`. Di Termux, `makensis` dijalankan lewat `proot-distro login debian`; di Windows, skrip memakai `makensis` di `PATH` atau `--makensis <path>`. Nomor versi tidak disimpan di `.nsi`: skrip membacanya dari `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu meneruskannya sebagai `-DAPP_VERSION`. Nama output mengikuti versi csproj saat ini.
 
 File yang terlibat:
 
 | Path | Peran |
 |---|---|
-| `installer/build_installer_nsis.py` | Entry point: validasi receipt, regenerate include, compile |
+| `installer/build_installer_nsis.py` | Entry point: baca versi csproj, validasi receipt, regenerate include, compile |
 | `installer/generate_nsis_payload.py` | Menulis section payload, manifest install, dan daftar hapus stale |
 | `installer/payload_receipt.py` | Validasi receipt yang dipakai bersama generator dan wrapper |
 | `installer/make_payload_receipt.py` | Membuat receipt dari portable hasil publish |

@@ -194,8 +194,10 @@ string aboutXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Abou
 string releaseWorkflow = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release.yml"));
 string nsisSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "AyoJamaah.nsi"));
 string uiProject = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "PrayerAutomation.UI.csproj"));
+string installerScript = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build_installer_nsis.py"));
 string changelog = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CHANGELOG.md"));
 string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.1.md"));
+string currentNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.2.md"));
 
 Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal) &&
       updateXaml.Contains("Name=\"ReleaseNotesScroll\"", StringComparison.Ordinal) &&
@@ -214,13 +216,29 @@ Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordina
       releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
       !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),
     "Workflow rilis harus memvalidasi dan memakai catatan rilis sebagai body.");
-Check(uiProject.Contains("<Version>2.5.1</Version>", StringComparison.Ordinal) &&
-      nsisSource.Contains("!define APP_VERSION \"2.5.1\"", StringComparison.Ordinal) &&
+Check(uiProject.Contains("<Version>2.5.2</Version>", StringComparison.Ordinal) &&
+      !System.Text.RegularExpressions.Regex.IsMatch(nsisSource, "(?m)^!define APP_VERSION \"") &&
+      nsisSource.Contains("!ifndef APP_VERSION", StringComparison.Ordinal) &&
+      nsisSource.Contains("!error", StringComparison.Ordinal) &&
+      installerScript.Contains("PrayerAutomation.UI.csproj", StringComparison.Ordinal) &&
+      installerScript.Contains("-DAPP_VERSION={version}", StringComparison.Ordinal) &&
       nsisSource.Contains("AyoVersionCompare", StringComparison.Ordinal) &&
       nsisSource.Contains("MB_YESNO", StringComparison.Ordinal) &&
       nsisSource.Contains("IfSilent version_check_done", StringComparison.Ordinal) &&
       nsisSource.Contains("/UPDATEMODE", StringComparison.Ordinal),
-    "Versi aplikasi dan installer harus 2.5.1; installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+    "Versi hanya boleh berasal dari csproj; .nsi menolak kompilasi tanpa -DAPP_VERSION, dan installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+Check(nsisSource.Contains("UninstPage custom un.UninstallDataPageCreate un.UninstallDataPageLeave", StringComparison.Ordinal) &&
+      nsisSource.Contains("Simpan pengaturan dan data saya", StringComparison.Ordinal) &&
+      nsisSource.Contains("${NSD_Check} $UninstallKeepDataRadio", StringComparison.Ordinal) &&
+      nsisSource.Contains("StrCpy $UninstallDeleteData 0", StringComparison.Ordinal) &&
+      nsisSource.Contains("RMDir /r \"$APPDATA\\PrayerAutomation\"", StringComparison.Ordinal) &&
+      nsisSource.Contains("$UninstallDeleteData == 1", StringComparison.Ordinal),
+    "Uninstall harus menanyakan simpan/hapus data dengan default simpan, dan menghapus profil hanya bila dipilih.");
+Check(nsisSource.Contains("w \" /UPDATEMODE \"", StringComparison.Ordinal) &&
+      !nsisSource.Contains("StrStrIW(w r0, w \"/UPDATEMODE\")", StringComparison.Ordinal) &&
+      nsisSource.Contains("w \"/D=\"", StringComparison.Ordinal) &&
+      nsisSource.Contains("/D= tidak diizinkan", StringComparison.Ordinal),
+    "Pencocokan /UPDATEMODE harus satu argumen utuh, dan /D= harus ditolak sebelum halaman pertama.");
 Check(!nsisSource.Contains("\\r\\n", StringComparison.Ordinal) &&
       !nsisSource.Contains("\u2192", StringComparison.Ordinal) &&
       nsisSource.Contains("$\\r$\\n$\\r$\\n", StringComparison.Ordinal),
@@ -229,7 +247,13 @@ Check(appSource.Contains("ForceRestoreForUpdateAsync()", StringComparison.Ordina
       !appSource.Contains("WaitForRecoveryAsync(", StringComparison.Ordinal) &&
       appSource.Contains("pembaruan tetap dilanjutkan", StringComparison.Ordinal),
     "Preflight update tidak boleh menunggu 60 detik dan harus memaksa pemulihan lalu melanjutkan.");
-Check(changelog.Contains("## v2.5.1", StringComparison.Ordinal) &&
+Check(currentNotes.Contains("## Perbaikan", StringComparison.Ordinal) &&
+      currentNotes.Contains("## Fitur baru", StringComparison.Ordinal) &&
+      currentNotes.Contains("self-contained", StringComparison.OrdinalIgnoreCase) &&
+      !currentNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase),
+    "Catatan rilis versi berjalan harus memakai bagian yang dikenali dan bahasa pihak ketiga.");
+Check(changelog.Contains("## v2.5.2", StringComparison.Ordinal) &&
+      changelog.Contains("## v2.5.1", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.0", StringComparison.Ordinal) &&
       changelog.Contains("## v2.4.3", StringComparison.Ordinal) &&
       changelog.Contains("## v2.1.2", StringComparison.Ordinal) &&

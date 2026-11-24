@@ -131,6 +131,14 @@ dotnet tests/LocationDefaultsSmoke/bin/Release/net10.0/LocationDefaultsSmoke.dll
 dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 ```
 
+### Persiapan 2.5.2 — lokal, belum dirilis
+
+- NS-07: `installer/build_installer_nsis.py` membaca `<Version>` dari `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu meneruskannya sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`; `AyoJamaah.nsi` tidak lagi menyimpan nomor versi dan berhenti dengan pesan jelas bila `makensis` dijalankan tanpa define tersebut.
+- NS-02: `/UPDATEMODE` dicocokkan sebagai satu argumen utuh dengan pembatas spasi, dan `/D=` ditolak di `CheckUnsafeCommandLine` sebelum halaman pertama.
+- NS-04: halaman `un.UninstallDataPageCreate` menawarkan simpan pengaturan dan data (default) atau hapus semuanya. Penghapusan hanya berjalan pada pilihan kedua dan tidak menyentuh jurnal lock screen karena guard `un.onInit` sudah menolak uninstall selama pemulihan tertunda.
+- Verifikasi lokal: `python3 -m py_compile installer/build_installer_nsis.py` lolos; `app_version()` mengembalikan `2.5.2`; `makensis` 3.11 (include Debian lewat `NSISDIR`) mengompilasi `AyoJamaah.nsi` dengan payload dummy dari daftar berkas receipt, dan kompilasi tanpa `-DAPP_VERSION` berhenti pada pesan yang disengaja.
+- Belum dijalankan: build WPF/Rust, `UpdateLogicSmoke` di Windows, install/upgrade/uninstall nyata, verifikasi visual halaman uninstall, serta push, tag, dan workflow `Release` untuk `v2.5.2`.
+
 ### Instrumentasi first-open kalender (2.4.0)
 
 - Titik ukur ada di `MainWindow.RefreshCalendarViews()` saat pemanggilan pertama dari `EnsureCalendarViewsLoaded()`. Stopwatch terpisah untuk `RenderGregorianYear` dan `RenderHijriYear`, lalu satu baris `AppLogger.WriteInfo("calendar.first-open", "gregorianMs=… hijriMs=… totalMs=… source=civil|khgt")` per proses. Tidak ada perubahan layout atau area kalender 12 bulan.

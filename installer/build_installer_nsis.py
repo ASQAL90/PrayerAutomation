@@ -4,32 +4,44 @@ This is the supported entry point on Termux and on Windows:
 
     python3 installer/build_installer_nsis.py
 
-It re-validates both receipts against the portable folders, regenerates the
-explicit payload include, then runs makensis (through proot Debian on Termux).
-No product rebuild, app launch or installation happens here. Stdlib only.
+It reads the product version from src/PrayerAutomation.UI/PrayerAutomation.UI.csproj
+(the single source), re-validates both receipts against the portable folders,
+regenerates the explicit payload include, then runs makensis (through proot
+Debian on Termux). No product rebuild, app launch or installation happens here.
+Stdlib only.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from payload_receipt import validated_payload  # noqa: E402
 from generate_nsis_payload import render, render_files_list, render_single, write_output  # noqa: E402
 
-def app_version(nsis_dir: Path) -> str:
-    """Reads APP_VERSION from the NSIS script so the output name never drifts."""
-    for line in (nsis_dir / "AyoJamaah.nsi").read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("!define APP_VERSION "):
-            return stripped.split('"')[1]
-    raise ValueError("APP_VERSION tidak ditemukan di AyoJamaah.nsi")
+CSPROJ = Path("src") / "PrayerAutomation.UI" / "PrayerAutomation.UI.csproj"
+
+
+def app_version(repo: Path) -> str:
+    """Reads <Version> from the UI csproj, the only place the version lives."""
+    csproj = repo / CSPROJ
+    try:
+        root = ElementTree.parse(csproj).getroot()
+    except (OSError, ElementTree.ParseError) as error:
+        raise ValueError(f"Tidak bisa membaca {csproj}: {error}") from error
+
+    version = (root.findtext("./PropertyGroup/Version") or "").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        raise ValueError(f"{csproj}: <Version> {version!r} harus berbentuk major.minor.patch")
+    return version
 
 
 def receipt_architecture(receipt: Path, expected: str) -> None:
@@ -39,11 +51,17 @@ def receipt_architecture(receipt: Path, expected: str) -> None:
         raise ValueError(f"{receipt}: architecture {actual!r}, expected {expected!r}")
 
 
-def nsis_command(args: argparse.Namespace, script: Path, output: Path) -> list[str]:
+def version_defines(version: str) -> list[str]:
+    """makensis -D flags that carry the csproj version into AyoJamaah.nsi."""
+    return [f"-DAPP_VERSION={version}", f"-DAPP_VERSION_QUAD={version}.0"]
+
+
+def nsis_command(args: argparse.Namespace, script: Path, output: Path, version: str) -> list[str]:
     defines = [
         f"-DPAYLOAD_X64={args.portable_x64.resolve()}",
         f"-DPAYLOAD_X86={args.portable_x86.resolve()}",
         f"-DOUTFILE={output.resolve()}",
+        *version_defines(version),
     ]
     if args.variant == "x64":
         defines.append("-DSINGLE_ARCH_X64")
@@ -68,6 +86,7 @@ def nsis_command(args: argparse.Namespace, script: Path, output: Path) -> list[s
             f"-DPAYLOAD_X64=/mnt/payload-x64 "
             f"-DPAYLOAD_X86=/mnt/payload-x86 "
             f"-DOUTFILE=/mnt/out/{shlex.quote(output.name)} "
+            + " ".join(version_defines(version)) + " "
             + ("-DSINGLE_ARCH_X64 " if args.variant == "x64" else
                "-DSINGLE_ARCH_X86 " if args.variant == "x86" else "")
             + f"{shlex.quote(script.name)}"
@@ -103,7 +122,7 @@ def main() -> None:
     parser.add_argument("--check-only", action="store_true", help="Validate and regenerate the include, but do not compile")
     args = parser.parse_args()
 
-    version = app_version(nsis_dir)
+    version = app_version(repo)
     variant_suffix = {"universal": "", "x64": "-x64", "x86": "-x86"}[args.variant]
     if args.output is None:
         args.output = build_root / "installer" / f"AyoJamaah.Setup-{version}{variant_suffix}.exe"
@@ -127,6 +146,7 @@ def main() -> None:
     result = {
         "status": "PASS",
         "variant": args.variant,
+        "version": version,
         "files_x64": len(payload_x64),
         "files_x86": len(payload_x86),
         "files_unique": len(set(payload_x64) | set(payload_x86)),
@@ -138,7 +158,7 @@ def main() -> None:
     if not args.check_only:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         script = nsis_dir / "AyoJamaah.nsi"
-        command = nsis_command(args, script, args.output)
+        command = nsis_command(args, script, args.output, version)
         print(">> " + " ".join(shlex.quote(part) for part in command), file=sys.stderr)
         subprocess.run(command, check=True)
         if not args.output.is_file():
