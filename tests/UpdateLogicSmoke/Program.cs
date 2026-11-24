@@ -233,7 +233,7 @@ string uiProject = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Pray
 string installerScript = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build_installer_nsis.py"));
 string changelog = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CHANGELOG.md"));
 string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.1.md"));
-string currentNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.2.md"));
+string currentNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.3.md"));
 
 Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal) &&
       updateXaml.Contains("Name=\"ReleaseNotesScroll\"", StringComparison.Ordinal) &&
@@ -252,7 +252,7 @@ Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordina
       releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
       !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),
     "Workflow rilis harus memvalidasi dan memakai catatan rilis sebagai body.");
-Check(uiProject.Contains("<Version>2.5.2</Version>", StringComparison.Ordinal) &&
+Check(uiProject.Contains("<Version>2.5.3</Version>", StringComparison.Ordinal) &&
       !System.Text.RegularExpressions.Regex.IsMatch(nsisSource, "(?m)^!define APP_VERSION \"") &&
       nsisSource.Contains("!ifndef APP_VERSION", StringComparison.Ordinal) &&
       nsisSource.Contains("!error", StringComparison.Ordinal) &&
@@ -288,7 +288,8 @@ Check(currentNotes.Contains("## Perbaikan", StringComparison.Ordinal) &&
       currentNotes.Contains("self-contained", StringComparison.OrdinalIgnoreCase) &&
       !currentNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase),
     "Catatan rilis versi berjalan harus memakai bagian yang dikenali dan bahasa pihak ketiga.");
-Check(changelog.Contains("## v2.5.2", StringComparison.Ordinal) &&
+Check(changelog.Contains("## v2.5.3", StringComparison.Ordinal) &&
+      changelog.Contains("## v2.5.2", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.1", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.0", StringComparison.Ordinal) &&
       changelog.Contains("## v2.4.3", StringComparison.Ordinal) &&

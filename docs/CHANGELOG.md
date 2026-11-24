@@ -1,10 +1,14 @@
 # Riwayat perubahan
 
 ## Belum dirilis
+- Belum ada perubahan.
+
+## v2.5.3
 - Pemuatan `prayer_core` kini lewat resolver P/Invoke yang dipasang sebelum panggilan native pertama. Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar, menolak berkas kosong atau reparse point, dan gagal dengan `DllNotFoundException` alih-alih jatuh kembali ke pencarian bawaan.
 - Dibatasi ukuran respons pembaruan yang dibaca ke memori sebelum diverifikasi: JSON rilis maksimum 1 MiB, manifest bertanda tangan 512 KiB, dan tanda tangan 16 KiB. Batas diperiksa dari `Content-Length` lalu ditegakkan lagi saat streaming, sehingga endpoint yang rusak atau jahat tidak bisa menghabiskan memori sebelum digest/tanda tangan diperiksa.
 - Regex ringkasan rilis memakai `RegexOptions.NonBacktracking` (waktu linear) dan body dibatasi 64 KiB sebelum diurai, sehingga catatan rilis yang aneh tidak bisa memicu backtracking eksponensial.
 - Diperkeras jalur pembaruan: nama aset divalidasi sebagai nama berkas polos sehingga tidak bisa dipakai untuk traversal direktori, manifest bertanda tangan dengan nama aset berbahaya ditolak, dan rilis 2.4.0 ke atas bersifat *fail-closed* (pembaruan dibatalkan bila manifest/tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned).
+- Dinaikkan nomor versi aplikasi dan installer ke 2.5.3 agar perbaikan di atas masuk ke paket rilis; isi rilis v2.5.2 tetap menjadi riwayat.
 
 ## v2.5.2
 - Disatukan sumber nomor versi: `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` dipakai skrip build installer untuk nama keluaran dan dikirim ke NSIS sebagai `-DAPP_VERSION`; `AyoJamaah.nsi` tidak lagi menyimpan versi sendiri dan menolak kompilasi langsung tanpa define itu.
