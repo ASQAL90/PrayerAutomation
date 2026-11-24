@@ -146,13 +146,20 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Belum dijalankan: build WPF/Rust penuh dan uji pembaruan nyata di Windows.
 
 
+### Rilis 2.5.3 — 24 November 2026
+
+- Tag `v2.5.2` dibuat di `24cc63a` sebelum PR #11 (batas respons + `NonBacktracking`) dan PR #12 (PA-05 resolver native) masuk ke `master`. Keduanya sudah merged di `72f12b8`, jadi nomor versi dinaikkan ke `2.5.3` agar paket rilis memuat seluruh perbaikan; `docs/release-notes/2.5.3.md` menjadi body rilis.
+- Verifikasi lokal untuk 2.5.3: `app_version()` = `2.5.3`, build WPF Release x64 `0 Warning(s)`/`0 Error(s)`, build + run `UpdateLogicSmoke` PASS dengan assertion versi, catatan rilis 2.5.3, batas respons, parser waktu-linear, dan resolver native. `makensis` 3.11 dengan payload dummy sudah lolos untuk NSIS; kompilasi tanpa `-DAPP_VERSION` tetap gagal sesuai rancangan.
+- Belum dijalankan pada PC Windows: smoke install/upgrade/uninstall, halaman data uninstall NS-04, `/UPDATEMODE` versus `/D=`/`/NCRC`, dan uji runtime `prayer_core` pada instalasi nyata.
+- Status rilis: lihat catatan status di `security-tier0-patches/README.md` untuk approval environment `release` dan hasil unggah aset.
+
 ### Persiapan 2.5.2 — lokal, belum dirilis
 
 - NS-07: `installer/build_installer_nsis.py` membaca `<Version>` dari `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu meneruskannya sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`; `AyoJamaah.nsi` tidak lagi menyimpan nomor versi dan berhenti dengan pesan jelas bila `makensis` dijalankan tanpa define tersebut.
 - NS-02: `/UPDATEMODE` dicocokkan sebagai satu argumen utuh dengan pembatas spasi, dan `/D=` ditolak di `CheckUnsafeCommandLine` sebelum halaman pertama.
 - NS-04: halaman `un.UninstallDataPageCreate` menawarkan simpan pengaturan dan data (default) atau hapus semuanya. Penghapusan hanya berjalan pada pilihan kedua dan tidak menyentuh jurnal lock screen karena guard `un.onInit` sudah menolak uninstall selama pemulihan tertunda.
 - Verifikasi lokal: `python3 -m py_compile installer/build_installer_nsis.py` lolos; `app_version()` mengembalikan `2.5.2`; `makensis` 3.11 (include Debian lewat `NSISDIR`) mengompilasi `AyoJamaah.nsi` dengan payload dummy dari daftar berkas receipt, dan kompilasi tanpa `-DAPP_VERSION` berhenti pada pesan yang disengaja.
-- Belum dijalankan: build WPF/Rust, `UpdateLogicSmoke` di Windows, install/upgrade/uninstall nyata, verifikasi visual halaman uninstall, serta push, tag, dan workflow `Release` untuk `v2.5.2`.
+- Verifikasi lanjutan sudah dicatat di bagian 2.5.3: build WPF/Rust dan `UpdateLogicSmoke` lokal lulus, tag `v2.5.2` sudah di-push, dan workflow `Release` sudah dijalankan. Masih belum dijalankan di Windows: install/upgrade/uninstall nyata dan verifikasi visual halaman uninstall.
 
 ### Instrumentasi first-open kalender (2.4.0)
 
