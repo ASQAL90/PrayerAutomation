@@ -16,8 +16,11 @@ internal sealed record ReleaseNotesSection(string Heading, IReadOnlyList<string>
 internal static class ReleaseNotesParser
 {
     private const int MaxItems = 40;
-    private const int MaxItemLength = 220;
-    private const int MaxTotalLength = 4000;
+    // Kept generous so complete bullets still fit; the display wraps text and
+    // the overall body/line budgets still bound the work. The old 220-character
+    // limit cut ordinary release notes mid-sentence.
+    private const int MaxItemLength = 1200;
+    private const int MaxTotalLength = 20000;
     // The caller already trims the GitHub body, but Parse is also used by the
     // smoke test and future callers. A bound here keeps the whole pass linear
     // even if someone hands over a very large document.
