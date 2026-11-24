@@ -7,15 +7,25 @@
 ; silent install/uninstall, stale-file cleanup and an opt-in start-fresh page.
 ;
 ; Compile through installer/build_installer_nsis.py so the receipts are re-hashed
-; immediately before makensis. Direct makensis use is possible but skips that
-; preflight.
+; immediately before makensis and the csproj version is injected. Direct makensis
+; use is possible but skips that preflight and must pass -DAPP_VERSION=x.y.z.
 
 Unicode true
 
 !define APP_NAME "Ayo Jama'ah!"
 !define APP_EXE "AyoJamaah.exe"
-!define APP_VERSION "2.5.1"
-!define APP_VERSION_QUAD "2.5.1.0"
+
+; The version has exactly one source: <Version> in
+; src/PrayerAutomation.UI/PrayerAutomation.UI.csproj. installer/build_installer_nsis.py
+; reads it and injects -DAPP_VERSION/-DAPP_VERSION_QUAD here. A bare makensis run
+; without those defines fails loudly instead of shipping a stale version.
+!ifndef APP_VERSION
+  !error "APP_VERSION belum didefinisikan. Kompilasi lewat installer/build_installer_nsis.py."
+!endif
+!ifndef APP_VERSION_QUAD
+  !define APP_VERSION_QUAD "${APP_VERSION}.0"
+!endif
+
 !define APP_PUBLISHER "Ayo Jama'ah!"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B76B6D5-1B3C-4E13-9A39-000000000001}_is1"
 !define APP_MUTEX "Global\PrayerAutomation.Desktop.SingleInstance"
@@ -96,6 +106,7 @@ Page custom StartFreshPageCreate StartFreshPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
+UninstPage custom un.UninstallDataPageCreate un.UninstallDataPageLeave
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "Indonesian"
 
@@ -117,6 +128,9 @@ Var StartFreshCheck
 Var StartFreshSelected
 Var DesktopShortcutCheck
 Var DesktopShortcutSelected
+Var UninstallKeepDataRadio
+Var UninstallDeleteDataRadio
+Var UninstallDeleteData
 Var UpdateMode
 Var UpdateWait
 Var InstalledVersion
@@ -253,6 +267,16 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKCU "${APP_UNINSTALL_KEY}"
   DeleteRegKey HKCU "Software\AyoJamaah"
+
+  ; NS-04: user data is deleted only when the page's second option was chosen.
+  ; un.onInit already refused to run while a lock-screen restore journal is
+  ; pending, so the recovery journal cannot be lost here; both folders are
+  ; per-user and hold only this application's data.
+  ${If} $UninstallDeleteData == 1
+    RMDir /r "$APPDATA\PrayerAutomation"
+    RMDir /r "$LOCALAPPDATA\PrayerAutomation"
+  ${EndIf}
+
   RMDir "$INSTDIR"
 
   Call un.ReleaseSafetyMutex
@@ -283,10 +307,20 @@ Function .onInit
   ; still refused because they would skip the safety review. The installed
   ; version confirmation below is for manual installs only: /UPDATEMODE runs
   ; silently and must never wait on a modal dialog.
+  ;
+  ; NS-02: match the switch as a whole, space-delimited argument. A bare
+  ; StrStrIW search would also accept a path or a longer switch that merely
+  ; contains "/UPDATEMODE", silently turning a manual run into the app's
+  ; page-less update mode. The padding makes the first and last argument match
+  ; without a special case. FileFunc's ${GetOptions} is not used because it
+  ; cannot distinguish a valueless switch from a missing one.
   ${GetParameters} $0
-  System::Call 'shlwapi::StrStrIW(w r0, w "/UPDATEMODE") p .r1'
-  ${If} $1 != 0
+  StrCpy $1 " $0 "
+  System::Call 'shlwapi::StrStrIW(w r1, w " /UPDATEMODE ") p .r2'
+  ${If} $2 != 0
     StrCpy $UpdateMode 1
+  ${Else}
+    StrCpy $UpdateMode 0
   ${EndIf}
 
   IfSilent silent_guard
@@ -466,6 +500,51 @@ Function StartFreshPageLeave
 FunctionEnd
 
 ; ---------------------------------------------------------------------------
+; NS-04: uninstaller data choice
+; ---------------------------------------------------------------------------
+
+; Asks whether the user's settings and data should survive the uninstall.
+; Keeping them is preselected: the installer already preserves data on
+; upgrade, so the safe default must not surprise anyone who just clicks Next.
+Function un.UninstallDataPageCreate
+  StrCpy $UninstallDeleteData 0
+  IfFileExists "$APPDATA\PrayerAutomation" un.DataPageHasData
+  IfFileExists "$LOCALAPPDATA\PrayerAutomation" un.DataPageHasData
+  ; Nothing to keep or delete: skip the question entirely.
+  Abort
+
+  un.DataPageHasData:
+  !insertmacro MUI_HEADER_TEXT "Pengaturan dan data" "Pilih apa yang dilakukan dengan data pengguna"
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+
+  ${NSD_CreateMLWrap} 0 0 100% 72u ""
+  Pop $1
+  ${NSD_SetText} $1 \
+    "${APP_NAME} menyimpan pengaturan, log, dan unduhan pembaruan di folder profil pengguna.$\r$\n$\r$\n\
+Pilihan pertama mempertahankan semuanya, sehingga pemasangan berikutnya langsung memakai pengaturan lama. Pilihan kedua menghapus permanen folder pengaturan dan data ${APP_NAME} untuk pengguna ini; jadwal dan pengaturan kembali ke bawaan saat aplikasi dipasang lagi.$\r$\n$\r$\n\
+Jurnal pemulihan lock screen tidak akan dihapus. Jika pemulihan masih tertunda, uninstall dibatalkan oleh pengaman sebelum halaman ini muncul."
+  SendMessage $1 ${EM_SETREADONLY} 1 0
+
+  ${NSD_CreateRadioButton} 0 78u 100% 12u "Simpan pengaturan dan data saya (disarankan)"
+  Pop $UninstallKeepDataRadio
+  ${NSD_CreateRadioButton} 0 94u 100% 12u "Hapus semua pengaturan dan data ${APP_NAME}"
+  Pop $UninstallDeleteDataRadio
+  ${NSD_Check} $UninstallKeepDataRadio
+
+  nsDialogs::Show
+FunctionEnd
+
+Function un.UninstallDataPageLeave
+  ; NSD_GetState returns BST_CHECKED (1) for the selected radio button.
+  ${NSD_GetState} $UninstallDeleteDataRadio $0
+  StrCpy $UninstallDeleteData $0
+FunctionEnd
+
+; ---------------------------------------------------------------------------
 ; Installer helpers
 ; ---------------------------------------------------------------------------
 
@@ -473,8 +552,11 @@ Function CheckUnsafeCommandLine
   StrCpy $SafetyProblem ""
   ${GetParameters} $0
 
-  ; /S is handled by IfSilent. The rest are Inno-style or integrity-bypass
-  ; switches that must never silently change the safety boundary.
+  ; NS-02: /S is handled by IfSilent and /UPDATEMODE is matched as a whole
+  ; argument in .onInit. The switches below are Inno-style or integrity-bypass
+  ; options that must never change the safety boundary. They are matched as
+  ; substrings on purpose: a near miss such as "/LOADINF=file" has to be
+  ; refused too, so this check fails closed.
   System::Call 'shlwapi::StrStrIW(w r0, w "/LOADINF") p .r1'
   ${If} $1 != 0
     StrCpy $SafetyProblem "Opsi pemasangan khusus tidak diizinkan. Jalankan pemasang biasa."
@@ -508,6 +590,15 @@ Function CheckUnsafeCommandLine
   System::Call 'shlwapi::StrStrIW(w r0, w "/NCRC") p .r1'
   ${If} $1 != 0
     StrCpy $SafetyProblem "Opsi /NCRC tidak diizinkan. Jalankan pemasang biasa."
+    Return
+  ${EndIf}
+
+  ; /D= would move $INSTDIR after .onInit has already checked the fixed
+  ; per-user target and its reparse/ownership boundary. NSIS applies it late,
+  ; so refusing it here is the only reliable place to stop it before a page.
+  System::Call 'shlwapi::StrStrIW(w r0, w "/D=") p .r1'
+  ${If} $1 != 0
+    StrCpy $SafetyProblem "Opsi /D= tidak diizinkan; pemasang selalu memasang ke folder pengguna. Jalankan pemasang biasa."
     Return
   ${EndIf}
 FunctionEnd

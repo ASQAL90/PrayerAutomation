@@ -41,6 +41,11 @@ dotnet publish src/PrayerAutomation.UI/PrayerAutomation.UI.csproj -c Release \
   `python3 installer/build_installer_nsis.py` (atau `ayojamaah-build installer`).
   Script memvalidasi receipt, menghasilkan include payload, dan mengompilasi NSIS.
   `--check-only` hanya memvalidasi.
+- Nomor versi installer dibaca script itu dari `<Version>` di
+  `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj` lalu diteruskan sebagai
+  `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`. `installer/nsis/AyoJamaah.nsi` sengaja tidak
+  menyimpan versi sendiri; `makensis` langsung tanpa define itu akan berhenti dengan
+  pesan yang jelas, bukan mengemas versi lama.
 - Di Termux tidak ada `dotnet`, `cargo`, atau `makensis` native. Jangan mengklaim build
   WPF/Rust berhasil. Yang bisa dilakukan lokal: review statis, validasi receipt/payload,
   dan kompilasi NSIS bila `makensis` tersedia di mesin build.
