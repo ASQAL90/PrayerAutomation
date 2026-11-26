@@ -25,7 +25,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 - Ada kalender Masehi & Hijriyah, widget desktop, panel taskbar, dan pengingat.
 - Lokasi bisa diisi manual, dipilih dari data offline, diperkirakan dari jaringan, atau dideteksi dari Windows Location Services. Saat instalasi baru, lokasi dicoba dideteksi otomatis.
 - Pencarian nama tempat berjalan offline (GeoNames + hierarki wilayah Kemendagri). Paket data global lengkap bisa diunduh opsional; Nominatim online juga opsional (default mati) dengan fallback offline.
-- Mulai 2.7.0, ikon peta di ujung kanan **Nama Lokasi** membuka pemilih titik. Tile OpenStreetMap hanya dimuat bila diizinkan secara eksplisit; tanpa izin, pemilih tetap memakai grid dan data lokal.
+- Mulai 2.7.0, ikon peta di ujung kanan **Nama Lokasi** membuka pemilih titik dengan pin merah, zoom di posisi kursor, geser peta, pencarian lokal, dan tombol lokasi saat ini. Tile OpenStreetMap langsung dimuat saat peta dibuka dan bisa dimatikan lewat centang; tanpa tile, pemilih tetap memakai grid dan data lokal.
 - Pembaruan bisa diperiksa sendiri dari GitHub: tombol "Periksa sekarang" di Pengaturan tambahan atau menu ikon tray.
 - Jadwal yang muncul adalah hasil hitung aplikasi, bukan pengumuman resmi.
 
@@ -38,7 +38,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 
 ## Tangkapan layar
 
-Tangkapan layar dari build 2.6.0:
+Tangkapan layar dari build 2.6.0; pemilih peta 2.7.0 belum termasuk:
 
 | | |
 |---|---|
@@ -55,24 +55,24 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
-### Dalam pengembangan: 2.7.0
+### v2.7.0 (stable terbaru)
 
-Pemilih lokasi via peta sedang disiapkan pada branch `feature/2.7.0-map-picker`. Rilis stable dan tautan unduhan di bawah tetap memakai `v2.6.0` sampai rilis 2.7.0 dipublish.
+Ikon peta di ujung kanan **Nama Lokasi** membuka pemilih titik dengan pin merah, zoom di posisi kursor, geser peta, pencarian lokal, dan tombol lokasi saat ini (perangkat/GPS lebih dulu, lalu perkiraan jaringan). Saat dibuka, pin langsung berada di koordinat form pada zoom 15 dan nama lokasi tampil di kotak pencarian. Tile OpenStreetMap langsung dimuat dan bisa dimatikan lewat centang; tanpa tile, grid dan pencarian lokal tetap bekerja. Rilis [`v2.7.0`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.0) dibangun oleh workflow `Release`.
 
-### v2.6.0 (stable terbaru)
+### v2.6.0
 
 Tab **Dzikir & Doa** memuat dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com: Arab, transliterasi Latin, dan arti, dengan kredit di atas serta tautan sumber tiap entri; judul doa tampil sebagai header. Pengingat tambahan mencakup libur nasional & Id, puasa sunnah (keesokan hari pukul `16.00`), larangan puasa/Tasyrik (keesokan hari), peringatan Islam, dzikir pagi, dan dzikir petang; jamnya bisa diatur lewat pilihan jam `00`–`23` dan menit `00`–`59`. Jadwal bersamaan digabung jadi satu popup, sedangkan jadwal beda tetap terpisah. Popup tambahan terpisah dari popup sholat, maksimal 3 popup per layar, dan popup baru menunggu antrean bila ruang layar tidak cukup. Kalender Hijriyah menyorot tanggal hari ini saat pertama dibuka dan mewarnai cell terpilih seperti kalender Masehi; legenda kedua kalender memakai istilah yang sama. Tab terakhir dipulihkan saat aplikasi dibuka lagi. Checkbox paket data lengkap kini tersimpan langsung dan statusnya menampilkan tanggal snapshot. Rilis ini tetap membawa seluruh pengerasan pembaruan serta resolver `prayer_core` dari 2.5.2/2.5.3 dan perbaikan tampilan riwayat perubahan 2.5.4. Aplikasi tetap self-contained tanpa .NET Runtime terpisah. Rilis [`v2.6.0`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.6.0) dibangun oleh workflow `Release`.
 
 | Berkas | Keterangan |
 |---|---|
-| [AyoJamaah.Setup-2.6.0.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/AyoJamaah.Setup-2.6.0.exe) | Installer universal (x64+x86) |
-| [AyoJamaah.Setup-2.6.0-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/AyoJamaah.Setup-2.6.0-x64.exe) | Installer x64 |
-| [AyoJamaah.Setup-2.6.0-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/AyoJamaah.Setup-2.6.0-x86.exe) | Installer x86 (32-bit) |
-| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/AyoJamaah-win-x64.zip) | Portable x64 |
-| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
-| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.6.0/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
+| [AyoJamaah.Setup-2.7.0.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0.exe) | Installer universal (x64+x86) |
+| [AyoJamaah.Setup-2.7.0-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0-x64.exe) | Installer x64 |
+| [AyoJamaah.Setup-2.7.0-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0-x86.exe) | Installer x86 (32-bit) |
+| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah-win-x64.zip) | Portable x64 |
+| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
+| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
 
-Aset pembaruan delta (`AyoJamaah-update-2.6.0-*.json`, `.sig`, dan `AyoJamaah-delta-2.6.0-*.zip`) juga tersedia di [rilis v2.6.0](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.6.0) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
+Aset pembaruan delta (`AyoJamaah-update-2.7.0-*.json`, `.sig`, dan `AyoJamaah-delta-2.7.0-*.zip`) juga tersedia di [rilis v2.7.0](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.0) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
 
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
