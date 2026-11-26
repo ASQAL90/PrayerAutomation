@@ -232,7 +232,7 @@ string nsisSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Ayo
 string uiProject = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "PrayerAutomation.UI.csproj"));
 string installerScript = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build_installer_nsis.py"));
 string changelog = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "CHANGELOG.md"));
-string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.1.md"));
+string newestNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.6.0.md"));
 string currentNotes = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "release-notes-2.5.4.md"));
 
 Check(updateXaml.Contains("Name=\"ReleaseNotesPanel\"", StringComparison.Ordinal) &&
@@ -253,7 +253,7 @@ Check(releaseWorkflow.Contains("Validasi catatan rilis", StringComparison.Ordina
       releaseWorkflow.Contains("body_path: ${{ env.NOTES_PATH }}", StringComparison.Ordinal) &&
       !releaseWorkflow.Contains("generate_release_notes", StringComparison.Ordinal),
     "Workflow rilis harus memvalidasi dan memakai catatan rilis sebagai body.");
-Check(uiProject.Contains("<Version>2.5.4</Version>", StringComparison.Ordinal) &&
+Check(uiProject.Contains("<Version>2.6.0</Version>", StringComparison.Ordinal) &&
       !System.Text.RegularExpressions.Regex.IsMatch(nsisSource, "(?m)^!define APP_VERSION \"") &&
       nsisSource.Contains("!ifndef APP_VERSION", StringComparison.Ordinal) &&
       nsisSource.Contains("!error", StringComparison.Ordinal) &&
@@ -263,7 +263,7 @@ Check(uiProject.Contains("<Version>2.5.4</Version>", StringComparison.Ordinal) &
       nsisSource.Contains("MB_YESNO", StringComparison.Ordinal) &&
       nsisSource.Contains("IfSilent version_check_done", StringComparison.Ordinal) &&
       nsisSource.Contains("/UPDATEMODE", StringComparison.Ordinal),
-    "Versi hanya boleh berasal dari csproj; .nsi menolak kompilasi tanpa -DAPP_VERSION, dan installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
+    "Versi hanya boleh berasal dari csproj (2.6.0); .nsi menolak kompilasi tanpa -DAPP_VERSION, dan installer mengonfirmasi versi sama/lebih baru hanya pada jalur manual.");
 Check(nsisSource.Contains("UninstPage custom un.UninstallDataPageCreate un.UninstallDataPageLeave", StringComparison.Ordinal) &&
       nsisSource.Contains("Simpan pengaturan dan data saya", StringComparison.Ordinal) &&
       nsisSource.Contains("${NSD_Check} $UninstallKeepDataRadio", StringComparison.Ordinal) &&
@@ -289,7 +289,8 @@ Check(currentNotes.Contains("## Perbaikan", StringComparison.Ordinal) &&
       currentNotes.Contains("self-contained", StringComparison.OrdinalIgnoreCase) &&
       !currentNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase),
     "Catatan rilis versi berjalan harus memakai bagian yang dikenali dan bahasa pihak ketiga.");
-Check(changelog.Contains("## v2.5.4", StringComparison.Ordinal) &&
+Check(changelog.Contains("## v2.6.0", StringComparison.Ordinal) &&
+      changelog.Contains("## v2.5.4", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.3", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.2", StringComparison.Ordinal) &&
       changelog.Contains("## v2.5.1", StringComparison.Ordinal) &&
@@ -301,7 +302,7 @@ Check(changelog.Contains("## v2.5.4", StringComparison.Ordinal) &&
       !newestNotes.Contains("user meminta", StringComparison.OrdinalIgnoreCase) &&
       !newestNotes.Contains("diminta", StringComparison.OrdinalIgnoreCase) &&
       !newestNotes.Contains("dibantu", StringComparison.OrdinalIgnoreCase),
-    "Changelog memuat semua versi dan catatan rilis 2.5.1 memakai bahasa pihak ketiga.");
+    "Changelog memuat semua versi dan catatan rilis 2.6.0 memakai bahasa pihak ketiga.");
 
 string updateServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "UpdateService.cs"));
 Check(updateServiceSource.Contains("UpdateManifest.IsSafeAssetName(asset.Name)") &&

@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AppDateTimeFormat.cs" Link="AppDateTimeFormat.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/LocationDefaults.cs" Link="LocationDefaults.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />

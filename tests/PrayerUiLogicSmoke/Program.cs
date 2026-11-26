@@ -294,7 +294,8 @@ string[] settingsSections = settingsStack?.Elements().Select(element =>
 Assert(settingsSections.SequenceEqual(new[]
        {
            "Estimasi waktu sholat hari ini", "Lokasi dan standar perhitungan", "CorrectionsRow",
-           "Tema, Pengingat dan Tampilan Widget", "Pengaturan tambahan", "Penyimpanan & diagnostik"
+           "Tema, Pengingat dan Tampilan Widget", "Pengingat tambahan",
+       "Pengaturan tambahan", "Penyimpanan & diagnostik"
        }),
     "Settings sections must be grouped in the requested order.");
 var globalButtonStyle = xaml.Descendants(presentation + "Style")

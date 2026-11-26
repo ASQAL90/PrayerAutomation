@@ -96,6 +96,39 @@
             <Setter Property="MinWidth" Value="180" />
             <Setter Property="Margin" Value="0,0,8,0" />
         </Style>
+        <Style x:Key="DzikirDoaLink" TargetType="Hyperlink">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="TextDecorations" Value="Underline" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="DzikirDoaEntryTemplate" DataType="{x:Type local:DzikirDoaEntry}">
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                    BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="14" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding EntryTitle}" Visibility="{Binding TitleVisibility}"
+                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" FontSize="20"
+                               TextWrapping="Wrap" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding Arabic}" FlowDirection="RightToLeft" TextWrapping="Wrap"
+                               FontSize="22" LineHeight="34" Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <TextBlock Text="{Binding Latin}" Style="{StaticResource FormBodyText}"
+                               Foreground="{DynamicResource MutedTextBrush}" Margin="0,10,0,0" />
+                    <TextBlock Text="{Binding Meaning}" Style="{StaticResource FormBodyText}" Margin="0,6,0,0" />
+                    <TextBlock Text="{Binding Note}" Style="{StaticResource FormHelpText}"
+                               Visibility="{Binding NoteVisibility}" Foreground="{DynamicResource AccentBrush}"
+                               Margin="0,6,0,0" FontWeight="SemiBold" />
+                    <TextBlock Margin="0,8,0,0">
+                        <Hyperlink Style="{StaticResource DzikirDoaLink}" NavigateUri="{Binding SourceUrl}" RequestNavigate="DzikirDoaLink_RequestNavigate"
+                                   ToolTip="Buka halaman sumber lengkap di Rumaysho.Com">
+                            <Run Text="{Binding LinkLabel, Mode=OneWay}" />
+                        </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
         <Style x:Key="CalendarDayButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Margin" Value="1" />
             <Setter Property="Padding" Value="1" />
@@ -258,8 +291,8 @@
                                         <WrapPanel Name="HijriCalendarLegend" AutomationProperties.AutomationId="HijriCalendarLegend" Margin="0,3,0,0">
                                             <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource ErrorTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Path Data="M8,2.6 L9.7,6 L13.4,6.4 L10.6,8.9 L11.4,12.5 L8,10.6 L4.6,12.5 L5.4,8.9 L2.6,6.4 L6.3,6 Z" Fill="#FFFFFF" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Hari besar / Id" FontSize="11" /></StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource SuccessTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Ellipse Width="6.5" Height="6.5" Fill="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Puasa sunnah" FontSize="11" /></StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource WarningTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Path Data="M5.4,5.4 L10.6,10.6 M10.6,5.4 L5.4,10.6" Stroke="#FFFFFF" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="6.5" Height="6.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Tasyrik / larangan puasa" FontSize="11" /></StackPanel>
-                                            <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource NoteTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Path Data="M8,3.6 L12.4,8 L8,12.4 L3.6,8 Z" Fill="#FFFFFF" Width="8.8" Height="8.8" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Peringatan" FontSize="11" /></StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource WarningTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Path Data="M5.4,5.4 L10.6,10.6 M10.6,5.4 L5.4,10.6" Stroke="#FFFFFF" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="6.5" Height="6.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Larangan puasa / Tasyrik" FontSize="11" /></StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="2,1,10,1"><Grid Width="16" Height="16" Margin="0,0,5,0"><Rectangle Width="16" Height="16" RadiusX="3" RadiusY="3" Fill="{DynamicResource NoteTextBrush}" Stroke="{DynamicResource AppBorderBrush}" /><Path Data="M8,3.6 L12.4,8 L8,12.4 L3.6,8 Z" Fill="#FFFFFF" Width="8.8" Height="8.8" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid><TextBlock Text="Peringatan Islam" FontSize="11" /></StackPanel>
                                         </WrapPanel>
                                         <TextBlock Style="{StaticResource FormHelpText}" Name="HijriCalendarNote" AutomationProperties.AutomationId="HijriCalendarNote" Text="Catatan sumber kalender dimuat bersama tahun Hijriyah." Foreground="{DynamicResource MutedTextBrush}" />
                                     </StackPanel>
@@ -273,6 +306,77 @@
                             </Grid>
                         </TabItem>
                     </TabControl>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Dzikir &amp; Doa" AutomationProperties.AutomationId="DzikirDoaTab">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TabControl Name="DzikirDoaTabs" SelectionChanged="DzikirDoaTabs_SelectionChanged">
+                        <TabItem Header="Dzikir pagi" AutomationProperties.AutomationId="MorningDzikirTab">
+                            <Grid Name="DzikirPagiPane" Margin="8">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                                        BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Kredit sumber" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Credit}" Style="{StaticResource FormHelpText}" Margin="0,4,0,0" />
+                                        <TextBlock Margin="0,2,0,0" TextWrapping="Wrap">
+                                            <Hyperlink Style="{StaticResource DzikirDoaLink}" NavigateUri="{Binding SourceUrl}" RequestNavigate="DzikirDoaLink_RequestNavigate">
+                                                <Run Text="{Binding SourceUrl, Mode=OneWay}" />
+                                            </Hyperlink>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl Name="DzikirPagiList" ItemsSource="{Binding Entries}"
+                                                  ItemTemplate="{StaticResource DzikirDoaEntryTemplate}" Margin="2,0,8,0" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="Dzikir petang" AutomationProperties.AutomationId="EveningDzikirTab">
+                            <Grid Name="DzikirPetangPane" Margin="8">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                                        BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Kredit sumber" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Credit}" Style="{StaticResource FormHelpText}" Margin="0,4,0,0" />
+                                        <TextBlock Margin="0,2,0,0" TextWrapping="Wrap">
+                                            <Hyperlink Style="{StaticResource DzikirDoaLink}" NavigateUri="{Binding SourceUrl}" RequestNavigate="DzikirDoaLink_RequestNavigate">
+                                                <Run Text="{Binding SourceUrl, Mode=OneWay}" />
+                                            </Hyperlink>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl Name="DzikirPetangList" ItemsSource="{Binding Entries}"
+                                                  ItemTemplate="{StaticResource DzikirDoaEntryTemplate}" Margin="2,0,8,0" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="Kumpulan doa" AutomationProperties.AutomationId="DzikirDoaCollectionTab">
+                            <Grid Name="DoaPane" Margin="8">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <Border Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                                        BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}" Padding="12" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Kredit sumber" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Credit}" Style="{StaticResource FormHelpText}" Margin="0,4,0,0" />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="0,2,0,0"
+                                                   Text="Setiap doa memuat tautan ke halaman asal untuk riwayat dan penjelasan lengkap." />
+                                    </StackPanel>
+                                </Border>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl Name="DoaList" ItemsSource="{Binding Entries}"
+                                                  ItemTemplate="{StaticResource DzikirDoaEntryTemplate}" Margin="2,0,8,0" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                    <TextBlock Name="DzikirDoaStatus" Grid.Row="1" Style="{StaticResource FormHelpText}"
+                               AutomationProperties.AutomationId="DzikirDoaStatus" Margin="2,4,2,0"
+                               Foreground="{DynamicResource MutedTextBrush}" />
                 </Grid>
             </TabItem>
 
@@ -507,6 +611,55 @@
                                         <CheckBox Name="WidgetAutoHideCheckBox" Checked="WidgetPreviewOptions_Changed" Unchecked="WidgetPreviewOptions_Changed" Margin="3,4,3,4" ToolTip="Berlaku untuk Lengkap dan Ringkas. Widget menyingkir agar isi di belakangnya terlihat, lalu muncul lagi saat kursor menjauh. Untuk mematikan, buka pengaturan atau menu ikon tray.">
                                             <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Sembunyikan saat kursor mendekat" />
                                         </CheckBox>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+
+                            <GroupBox Header="Pengingat tambahan" Style="{StaticResource CardGroup}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Observansi tanggal" Style="{StaticResource FieldLabel}" />
+                                        <CheckBox Name="PublicHolidayReminderCheckBox" AutomationProperties.AutomationId="PublicHolidayReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat libur nasional &amp; Id" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,2"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="PublicHolidayTimeBox" AutomationProperties.AutomationId="PublicHolidayTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 08.10" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="PublicHolidayMinuteBox" AutomationProperties.AutomationId="PublicHolidayMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,6" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Pengingat hari libur atau Id hari ini." />
+                                        <CheckBox Name="SunnahFastingReminderCheckBox" AutomationProperties.AutomationId="SunnahFastingReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat puasa sunnah" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,2"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="SunnahFastingTimeBox" AutomationProperties.AutomationId="SunnahFastingTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 16.00" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="SunnahFastingMinuteBox" AutomationProperties.AutomationId="SunnahFastingMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,6" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Pengingat puasa untuk esok hari." />
+                                        <CheckBox Name="LaranganPuasaReminderCheckBox" AutomationProperties.AutomationId="LaranganPuasaReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat larangan puasa / Tasyrik" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,2"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="LaranganPuasaTimeBox" AutomationProperties.AutomationId="LaranganPuasaTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 16.00" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="LaranganPuasaMinuteBox" AutomationProperties.AutomationId="LaranganPuasaMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,6" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Pengingat larangan berpuasa untuk esok hari." />
+                                        <CheckBox Name="IslamicHolidayReminderCheckBox" AutomationProperties.AutomationId="IslamicHolidayReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat peringatan Islam" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,2"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="IslamicHolidayTimeBox" AutomationProperties.AutomationId="IslamicHolidayTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 08.10" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="IslamicHolidayMinuteBox" AutomationProperties.AutomationId="IslamicHolidayMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,6" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Pengingat peringatan Islam hari ini." />
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="3,8,3,0" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Pengingat di luar waktu sholat. Popup tambahan terpisah dari popup sholat; maksimal tiga tampil sekaligus, sisanya antre." />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                                        <TextBlock Text="Dzikir harian" Style="{StaticResource FieldLabel}" />
+                                        <CheckBox Name="MorningDzikirReminderCheckBox" AutomationProperties.AutomationId="MorningDzikirReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat dzikir pagi" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,4"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="MorningDzikirTimeBox" AutomationProperties.AutomationId="MorningDzikirTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 08.10" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="MorningDzikirMinuteBox" AutomationProperties.AutomationId="MorningDzikirMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,6" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Batas waktu dzikir pagi." />
+                                        <CheckBox Name="EveningDzikirReminderCheckBox" AutomationProperties.AutomationId="EveningDzikirReminderCheckBox" Margin="3,2,3,2">
+                                            <TextBlock Style="{StaticResource FormCheckBoxText}" Text="Pengingat dzikir petang" />
+                                        </CheckBox>
+                                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0"><TextBlock Text="Jam" Width="34" VerticalAlignment="Center" /><ComboBox Name="EveningDzikirTimeBox" AutomationProperties.AutomationId="EveningDzikirTimeBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih jam 00–23; default 17.00" /><TextBlock Text=":" VerticalAlignment="Center" Margin="2,0" /><ComboBox Name="EveningDzikirMinuteBox" AutomationProperties.AutomationId="EveningDzikirMinuteBox" Width="52" VerticalContentAlignment="Center" IsEditable="False" ToolTip="Pilih menit 00–59" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="20,0,3,0" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Batas waktu dzikir petang." />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                        <TextBlock Text="Pengulangan jadwal terlewat" Style="{StaticResource FieldLabel}" />
+                                        <StackPanel Orientation="Horizontal" Margin="3,4"><TextBlock Text="Jeda (detik)" Width="104" VerticalAlignment="Center" /><TextBox Name="ReminderRepeatSecondsBox" AutomationProperties.AutomationId="ReminderRepeatSecondsBox" Width="64" TextAlignment="Center" ToolTip="30–3600 detik" /></StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="3,2"><TextBlock Text="Maksimal ulang" Width="104" VerticalAlignment="Center" /><TextBox Name="ReminderRepeatCountBox" AutomationProperties.AutomationId="ReminderRepeatCountBox" Width="64" TextAlignment="Center" ToolTip="0–10 kali" /></StackPanel>
+                                        <TextBlock Style="{StaticResource FormHelpText}" Margin="3,8,3,0" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Text="Perulangan dihitung sejak jadwal terlewat. Tombol ✕ menghentikan permanen; tombol lain meminta pengingat lagi." />
                                     </StackPanel>
                                 </Grid>
                             </GroupBox>

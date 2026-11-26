@@ -19,6 +19,12 @@ GeoTimeZone memuat Geohash-net (Sharon Lourduraj) dan port Geohash-js (David Tro
 - Sampel mdpl berasal dari [Copernicus DEM GLO-90](https://registry.opendata.aws/copernicus-dem/) melalui [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Pengambilan terjadi saat build dengan median `3×3`; aplikasi tidak mengirim permintaan lokasi atau ketinggian saat memakai data offline.
 - Atribusi lengkap, snapshot, dan daftar berkas ada pada [NOTICE data geonames](../src/PrayerAutomation.UI/Data/geonames/NOTICE.txt) dan [third-party notices](THIRD_PARTY_NOTICES.md).
 
+## Konten dzikir dan doa — Rumaysho.Com
+
+- Teks dzikir pagi, dzikir petang, dan kumpulan doa di `src/PrayerAutomation.UI/Data/dzikir-doa.json` diekstrak otomatis dari halaman publik [Rumaysho.Com](https://rumaysho.com/) memakai `tools/extract_rumaysho.py`; hasil ekstraksi divalidasi terhadap teks Arab, transliterasi Latin, arti, dan URL sumber.
+- Kredit tampil di bagian atas tiap tab: **Rumaysho.Com — Muhammad Abduh Tuasikal**. Setiap entri menautkan halaman asal, dan teks Arab, transliterasi Latin, arti, serta URL tidak diubah. Hak atas konten tetap milik sumber; aplikasi menampilkan kutipan dengan kredit.
+- Snapshot ekstraksi tercatat pada `generated_at` di berkas data (25 November 2026 UTC).
+
 ## Algoritma internal
 
 - Perhitungan jadwal sholat (`prayer-core`) memakai algoritma standar yang umum dipakai (posisi matahari/kalender hijriah); implementasinya ditulis sendiri di Rust.

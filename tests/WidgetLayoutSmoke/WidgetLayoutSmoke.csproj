@@ -7,10 +7,15 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="GeoTimeZone" Version="7.0.0" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/PrayerAutomation.UI/PrayerAutomation.UI.csproj">
       <Aliases>ProductUi</Aliases>
     </ProjectReference>
     <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LocationDefaults.cs" Link="LocationDefaults.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AppDateTimeFormat.cs" Link="AppDateTimeFormat.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/AppBranding.cs" Link="AppBranding.cs" />
     <Compile Include="../../src/Shared/PrayerIconPaths.cs" Link="Shared/PrayerIconPaths.cs" />
     <Compile Include="../../src/PrayerAutomation.UI/NativePrayerCore.cs" Link="NativePrayerCore.cs" />

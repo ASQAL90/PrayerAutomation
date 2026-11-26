@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Application = System.Windows.Application;
@@ -59,9 +60,13 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _clockTimer;
     private readonly Dictionary<DateTime, Button> _gregorianDateButtons = [];
     private readonly Dictionary<DateTime, CalendarObservance[]> _gregorianObservances = [];
+    private readonly Dictionary<DateTime, Button> _hijriDateButtons = [];
+    private readonly Dictionary<DateTime, CalendarObservance[]> _hijriObservances = [];
     private bool _loadingSettings;
     private bool _allowClose;
     private object?[]? _savedFormBaseline;
+    // Position of DownloadFullDataCheckBox.IsChecked in CaptureSettingsFormDraft().
+    private const int FullOfflineDataDraftIndex = 16;
     /// <summary>True once the user edits the height field by hand.</summary>
     private bool _elevationManuallyEdited;
     /// <summary>True while the height field is being filled from the offline dataset.</summary>
@@ -73,6 +78,8 @@ public partial class MainWindow : Window
     private int _selectedGregorianYear;
     private int _selectedHijriYear;
     private DateTime _selectedGregorianDate;
+    private DateTime _selectedHijriDate;
+    private bool _hasHijriSelection;
     private DateTime _lastCalendarToday;
     // A full year in each calendar creates hundreds of WPF controls.  Keep that
     // work out of the startup path so the initially visible controls accept input
@@ -167,14 +174,17 @@ public partial class MainWindow : Window
                 WindowState = _lastNonMinimizedWindowState;
                 return;
             }
-            if (!ConfirmUnsavedSettingsChanges()) return;
+            if (!TrySaveSettings() && !ConfirmUnsavedSettingsChanges()) return;
             RestoreSavedSettingsPreview();
             Hide();
         };
 
+        InitializeReminderTimePickers();
         InitializeYearSelectors();
         PopulateSettingsForm();
         TryRestoreOfflineDataCache();
+        LoadDzikirDoaContent();
+        RestoreLastTabs();
         _lastCalendarToday = GetCalendarToday();
         _clockTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -212,11 +222,37 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    /// <summary>Selects the settings tab.</summary>
+    /// <summary>Selects the settings tab, which is the last tab.</summary>
     internal void SelectSettingsTab()
+    {
+        MainTabs.SelectedIndex = 3;
+        Activate();
+    }
+
+    /// <summary>Selects the Dzikir &amp; Doa tab without forcing a sub-tab.</summary>
+    internal void SelectDzikirTab()
     {
         MainTabs.SelectedIndex = 2;
         Activate();
+    }
+
+    /// <summary>Selects the Dzikir &amp; Doa tab and the requested sub-tab.</summary>
+    /// <param name="target"><c>morning</c>, <c>evening</c>, or <c>dzikir</c> to keep the current sub-tab.</param>
+    internal void SelectDzikirTab(string target)
+    {
+        SelectDzikirTab();
+        if (string.Equals(target, "morning", StringComparison.OrdinalIgnoreCase))
+            DzikirDoaTabs.SelectedIndex = 0;
+        else if (string.Equals(target, "evening", StringComparison.OrdinalIgnoreCase))
+            DzikirDoaTabs.SelectedIndex = 1;
+    }
+
+    /// <summary>Restores the tab selected before the app was minimized or closed.</summary>
+    private void RestoreLastTabs()
+    {
+        MainTabs.SelectedIndex = Math.Clamp(_settings.LastMainTabIndex, 0, MainTabs.Items.Count - 1);
+        DzikirDoaTabs.SelectedIndex = Math.Clamp(_settings.LastDzikirTabIndex, 0, DzikirDoaTabs.Items.Count - 1);
+        if (MainTabs.SelectedIndex == 1) EnsureCalendarViewsLoaded();
     }
 
     /// <summary>Refreshes overview, calendar, and schedule preview after a theme change.</summary>
@@ -233,9 +269,16 @@ public partial class MainWindow : Window
     /// <param name="e">Selection event arguments.</param>
     private void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (e.Source == MainTabs && MainTabs.SelectedIndex == 1)
-            EnsureCalendarViewsLoaded();
+        if (e.Source != MainTabs) return;
+        _settings.LastMainTabIndex = MainTabs.SelectedIndex;
+        if (MainTabs.SelectedIndex == 1) EnsureCalendarViewsLoaded();
     }
+
+    /// <summary>Remembers the selected dzikir sub-tab for the next launch.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Selection event arguments.</param>
+    private void DzikirDoaTabs_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        _settings.LastDzikirTabIndex = DzikirDoaTabs.SelectedIndex;
 
     /// <summary>Refreshes the overview tab: date, location summary, reminder status, and today's schedule.</summary>
     internal void RefreshOverview()
@@ -759,10 +802,11 @@ public partial class MainWindow : Window
     private void RenderHijriYear(int year)
     {
         HijriCalendarGrid.Children.Clear();
+        _hijriDateButtons.Clear();
+        _hijriObservances.Clear();
         try
         {
             DateTime calendarToday = GetCalendarToday();
-            NativeCalendarDate active = HijriForCalendarDate(calendarToday);
             int totalDays = 0;
             for (int month = 1; month <= 12; month++)
             {
@@ -827,20 +871,27 @@ public partial class MainWindow : Window
                         continue;
                     }
                     DateTime gregorian = displayStart.AddDays(day - 1);
-                    bool isActiveDate = active.Year == year && active.Month == month && active.Day == day;
-                    datesGrid.Children.Add(CreateHijriDateButton(year, month, day, gregorian, calendarToday, isActiveDate));
+                    bool isSelected = _hasHijriSelection && gregorian.Date == _selectedHijriDate.Date;
+                    CalendarObservance[] observances = NativePrayerCore.CalendarObservances(
+                        gregorian, GetHijriDateCorrectionDays(), UseKhgtCalendar).ToArray();
+                    _hijriObservances[gregorian.Date] = observances;
+                    Button cell = CreateHijriDateButton(year, month, day, gregorian, calendarToday, isSelected, observances);
+                    _hijriDateButtons[gregorian.Date] = cell;
+                    datesGrid.Children.Add(cell);
                 }
                 monthPanel.Children.Add(datesGrid);
                 HijriCalendarGrid.Children.Add(monthCard);
             }
+            RestoreHijriSelection(year, calendarToday);
             HijriYearLabel.Text = $"Tahun {year} H — 12 bulan dimuat ({totalDays} hari). " + CurrentCalendarSourceNote();
-            HijriSelectedDateDetail.Text = "Pilih tanggal Hijriyah untuk melihat padanan Masehi.";
             FooterStatus.Text = $"Kalender Hijriyah {year} H: 12 bulan dan {totalDays} tanggal dimuat.";
         }
         catch (Exception ex) when (IsNativeCoreFailure(ex) || ex is InvalidOperationException or ArgumentOutOfRangeException)
         {
             AppLogger.Write("calendar.hijri.render", ex);
             HijriCalendarGrid.Children.Clear();
+            _hijriDateButtons.Clear();
+            _hijriObservances.Clear();
             if (UseKhgtCalendar && year is < NativePrayerCore.KhgtFirstYear or > NativePrayerCore.KhgtLastYear)
             {
                 HijriYearLabel.Text = $"Tahun {year} H belum tersedia di tabel KHGT resmi ({NativePrayerCore.KhgtFirstYear}–{NativePrayerCore.KhgtLastYear} H).";
@@ -862,12 +913,13 @@ public partial class MainWindow : Window
     /// <param name="day">Hijri day.</param>
     /// <param name="gregorianDate">Gregorian date backing the cell.</param>
     /// <param name="calendarToday">Today's date for marker styling.</param>
-    /// <param name="isActiveDate">Whether the cell is the current selection.</param>
+    /// <param name="isSelected">Whether the cell is the current selection.</param>
+    /// <param name="observances">Precomputed observances for the backing Gregorian date.</param>
     /// <returns>The date button.</returns>
-    private Button CreateHijriDateButton(int year, int month, int day, DateTime gregorianDate, DateTime calendarToday, bool isActiveDate)
+    private Button CreateHijriDateButton(int year, int month, int day, DateTime gregorianDate, DateTime calendarToday,
+        bool isSelected, IReadOnlyList<CalendarObservance> observances)
     {
-        IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays(), UseKhgtCalendar);
-        CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(gregorianDate, calendarToday, isActiveDate, observances);
+        CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(gregorianDate, calendarToday, isSelected, observances);
         CalendarThemeColors themeColors = ThemeCatalog.CalendarColorsFor(ThemeManager.Current, markerStyle);
         string[] names = observances.Select(item => item.Name).ToArray();
         var content = new Grid();
@@ -1017,6 +1069,8 @@ public partial class MainWindow : Window
     /// <param name="gregorianDate">Gregorian date backing the cell.</param>
     private void SelectHijriDate(int year, int month, int day, DateTime gregorianDate)
     {
+        _selectedHijriDate = gregorianDate.Date;
+        _hasHijriSelection = true;
         string name = NativePrayerCore.HijriMonthName(month);
         IReadOnlyList<CalendarObservance> observances = NativePrayerCore.CalendarObservances(gregorianDate, GetHijriDateCorrectionDays(), UseKhgtCalendar);
         string fullObservanceLine = observances.Count == 0 ? "" : "\nPenanda: " + string.Join("; ", observances.Select(item => item.Name));
@@ -1024,6 +1078,102 @@ public partial class MainWindow : Window
         string dateCaption = $"{day} {name} {year} H — {gregorianDate.ToString("dddd, d MMMM yyyy", IndonesianCulture)} M";
         HijriSelectedDateDetail.Text = dateCaption + shortObservanceLine;
         AutomationProperties.SetName(HijriSelectedDateDetail, dateCaption + "\n" + CurrentCalendarSourceNote() + fullObservanceLine);
+        UpdateHijriSelection();
+    }
+
+    /// <summary>Keeps a valid selection or defaults it to today's Hijri date, as in the Gregorian view.</summary>
+    /// <param name="year">The Hijri year currently rendered.</param>
+    /// <param name="calendarToday">Today in the location time zone.</param>
+    private void RestoreHijriSelection(int year, DateTime calendarToday)
+    {
+        try
+        {
+            if (_hasHijriSelection && _hijriDateButtons.ContainsKey(_selectedHijriDate.Date))
+            {
+                NativeCalendarDate selectedHijri = HijriForCalendarDate(_selectedHijriDate);
+                if (selectedHijri.Year == year)
+                {
+                    SelectHijriDate(selectedHijri.Year, selectedHijri.Month, selectedHijri.Day, _selectedHijriDate);
+                    return;
+                }
+            }
+
+            NativeCalendarDate todayHijri = HijriForCalendarDate(calendarToday);
+            if (todayHijri.Year == year && _hijriDateButtons.ContainsKey(calendarToday.Date))
+            {
+                SelectHijriDate(todayHijri.Year, todayHijri.Month, todayHijri.Day, calendarToday.Date);
+                return;
+            }
+
+            NativeHijriMonth firstMonth = NativePrayerCore.HijriMonth(year, 1, UseKhgtCalendar);
+            DateTime firstDay = new DateTime(firstMonth.GregorianYear, firstMonth.GregorianMonth, firstMonth.GregorianDay)
+                .AddDays(-GetHijriDateCorrectionDays());
+            if (_hijriDateButtons.ContainsKey(firstDay.Date))
+                SelectHijriDate(year, 1, 1, firstDay);
+            else
+                ClearHijriSelection();
+        }
+        catch (Exception ex) when (IsNativeCoreFailure(ex) || ex is InvalidOperationException or ArgumentOutOfRangeException)
+        {
+            AppLogger.Write("calendar.hijri.selection", ex);
+            ClearHijriSelection();
+        }
+    }
+
+    /// <summary>Clears the Hijri caption when the rendered year has no selectable cell.</summary>
+    private void ClearHijriSelection()
+    {
+        _hasHijriSelection = false;
+        const string prompt = "Pilih tanggal Hijriyah untuk melihat padanan Masehi.";
+        HijriSelectedDateDetail.Text = prompt;
+        AutomationProperties.SetName(HijriSelectedDateDetail, prompt);
+    }
+
+    /// <summary>Repaints every Hijri cell so only the selected date keeps the selection style.</summary>
+    private void UpdateHijriSelection()
+    {
+        DateTime today = GetCalendarToday();
+        foreach ((DateTime cellDate, Button button) in _hijriDateButtons)
+            UpdateHijriDateButton(cellDate, button, today);
+    }
+
+    /// <summary>Applies marker styling and selection state to a Hijri date button.</summary>
+    /// <param name="date">The backing Gregorian date of the cell.</param>
+    /// <param name="button">The button to update.</param>
+    /// <param name="today">Today's date for marker styling.</param>
+    private void UpdateHijriDateButton(DateTime date, Button button, DateTime today)
+    {
+        bool isSelected = _hasHijriSelection && date.Date == _selectedHijriDate.Date;
+        _hijriObservances.TryGetValue(date.Date, out CalendarObservance[]? observances);
+        observances ??= [];
+        CalendarMarker markerStyle = PrayerUiLogic.CalendarMarkerFor(date, today, isSelected, observances);
+        CalendarThemeColors themeColors = ThemeCatalog.CalendarColorsFor(ThemeManager.Current, markerStyle);
+        button.Background = MakeBrush(themeColors.Background);
+        button.BorderBrush = MakeBrush(themeColors.Border);
+        button.BorderThickness = new Thickness(themeColors.BorderThickness);
+        if (button.Content is Grid content)
+        {
+            TextBlock? dayText = content.Children.OfType<TextBlock>().FirstOrDefault();
+            if (dayText is not null)
+            {
+                dayText.FontWeight = markerStyle.IsToday ? FontWeights.Bold : FontWeights.Normal;
+                dayText.Foreground = MakeBrush(themeColors.Foreground);
+            }
+            foreach (Shape shape in content.Children.OfType<Shape>())
+            {
+                string automationId = AutomationProperties.GetAutomationId(shape);
+                if (automationId.StartsWith("HijriTodayRing-", StringComparison.Ordinal))
+                {
+                    shape.Stroke = MakeBrush(themeColors.Border);
+                    shape.StrokeThickness = themeColors.BorderThickness;
+                    shape.Visibility = markerStyle.IsToday ? Visibility.Visible : Visibility.Collapsed;
+                }
+                else if (automationId.StartsWith("HijriCalendarMarker-", StringComparison.Ordinal))
+                {
+                    shape.Fill = MakeBrush(themeColors.Marker);
+                }
+            }
+        }
     }
 
     /// <summary>Computes the corrected Hijri date for a Gregorian date.</summary>
@@ -1173,6 +1323,22 @@ public partial class MainWindow : Window
             ReminderEnabledCheckBox.IsChecked = _settings.RemindersEnabled;
             ReminderMinutesBox.Text = _settings.ReminderMinutes.ToString(CultureInfo.InvariantCulture);
             ReminderMessageBox.Text = _settings.ReminderMessage;
+            DownloadFullDataCheckBox.IsChecked = _settings.FullOfflineDataEnabled;
+            DownloadFullDataButton.IsEnabled = _settings.FullOfflineDataEnabled;
+            SunnahFastingReminderCheckBox.IsChecked = _settings.SunnahFastingReminderEnabled;
+            PublicHolidayReminderCheckBox.IsChecked = _settings.PublicHolidayReminderEnabled;
+            IslamicHolidayReminderCheckBox.IsChecked = _settings.IslamicHolidayReminderEnabled;
+            LaranganPuasaReminderCheckBox.IsChecked = _settings.NoFastReminderEnabled;
+            MorningDzikirReminderCheckBox.IsChecked = _settings.MorningDzikirReminderEnabled;
+            EveningDzikirReminderCheckBox.IsChecked = _settings.EveningDzikirReminderEnabled;
+            SetTimePicker(SunnahFastingTimeBox, SunnahFastingMinuteBox, _settings.SunnahFastingReminderTime);
+            SetTimePicker(PublicHolidayTimeBox, PublicHolidayMinuteBox, _settings.PublicHolidayReminderTime);
+            SetTimePicker(IslamicHolidayTimeBox, IslamicHolidayMinuteBox, _settings.IslamicHolidayReminderTime);
+            SetTimePicker(LaranganPuasaTimeBox, LaranganPuasaMinuteBox, _settings.NoFastReminderTime);
+            SetTimePicker(MorningDzikirTimeBox, MorningDzikirMinuteBox, _settings.MorningDzikirReminderTime);
+            SetTimePicker(EveningDzikirTimeBox, EveningDzikirMinuteBox, _settings.EveningDzikirReminderTime);
+            ReminderRepeatSecondsBox.Text = _settings.ReminderRepeatSeconds.ToString(CultureInfo.InvariantCulture);
+            ReminderRepeatCountBox.Text = _settings.ReminderRepeatCount.ToString(CultureInfo.InvariantCulture);
             WidgetEnabledCheckBox.IsChecked = _settings.WidgetEnabled;
             WidgetModeBox.SelectedItem = WidgetModeBox.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WidgetMode, StringComparison.OrdinalIgnoreCase));
@@ -2331,13 +2497,61 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (_offlineDataDownloadService.TryLoadCached())
-                DownloadFullDataStatus.Text = "Paket data lengkap tersedia dari cache; dipakai untuk pencarian offline.";
+            if (_offlineDataDownloadService.TryLoadCached(out string snapshot))
+                DownloadFullDataStatus.Text = OfflineDataDownloadService.InstalledStatus(snapshot);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             DownloadFullDataStatus.Text = "Cache data lengkap tidak dapat dibaca; memakai data bawaan.";
             _logSettingsError("Membaca cache data offline", ex);
+        }
+    }
+
+    /// <summary>Loads the embedded dzikir and doa catalog into the three sub-tabs.</summary>
+    private void LoadDzikirDoaContent()
+    {
+        try
+        {
+            DzikirDoaCatalog catalog = DzikirDoaCatalog.Load();
+            DzikirDoaSection? morning = catalog.Find("dzikir-pagi");
+            DzikirDoaSection? evening = catalog.Find("dzikir-petang");
+            DzikirDoaSection? doa = catalog.Find("doa");
+            DzikirPagiPane.DataContext = morning;
+            DzikirPetangPane.DataContext = evening;
+            DoaPane.DataContext = doa;
+            if (morning is null || evening is null || doa is null)
+                throw new InvalidDataException("Salah satu bagian dzikir atau doa tidak ditemukan.");
+            DzikirDoaStatus.Text =
+                $"{morning.Entries.Count} dzikir pagi · {evening.Entries.Count} dzikir petang · {doa.Entries.Count} doa. " +
+                "Teks Arab, transliterasi, dan arti dari Rumaysho.Com; tautan kredit tersedia tiap entri.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            DzikirPagiPane.DataContext = null;
+            DzikirPetangPane.DataContext = null;
+            DoaPane.DataContext = null;
+            DzikirDoaStatus.Text = "Dzikir dan doa belum dapat dimuat: " + ex.Message;
+            _logSettingsError("dzikir-doa.load", ex);
+        }
+    }
+
+    /// <summary>Opens a Rumaysho source link in the default browser after validating its host.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Navigation request containing the source URL.</param>
+    private void DzikirDoaLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        e.Handled = true;
+        if (e.Uri is null || !e.Uri.IsAbsoluteUri || e.Uri.Scheme != Uri.UriSchemeHttps ||
+            !string.Equals(e.Uri.Host, "rumaysho.com", StringComparison.OrdinalIgnoreCase))
+            return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+        {
+            _logSettingsError("dzikir-doa.link", ex);
+            DzikirDoaStatus.Text = "Tautan tidak dapat dibuka. Periksa aplikasi browser bawaan Windows.";
         }
     }
 
@@ -2358,8 +2572,30 @@ public partial class MainWindow : Window
 
     private void DownloadFullDataCheckBox_Changed(object sender, RoutedEventArgs e)
     {
-        if (_offlineDataDownloadCancellation is not null) return;
-        DownloadFullDataButton.IsEnabled = DownloadFullDataCheckBox.IsChecked == true;
+        bool enabled = DownloadFullDataCheckBox.IsChecked == true;
+        DownloadFullDataButton.IsEnabled = enabled;
+        if (_loadingSettings || _offlineDataDownloadCancellation is not null) return;
+        PersistFullOfflineDataChoice(enabled);
+    }
+
+    /// <summary>Persists the offline-pack consent immediately, independent of the Simpan button.</summary>
+    /// <param name="enabled">Whether the optional pack is accepted.</param>
+    private void PersistFullOfflineDataChoice(bool enabled)
+    {
+        _settings.FullOfflineDataEnabled = enabled;
+        try
+        {
+            _saveSettings(_settings);
+            // Only this consent was persisted. Recapturing the whole form here
+            // would silently mark unrelated edits as saved.
+            if (_savedFormBaseline is not null && !_savingSettings && !_resolvingUnsavedChanges)
+                _savedFormBaseline[FullOfflineDataDraftIndex] = enabled;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            _logSettingsError("settings.full-offline-data", ex);
+            SettingsStatusLabel.Text = "Pilihan paket data lengkap belum dapat disimpan; periksa izin penyimpanan.";
+        }
     }
 
     /// <summary>Downloads, verifies, and activates the optional complete data pack.</summary>
@@ -2398,6 +2634,11 @@ public partial class MainWindow : Window
             OfflineDataInstallResult result = await _offlineDataDownloadService
                 .DownloadAsync(progress, cancellation.Token).ConfigureAwait(true);
             DownloadFullDataStatus.Text = result.Message;
+            if (result.Installed)
+            {
+                DownloadFullDataCheckBox.IsChecked = true;
+                PersistFullOfflineDataChoice(true);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -2733,6 +2974,26 @@ public partial class MainWindow : Window
             error = "Waktu pengingat harus berupa bilangan bulat 0–120 menit.";
             return false;
         }
+        if (!TryReminderTime(SunnahFastingTimeBox, SunnahFastingMinuteBox, "puasa sunnah", ref error, out string sunnahFastingTime) ||
+            !TryReminderTime(PublicHolidayTimeBox, PublicHolidayMinuteBox, "libur nasional", ref error, out string publicHolidayTime) ||
+            !TryReminderTime(IslamicHolidayTimeBox, IslamicHolidayMinuteBox, "peringatan Islam", ref error, out string islamicHolidayTime) ||
+            !TryReminderTime(LaranganPuasaTimeBox, LaranganPuasaMinuteBox, "larangan puasa", ref error, out string laranganPuasaTime) ||
+            !TryReminderTime(MorningDzikirTimeBox, MorningDzikirMinuteBox, "dzikir pagi", ref error, out string morningDzikirTime) ||
+            !TryReminderTime(EveningDzikirTimeBox, EveningDzikirMinuteBox, "dzikir petang", ref error, out string eveningDzikirTime))
+        {
+            error += " Gunakan format HH.mm, misalnya 08.10.";
+            return false;
+        }
+        if (!TryInt(ReminderRepeatSecondsBox.Text, 30, 3600, out int reminderRepeatSeconds))
+        {
+            error = "Jeda pengulangan harus berupa bilangan bulat 30–3600 detik.";
+            return false;
+        }
+        if (!TryInt(ReminderRepeatCountBox.Text, 0, 10, out int reminderRepeatCount))
+        {
+            error = "Maksimal pengulangan harus berupa bilangan bulat 0–10 kali.";
+            return false;
+        }
         string reminderMessage = ReminderMessageBox.Text.Trim();
         if (reminderMessage.Length > AppSettings.MaxReminderMessageLength)
         {
@@ -2794,6 +3055,21 @@ public partial class MainWindow : Window
         candidate.ReminderMessage = string.IsNullOrEmpty(reminderMessage)
             ? AppSettings.DefaultReminderMessage
             : reminderMessage;
+        candidate.FullOfflineDataEnabled = DownloadFullDataCheckBox.IsChecked == true;
+        candidate.SunnahFastingReminderEnabled = SunnahFastingReminderCheckBox.IsChecked == true;
+        candidate.PublicHolidayReminderEnabled = PublicHolidayReminderCheckBox.IsChecked == true;
+        candidate.IslamicHolidayReminderEnabled = IslamicHolidayReminderCheckBox.IsChecked == true;
+        candidate.NoFastReminderEnabled = LaranganPuasaReminderCheckBox.IsChecked == true;
+        candidate.MorningDzikirReminderEnabled = MorningDzikirReminderCheckBox.IsChecked == true;
+        candidate.EveningDzikirReminderEnabled = EveningDzikirReminderCheckBox.IsChecked == true;
+        candidate.SunnahFastingReminderTime = sunnahFastingTime;
+        candidate.PublicHolidayReminderTime = publicHolidayTime;
+        candidate.IslamicHolidayReminderTime = islamicHolidayTime;
+        candidate.NoFastReminderTime = laranganPuasaTime;
+        candidate.MorningDzikirReminderTime = morningDzikirTime;
+        candidate.EveningDzikirReminderTime = eveningDzikirTime;
+        candidate.ReminderRepeatSeconds = reminderRepeatSeconds;
+        candidate.ReminderRepeatCount = reminderRepeatCount;
         candidate.WidgetEnabled = WidgetEnabledCheckBox.IsChecked == true;
         candidate.WidgetAlwaysOnTop = WidgetAlwaysOnTopCheckBox.IsChecked == true;
         candidate.WidgetClickThrough = WidgetClickThroughCheckBox.IsChecked == true;
@@ -2883,6 +3159,62 @@ public partial class MainWindow : Window
         int.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value)
         && value >= minimum && value <= maximum;
 
+    /// <summary>Populates the hour and minute drop-downs used by every reminder time.</summary>
+    private void InitializeReminderTimePickers()
+    {
+        string[] hours = Enumerable.Range(0, 24).Select(hour => hour.ToString("00", CultureInfo.InvariantCulture)).ToArray();
+        string[] minutes = Enumerable.Range(0, 60).Select(minute => minute.ToString("00", CultureInfo.InvariantCulture)).ToArray();
+        ComboBox[] hourBoxes =
+        [
+            SunnahFastingTimeBox, PublicHolidayTimeBox, IslamicHolidayTimeBox, LaranganPuasaTimeBox,
+            MorningDzikirTimeBox, EveningDzikirTimeBox
+        ];
+        ComboBox[] minuteBoxes =
+        [
+            SunnahFastingMinuteBox, PublicHolidayMinuteBox, IslamicHolidayMinuteBox, LaranganPuasaMinuteBox,
+            MorningDzikirMinuteBox, EveningDzikirMinuteBox
+        ];
+        foreach (ComboBox box in hourBoxes) box.ItemsSource = hours;
+        foreach (ComboBox box in minuteBoxes) box.ItemsSource = minutes;
+    }
+
+    /// <summary>Selects the two drop-down values represented by an HH.mm setting.</summary>
+    /// <param name="hour">Hour drop-down.</param>
+    /// <param name="minute">Minute drop-down.</param>
+    /// <param name="text">Stored HH.mm value.</param>
+    private static void SetTimePicker(ComboBox hour, ComboBox minute, string text)
+    {
+        if (!AppDateTimeFormat.TryParseTime(text, out TimeSpan time)) time = TimeSpan.Zero;
+        hour.SelectedItem = time.Hours.ToString("00", CultureInfo.InvariantCulture);
+        minute.SelectedItem = time.Minutes.ToString("00", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Reads the two drop-down values as HH.mm for draft comparison.</summary>
+    /// <param name="hour">Hour drop-down.</param>
+    /// <param name="minute">Minute drop-down.</param>
+    /// <returns>The combined HH.mm text.</returns>
+    private static string TimePickerText(ComboBox hour, ComboBox minute) =>
+        $"{(hour.SelectedItem as string) ?? "00"}.{(minute.SelectedItem as string) ?? "00"}";
+
+    /// <summary>Validates one reminder time picker and normalizes it to HH.mm.</summary>
+    /// <param name="hour">Hour drop-down.</param>
+    /// <param name="minute">Minute drop-down.</param>
+    /// <param name="label">Human-readable reminder label for the error message.</param>
+    /// <param name="error">Validation error, set when parsing fails.</param>
+    /// <param name="value">Normalized HH.mm text.</param>
+    /// <returns>True when the picker contains a valid 24-hour time.</returns>
+    private static bool TryReminderTime(ComboBox hour, ComboBox minute, string label, ref string error, out string value)
+    {
+        if (AppDateTimeFormat.TryParseTime(TimePickerText(hour, minute), out TimeSpan time))
+        {
+            value = AppDateTimeFormat.Time(time);
+            return true;
+        }
+        error = $"Jam pengingat {label} tidak valid.";
+        value = string.Empty;
+        return false;
+    }
+
     /// <summary>Creates a deep copy of settings via serialization-equivalent field copy.</summary>
     /// <param name="source">Settings to copy.</param>
     /// <returns>The cloned settings.</returns>
@@ -2908,6 +3240,23 @@ public partial class MainWindow : Window
         destination.MethodId = source.MethodId;
         destination.CalculationStandard = source.CalculationStandard;
         destination.Corrections = new Dictionary<string, int>(source.Corrections, StringComparer.OrdinalIgnoreCase);
+        destination.FullOfflineDataEnabled = source.FullOfflineDataEnabled;
+        destination.LastMainTabIndex = source.LastMainTabIndex;
+        destination.LastDzikirTabIndex = source.LastDzikirTabIndex;
+        destination.SunnahFastingReminderEnabled = source.SunnahFastingReminderEnabled;
+        destination.PublicHolidayReminderEnabled = source.PublicHolidayReminderEnabled;
+        destination.IslamicHolidayReminderEnabled = source.IslamicHolidayReminderEnabled;
+        destination.NoFastReminderEnabled = source.NoFastReminderEnabled;
+        destination.MorningDzikirReminderEnabled = source.MorningDzikirReminderEnabled;
+        destination.EveningDzikirReminderEnabled = source.EveningDzikirReminderEnabled;
+        destination.SunnahFastingReminderTime = source.SunnahFastingReminderTime;
+        destination.PublicHolidayReminderTime = source.PublicHolidayReminderTime;
+        destination.IslamicHolidayReminderTime = source.IslamicHolidayReminderTime;
+        destination.NoFastReminderTime = source.NoFastReminderTime;
+        destination.MorningDzikirReminderTime = source.MorningDzikirReminderTime;
+        destination.EveningDzikirReminderTime = source.EveningDzikirReminderTime;
+        destination.ReminderRepeatSeconds = source.ReminderRepeatSeconds;
+        destination.ReminderRepeatCount = source.ReminderRepeatCount;
         destination.RemindersEnabled = source.RemindersEnabled;
         destination.LockScreenEnabled = source.LockScreenEnabled;
         destination.LockScreenOptIn = source.LockScreenOptIn;
@@ -2986,7 +3335,15 @@ public partial class MainWindow : Window
         CorrectionDhuhrBox.Text, CorrectionAsrBox.Text, CorrectionMaghribBox.Text, CorrectionIshaBox.Text,
         DhuhaAfterSunriseBox.Text, HijriDateCorrectionBox.Text,
         (CalendarSourceBox.SelectedItem as ComboBoxItem)?.Tag,
+        DownloadFullDataCheckBox.IsChecked,
         ReminderEnabledCheckBox.IsChecked, ReminderMinutesBox.Text, ReminderMessageBox.Text,
+        SunnahFastingReminderCheckBox.IsChecked, TimePickerText(SunnahFastingTimeBox, SunnahFastingMinuteBox),
+        PublicHolidayReminderCheckBox.IsChecked, TimePickerText(PublicHolidayTimeBox, PublicHolidayMinuteBox),
+        IslamicHolidayReminderCheckBox.IsChecked, TimePickerText(IslamicHolidayTimeBox, IslamicHolidayMinuteBox),
+        LaranganPuasaReminderCheckBox.IsChecked, TimePickerText(LaranganPuasaTimeBox, LaranganPuasaMinuteBox),
+        MorningDzikirReminderCheckBox.IsChecked, TimePickerText(MorningDzikirTimeBox, MorningDzikirMinuteBox),
+        EveningDzikirReminderCheckBox.IsChecked, TimePickerText(EveningDzikirTimeBox, EveningDzikirMinuteBox),
+        ReminderRepeatSecondsBox.Text, ReminderRepeatCountBox.Text,
         WidgetEnabledCheckBox.IsChecked, (WidgetModeBox.SelectedItem as ComboBoxItem)?.Tag,
         (WidgetMotionBox.SelectedItem as ComboBoxItem)?.Tag, (WidgetPositionBox.SelectedItem as ComboBoxItem)?.Tag,
         WidgetAlwaysOnTopCheckBox.IsChecked, WidgetClickThroughCheckBox.IsChecked,
@@ -3019,7 +3376,7 @@ public partial class MainWindow : Window
                 return true;
             }
             if (!discardOnly && choice == UnsavedChangesChoice.Save && TrySaveSettings()) return true;
-            MainTabs.SelectedIndex = 2;
+            MainTabs.SelectedIndex = 3;
             return false;
         }
         finally { _resolvingUnsavedChanges = false; }
@@ -3105,6 +3462,7 @@ public partial class MainWindow : Window
         CloseLocationSuggestions();
         if (_allowClose)
         {
+            TrySaveSettings();
             bool wasLoading = _loadingSettings;
             _loadingSettings = true;
             try
@@ -3118,7 +3476,7 @@ public partial class MainWindow : Window
             return;
         }
         e.Cancel = true;
-        if (!ConfirmUnsavedSettingsChanges()) return;
+        if (!TrySaveSettings() && !ConfirmUnsavedSettingsChanges()) return;
         RestoreSavedSettingsPreview();
         Hide();
         FooterStatus.Text = "Aplikasi tetap aktif di area notifikasi sistem.";

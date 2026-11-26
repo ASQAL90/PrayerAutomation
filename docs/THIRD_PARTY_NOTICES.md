@@ -1,6 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.5.1
+# Third-party notices — Ayo Jama'ah! 2.6.0
 
-Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.5.1. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
+Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.6.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
 Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lisensinya dan tidak dicantumkan lagi di repository.
 
@@ -14,6 +14,7 @@ Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lise
 | Data Kemendagri lewat `cahyadsn/wilayah` | Kepmendagri No. 300.2.2-2430 Tahun 2025 | Hierarki dan nama resmi kabupaten/kota pada `indonesia.tsv.gz` | MIT untuk tooling; data tunduk pada sumber resmi |
 | Sampel Copernicus DEM GLO-90 lewat Open-Meteo | GLO-90, snapshot 22 November 2026 | Kolom `sampled_elevation`, `elevation_source`, dan `elevation_quality` | CC BY 4.0; atribusi Copernicus/Open-Meteo wajib |
 | Natural Earth 1:10m Admin 0 Countries | snapshot 20 November 2026 | Poligon batas Indonesia (`indonesia.boundary.bin`) | Public domain |
+| Konten dzikir dan doa Rumaysho.Com | snapshot 25 November 2026 UTC | Teks Arab, transliterasi Latin, dan arti pada `Data/dzikir-doa.json` | Kredit **Rumaysho.Com — Muhammad Abduh Tuasikal**; setiap entri menautkan halaman asal; ketentuan konten mengikuti pemilik sumber |
 | Runtime .NET 10 (self-contained, WPF) | 10.0.9 | `AyoJamaah.exe`, `PresentationFramework*.dll`, `System.Windows.*.dll` | MIT; terms runtime Microsoft berlaku saat redistribusi |
 | Proyeksi Microsoft.Windows.SDK.NET.Ref | 10.0.26100.57 | `Microsoft.Windows.SDK.NET.dll`, `WinRT.Runtime.dll` | Windows SDK terms |
 | `prayer_core.dll` | 0.1.0 | Internal; perhitungan jadwal/kalender | Source asli aplikasi |
@@ -67,4 +68,4 @@ Aplikasi diterbitkan self-contained (`net10.0-windows10.0.26100.0`); runtime dib
 ## Penghalusan status
 
 - Baris di atas adalah inventaris berbasis paket yang benar-benar terpasang; bukan clearance hukum menyeluruh.
-- Keputusan atribusi untuk konten referensi aplikasi, mis. teks ringkas hadis di `WidgetMarqueeContent.cs`, masih menunggu konfirmasi pemilik.
+- Keputusan atribusi untuk konten referensi aplikasi, mis. teks ringkas hadis di `WidgetMarqueeContent.cs`, masih menunggu konfirmasi pemilik. Teks dzikir dan doa sudah memakai kredit serta tautan sumber per entri.

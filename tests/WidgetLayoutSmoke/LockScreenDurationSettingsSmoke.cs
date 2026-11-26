@@ -46,7 +46,7 @@ internal static class LockScreenDurationSettingsSmoke
         editor.Text = "7";
         fixture.Field<Button>("SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Pump();
-        Require(File.Exists(fixture.SavePath!) && fixture.Field<TabControl>("MainTabs").SelectedIndex == 2,
+        Require(File.Exists(fixture.SavePath!) && fixture.Field<TabControl>("MainTabs").SelectedIndex == 3,
             "The real Save handler must persist a valid image duration without leaving Settings.");
         using (JsonDocument saved = JsonDocument.Parse(File.ReadAllText(fixture.SavePath!)))
             Require(saved.RootElement.GetProperty("lock_screen_duration_minutes").GetInt32() == 7 &&

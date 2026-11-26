@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="GeoTimeZone" Version="7.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PrayerAutomation.UI/AppDateTimeFormat.cs" Link="AppDateTimeFormat.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/LocationDefaults.cs" Link="LocationDefaults.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/WidgetSettingsLogic.cs" Link="WidgetSettingsLogic.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/ThemeCatalog.cs" Link="ThemeCatalog.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/PrayerUiLogic.cs" Link="PrayerUiLogic.cs" />
+    <Compile Include="../../src/PrayerAutomation.UI/AdditionalReminderLogic.cs" Link="AdditionalReminderLogic.cs" />
+    <None Include="../../src/PrayerAutomation.UI/ReminderPopup.cs" Link="ReminderPopup.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/ReminderScheduler.cs" Link="ReminderScheduler.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/OfflineDataDownloadService.cs" Link="OfflineDataDownloadService.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml" Link="MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/TrayService.cs" Link="TrayService.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/AdditionalReminderScheduler.cs" Link="AdditionalReminderScheduler.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/Data/dzikir-doa.json" Link="dzikir-doa.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

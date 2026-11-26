@@ -33,6 +33,7 @@
     <None Include="../../docs/release-notes/2.5.2.md" Link="release-notes-2.5.2.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/release-notes/2.5.3.md" Link="release-notes-2.5.3.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/release-notes/2.5.4.md" Link="release-notes-2.5.4.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../docs/release-notes/2.6.0.md" Link="release-notes-2.6.0.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/PrayerAutomation.UI.csproj" Link="PrayerAutomation.UI.csproj" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />

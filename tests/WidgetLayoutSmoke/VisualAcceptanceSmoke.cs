@@ -58,7 +58,7 @@ internal static class VisualAcceptanceSmoke
                 return;
             }
 
-            tabs.SelectedIndex = 2;
+            tabs.SelectedIndex = 3;
             Pump();
             VerifyDateButtons(windowType, window, errors);
             VerifyHiddenStartup(windowType, settingsType, window, errors);
@@ -289,9 +289,9 @@ internal static class VisualAcceptanceSmoke
             Contrast(startup.Foreground, Ancestor<GroupBox>(startup)?.Background ?? window.Background,
                 $"Checkbox text/{id}", errors);
 
-            tabs.SelectedIndex = 2;
+            tabs.SelectedIndex = 3;
             Pump();
-            if (tabs.ItemContainerGenerator.ContainerFromIndex(2) is TabItem tab)
+            if (tabs.ItemContainerGenerator.ContainerFromIndex(3) is TabItem tab)
             {
                 var defaultTab = new TabItem { Header = "Default template probe", Style = new Style(typeof(TabItem)) };
                 var defaultTabs = new TabControl { Items = { defaultTab } };

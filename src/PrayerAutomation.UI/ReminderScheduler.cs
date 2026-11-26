@@ -139,7 +139,7 @@ internal static class AppLogger
     /// <param name="message">Pre-approved timeline message.</param>
     public static void WriteInfo(string context, string message)
     {
-        Append($"{DateTimeOffset.UtcNow:O} INFO [{context}] {message}{Environment.NewLine}");
+        Append($"{DateTimeOffset.Now:O} INFO [{context}] {message}{Environment.NewLine}");
     }
 
     /// <summary>Appends one line, rotating at 2 MB and keeping three files at most.</summary>
