@@ -5,7 +5,7 @@
 - Klik ikon peta membuka pemilih lokasi dengan pencarian offline dan opsional Nominatim, grid koordinat, marker, serta zoom.
 - Scroll mouse memperbesar/memperkecil di sekitar kursor; tahan dan geser untuk memindahkan peta, sedangkan klik singkat tetap menetapkan titik. Kursor berganti antara pin, panah geser, dan kaca pembesar zoom in/out.
 - Tombol ikon lokasi di sudut peta menuju lokasi saat ini: perangkat/GPS lebih dulu, lalu perkiraan jaringan; titik sementara langsung dipasang.
-- Klik peta atau pilih hasil pencarian menaruh titik sementara; daftar hasil langsung menutup, Tetapkan titik mengisi form dan menutup jendela, sedangkan Batal/Esc tidak mengubah form.
+- Klik peta atau pilih hasil pencarian menaruh titik sementara sebagai pin merah dengan ujung pin tepat di koordinat terpilih; daftar hasil langsung menutup, Tetapkan titik mengisi form dan menutup jendela, sedangkan Batal/Esc tidak mengubah form.
 - Badge zoom menampilkan persentase dengan latar tema lebih opaque, tinggi disamakan dengan tombol `−`/`+`, dan simbol zoom diperbesar; textbox dan checkbox izin tile mengikuti gaya form Pengaturan.
 - Centang izin tile langsung menyalakan peta OpenStreetMap dan menghapus centang membersihkan tile; tombol Muat peta online dihapus. Atribusi ODbL tampil di UI dan notifikasi pihak ketiga.
 - Tetap self-contained tanpa WebView2; penyimpanan, popup saran nama, default offline, dan logika pengingat tidak diubah.

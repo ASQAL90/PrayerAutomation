@@ -262,8 +262,9 @@ internal partial class LocationMapDialog : Window
         if (x < -scale / 2.0) x += scale;
         else if (x > scale / 2.0) x -= scale;
 
+        // Anchor the pin tip on the chosen point instead of centring the art.
         Canvas.SetLeft(MapMarker, x - MapMarker.Width / 2.0);
-        Canvas.SetTop(MapMarker, y - MapMarker.Height / 2.0);
+        Canvas.SetTop(MapMarker, y - MapMarker.Height);
         MapMarker.Visibility = Visibility.Visible;
     }
 

@@ -567,6 +567,11 @@ Assert(mapDialogXaml.Contains("ZoomLevelBadge", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("FontSize=\"18\"", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("Height=\"30\"", StringComparison.Ordinal),
     "The zoom badge must match the +/- button height and use larger zoom glyphs.");
+Assert(mapDialogXaml.Contains("x:Name=\"MapMarker\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Fill=\"#E5484D\"", StringComparison.Ordinal) &&
+       !mapDialogXaml.Contains("x:Name=\"MapMarker\" Width=\"14\"", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("y - MapMarker.Height", StringComparison.Ordinal),
+    "The chosen point must render as a red pin whose tip sits on the clicked coordinate.");
 Assert(mapDialogSource.Contains("MapCanvas_MouseWheel", StringComparison.Ordinal) &&
        mapDialogSource.Contains("MapCanvas_MouseMove", StringComparison.Ordinal) &&
        mapDialogSource.Contains("HideSearchResults", StringComparison.Ordinal) &&
