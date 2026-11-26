@@ -29,7 +29,7 @@
 ## v2.5.4
 - Jendela Riwayat perubahan tidak lagi memotong kalimat panjang.
 - Tanda Markdown seperti bintang dan backtick tidak ikut tampil di teks riwayat.
-- Pratinjau catatan rilis di popup pembaruan sekarang muat teks yang lebih panjang.
+- Pratinjau catatan rilis di popup pembaruan sekarang memuat teks yang lebih panjang.
 
 ## v2.5.3
 - Teks riwayat perubahan tidak lagi terpotong pada batas 220 karakter.
