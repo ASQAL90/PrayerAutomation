@@ -48,7 +48,7 @@ Sampel ketinggian diambil saat penyusunan data melalui [Open-Meteo Elevation API
 
 ### Tile peta OpenStreetMap (opsional, 2.7.0)
 
-Pemilih lokasi dapat memuat tile raster dari `https://tile.openstreetmap.org/{z}/{x}/{y}.png` hanya setelah pengguna mencentang izin; centang izin langsung menyalakan peta dan menghapus centang menghentikannya. Tidak ada tile yang dibundel atau dimuat otomatis, dan tidak ada WebView2/package peta baru. Permintaan memakai HTTPS, User-Agent aplikasi, pembatasan laju, cache memori 24 jam, serta batas ukuran respons.
+Pemilih lokasi memuat tile raster dari `https://tile.openstreetmap.org/{z}/{x}/{y}.png` secara otomatis saat jendela peta dibuka; kotak **Tampilkan tile peta online** aktif secara default, dan menghapus centang menghentikannya. Tidak ada tile yang dibundel atau dimuat otomatis, dan tidak ada WebView2/package peta baru. Permintaan memakai HTTPS, User-Agent aplikasi, pembatasan laju, cache memori 24 jam, serta batas ukuran respons.
 
 Atribusi wajib di jendela peta: **© OpenStreetMap contributors**. Data peta tersebut tersedia di bawah [Open Database License (ODbL) 1.0](https://www.openstreetmap.org/copyright); pengguna juga harus mematuhi [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) OpenStreetMap Foundation. Koordinat yang diklik dipakai lokal untuk perhitungan jadwal, bukan untuk mengirim nama lokasi ke server tile.
 

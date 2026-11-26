@@ -539,19 +539,22 @@ string mapCursorSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
 string tileServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "OpenStreetMapTileService.cs"));
 Assert(mapDialogXaml.Contains("© OpenStreetMap contributors", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("x:Name=\"MapOnlineConsentCheckBox\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Tampilkan tile peta online", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("x:Name=\"ConfirmMapPointButton\"", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("IsCancel=\"True\"", StringComparison.Ordinal) &&
        !mapDialogXaml.Contains("WebView2", StringComparison.Ordinal),
-    "The map dialog must show OSM attribution, require explicit tile consent, and expose confirm/cancel without WebView2.");
+    "The map dialog must show OSM attribution, an online-tile toggle, and confirm/cancel without WebView2.");
 Assert(mapDialogSource.Contains("MapOnlineConsentCheckBox.IsChecked", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("MapOnlineConsentCheckBox.IsChecked = true", StringComparison.Ordinal) &&
        mapDialogSource.Contains("userConsentGranted: true", StringComparison.Ordinal) &&
        mapDialogSource.Contains("OfflineReverseGeocoder.Current", StringComparison.Ordinal) &&
        !mapDialogSource.Contains("WebView2", StringComparison.Ordinal),
-    "The map dialog must keep offline search available and gate online tiles behind the consent checkbox.");
+    "The map dialog must load online tiles by default while keeping offline search available.");
 Assert(!mapDialogXaml.Contains("LoadOnlineTilesButton", StringComparison.Ordinal) &&
        mapDialogSource.Contains("MapOnlineConsentCheckBox_Changed", StringComparison.Ordinal) &&
-       mapDialogSource.Contains("_tilesRequested = true", StringComparison.Ordinal),
-    "Checking the consent box must enable tiles automatically without a separate load button.");
+       mapDialogSource.Contains("_tilesRequested = true", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("_tilesRequested = false", StringComparison.Ordinal),
+    "Online tiles must load on open, with no separate load button, and unchecking must clear them.");
 Assert(tileServiceSource.Contains("https://tile.openstreetmap.org/", StringComparison.Ordinal) &&
        tileServiceSource.Contains("userConsentGranted", StringComparison.Ordinal) &&
        tileServiceSource.Contains("throw new InvalidOperationException", StringComparison.Ordinal) &&
@@ -605,6 +608,10 @@ Assert(mapDialogSource.Contains("InitialZoom = 15", StringComparison.Ordinal) &&
        mapDialogSource.Contains("_pendingLatitude = _centerLatitude", StringComparison.Ordinal) &&
        codeBehind.Contains("LocationNameBox.Text.Trim()", StringComparison.Ordinal),
     "Opening the map must pin the current form coordinates at a readable zoom and keep the known name.");
+Assert(mapDialogSource.Contains("MapSearchBox.Text = initialName", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("DescribeInitialPoint", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("FindNearest(latitude, longitude)", StringComparison.Ordinal),
+    "Opening the map must show the current location name in the search box, with an offline nearest-place fallback.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&

@@ -130,9 +130,10 @@
 
         <CheckBox Grid.Row="4" Margin="0,10,0,0"
                   x:Name="MapOnlineConsentCheckBox" AutomationProperties.AutomationId="MapOnlineConsentCheckBox"
-                  Checked="MapOnlineConsentCheckBox_Changed" Unchecked="MapOnlineConsentCheckBox_Changed">
+                  Checked="MapOnlineConsentCheckBox_Changed" Unchecked="MapOnlineConsentCheckBox_Changed"
+                  ToolTip="Peta online aktif secara default. Hapus centang untuk memakai grid offline tanpa mengirim permintaan tile.">
             <TextBlock Style="{StaticResource MapCheckBoxText}"
-                       Text="Saya setuju memuat tile peta dari OpenStreetMap (menggunakan internet)" />
+                       Text="Tampilkan tile peta online OpenStreetMap (menggunakan internet)" />
         </CheckBox>
 
         <TextBlock Grid.Row="5" x:Name="MapSelectionStatus" AutomationProperties.AutomationId="MapSelectionStatus"

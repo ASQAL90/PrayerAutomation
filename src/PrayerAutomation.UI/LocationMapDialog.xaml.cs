@@ -13,8 +13,8 @@ using System.Windows.Threading;
 namespace PrayerAutomation.UI;
 
 /// <summary>
-/// Themed dialog for choosing a map point. Tiles are never requested until the
-/// user checks the consent box; unchecking it stops and clears tile loads.
+/// Themed dialog for choosing a map point. OSM tiles load by default; unchecking
+/// the tile box stops and clears them while the offline grid stays usable.
 /// </summary>
 internal partial class LocationMapDialog : Window
 {
@@ -67,6 +67,8 @@ internal partial class LocationMapDialog : Window
         Owner = owner;
         _onlineGeocodingEnabled = onlineGeocodingEnabled;
         _onlineEndpoint = onlineEndpoint;
+        _tilesRequested = true;
+        MapOnlineConsentCheckBox.IsChecked = true;
         bool hasInitialCoordinates = double.IsFinite(latitude) && double.IsFinite(longitude) &&
             Math.Abs(latitude) <= MapProjection.MaxLatitude && Math.Abs(longitude) <= 180.0;
         _centerLatitude = double.IsFinite(latitude) ? MapProjection.ClampLatitude(latitude) : FallbackLatitude;
@@ -96,12 +98,45 @@ internal partial class LocationMapDialog : Window
         _pendingLongitude = _centerLongitude;
         _pendingName = initialName;
         ConfirmMapPointButton.IsEnabled = true;
+        if (!string.IsNullOrWhiteSpace(initialName))
+        {
+            MapSearchBox.Text = initialName;
+            MapSearchBox.CaretIndex = initialName.Length;
+        }
         string coordinates =
             _centerLatitude.ToString("0.#####", CultureInfo.InvariantCulture) + ", " +
             _centerLongitude.ToString("0.#####", CultureInfo.InvariantCulture);
         MapSelectionStatus.Text = string.IsNullOrWhiteSpace(initialName)
             ? $"Titik awal dari pengaturan: {coordinates}. Geser/klik peta bila perlu, lalu Tetapkan titik."
             : $"Titik awal: {initialName}. Geser/klik peta bila perlu, lalu Tetapkan titik; belum disimpan.";
+        if (string.IsNullOrWhiteSpace(initialName)) DescribeInitialPoint(coordinates);
+    }
+
+    /// <summary>Fills the initial location name from the offline dataset when the form had none.</summary>
+    /// <param name="coordinates">Coordinate text kept as a fallback.</param>
+    private async void DescribeInitialPoint(string coordinates)
+    {
+        double latitude = _centerLatitude;
+        double longitude = _centerLongitude;
+        try
+        {
+            OfflineLocationResult? place = await Task.Run(
+                () => OfflineReverseGeocoder.Current.FindNearest(latitude, longitude));
+            if (place is null || _pendingLatitude != latitude || _pendingLongitude != longitude ||
+                !string.IsNullOrWhiteSpace(_pendingName)) return;
+            _pendingName = place.DisplayName;
+            MapSearchBox.Text = place.DisplayName;
+            MapSearchBox.CaretIndex = place.DisplayName.Length;
+            MapSelectionStatus.Text =
+                $"Titik awal: {place.DisplayName}, sekitar {place.DistanceKm:0.0} km (perkiraan). " +
+                "Geser/klik peta bila perlu, lalu Tetapkan titik; belum disimpan.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Write("map.initial-name", ex);
+            MapSelectionStatus.Text =
+                $"Titik awal dari pengaturan: {coordinates}. Geser/klik peta bila perlu, lalu Tetapkan titik.";
+        }
     }
 
     /// <summary>True after the user clicked the map or chose a search result.</summary>
@@ -648,7 +683,7 @@ internal partial class LocationMapDialog : Window
         RenderMap();
     }
 
-    /// <summary>Turns OSM tiles on when consent is checked and clears them when it is withdrawn.</summary>
+    /// <summary>Loads OSM tiles by default; unchecking stops and clears them.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
     private void MapOnlineConsentCheckBox_Changed(object sender, RoutedEventArgs e)
