@@ -382,7 +382,7 @@ internal static class Program
         object?[] baseline = Draft(); string saved = Json(); int writes = SaveWrites, starts = StartupWrites;
         MakeDraft(true); object?[] draft = Draft(); Choice = "Cancel";
         Check("cancel_refuses_continue",!Confirm());
-        Check("cancel_preserves_all_raw_values_and_selects_edit_tab",Draft().SequenceEqual(draft) && Control<TabControl>("MainTabs").SelectedIndex == 2);
+        Check("cancel_preserves_all_raw_values_and_selects_edit_tab",Draft().SequenceEqual(draft) && Control<TabControl>("MainTabs").SelectedIndex == 3);
         bool nested = true; int p = Prompts;
         DuringPrompt = ()=>nested = Confirm();
         Check("reentrant_confirm_is_refused_without_second_prompt",!Confirm() && !nested && Prompts == p + 1);
@@ -413,12 +413,12 @@ internal static class Program
         });
         draft = Draft();
         AppInvoke("ShutdownApplication");
-        Check("invalid_save_blocks_central_exit_and_keeps_all_draft",Running() && Draft().SequenceEqual(draft) && Dirty() && Control<TabControl>("MainTabs").SelectedIndex == 2);
+        Check("invalid_save_blocks_central_exit_and_keeps_all_draft",Running() && Draft().SequenceEqual(draft) && Dirty() && Control<TabControl>("MainTabs").SelectedIndex == 3);
         Check("invalid_save_never_calls_persistence_startup_or_logger",Json() == saved && SaveAttempts == attempts && SaveWrites == writes && StartupWrites == starts && LoggedErrors == logs);
         Check("invalid_save_has_validation_feedback",Control<TextBlock>("SettingsStatusLabel").Text.Contains("Waktu pengingat"));
         Reset(); MakeDraft(); draft = Draft(); Choice = "Save"; FailSave = true;
         AppInvoke("ShutdownApplication");
-        Check("persistence_failure_blocks_central_exit_and_keeps_all_draft",Running() && Draft().SequenceEqual(draft) && Dirty() && Control<TabControl>("MainTabs").SelectedIndex == 2);
+        Check("persistence_failure_blocks_central_exit_and_keeps_all_draft",Running() && Draft().SequenceEqual(draft) && Dirty() && Control<TabControl>("MainTabs").SelectedIndex == 3);
         Check("failed_persistence_attempts_once_no_startup_active_mutation",SaveAttempts == attempts + 1 && SaveWrites == writes && StartupWrites == starts && Json() == saved && LoggedErrors == logs + 1);
         Check("save_failure_has_feedback_and_releases_guards",Control<TextBlock>("SettingsStatusLabel").Text.Contains("tidak berhasil disimpan") && Field("_savingSettings").GetValue(Window) is false && Field("_resolvingUnsavedChanges").GetValue(Window) is false);
         FailSave = false;

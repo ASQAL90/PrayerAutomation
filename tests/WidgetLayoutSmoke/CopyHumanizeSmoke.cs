@@ -726,7 +726,7 @@ internal static class CopyHumanizeSmoke
             _appType.GetField("_mainWindow", I)!.SetValue(application, MainWindow);
             application.MainWindow = MainWindow;
             MainWindow.Show();
-            Field<TabControl>("MainTabs").SelectedIndex = 2;
+            Field<TabControl>("MainTabs").SelectedIndex = 3;
             Pump(application, this);
             string durationDefault = Field<TextBox>("LockScreenDurationBox").Text;
             string offlineNotice = Field<TextBlock>("OfflineReverseGeocodeStatus").Text;

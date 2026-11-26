@@ -19,6 +19,14 @@ internal sealed class AppSettings
     public const string DefaultReminderMessage = "Sebentar lagi waktu sholat {prayer} ({minutes_before} menit lagi).";
     /// <summary>Maximum allowed length of a reminder message.</summary>
     public const int MaxReminderMessageLength = 200;
+    /// <summary>Default morning reminder time: ten minutes after a typical 08.00 office start.</summary>
+    public const string DefaultMorningReminderTime = "08.10";
+    /// <summary>Default evening dzikir reminder time, shortly after Ashar.</summary>
+    public const string DefaultEveningDzikirTime = "17.00";
+    /// <summary>Default sunnah-fast reminder time, late afternoon for the next day's fast.</summary>
+    public const string DefaultSunnahFastingReminderTime = "16.00";
+    /// <summary>Default no-fast (Tasyrik) reminder time, late afternoon for the next day's prohibition.</summary>
+    public const string DefaultNoFastReminderTime = "16.00";
     /// <summary>Canonical prayer keys for which per-prayer minute corrections are stored.</summary>
     public static readonly string[] CorrectionKeys = ["Fajr", "Sunrise", "Dhuha", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
@@ -38,6 +46,40 @@ internal sealed class AppSettings
     [JsonPropertyName("country")] public string CalculationStandard { get; set; } = "Indonesia — Kementerian Agama";
     /// <summary>Per-prayer minute corrections keyed by prayer name.</summary>
     [JsonPropertyName("corrections")] public Dictionary<string, int> Corrections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Whether the optional complete offline location pack was accepted and installed.</summary>
+    [JsonPropertyName("full_offline_data_enabled")] public bool FullOfflineDataEnabled { get; set; }
+    /// <summary>Index of the last selected main tab, restored on the next launch.</summary>
+    [JsonPropertyName("last_main_tab")] public int LastMainTabIndex { get; set; }
+    /// <summary>Index of the last selected Dzikir &amp; Doa sub-tab, restored with the main tab.</summary>
+    [JsonPropertyName("last_dzikir_tab")] public int LastDzikirTabIndex { get; set; }
+    /// <summary>Whether a sunnah-fast observance reminder is shown.</summary>
+    [JsonPropertyName("reminder_sunnah_fasting_enabled")] public bool SunnahFastingReminderEnabled { get; set; } = true;
+    /// <summary>Whether a national holiday reminder is shown.</summary>
+    [JsonPropertyName("reminder_public_holiday_enabled")] public bool PublicHolidayReminderEnabled { get; set; } = true;
+    /// <summary>Whether an Islamic observance reminder is shown.</summary>
+    [JsonPropertyName("reminder_islamic_holiday_enabled")] public bool IslamicHolidayReminderEnabled { get; set; } = true;
+    /// <summary>Whether a no-fasting (Tasyrik) prohibition reminder is shown.</summary>
+    [JsonPropertyName("reminder_no_fast_enabled")] public bool NoFastReminderEnabled { get; set; } = true;
+    /// <summary>Whether the morning dzikir reminder is shown.</summary>
+    [JsonPropertyName("reminder_morning_dzikir_enabled")] public bool MorningDzikirReminderEnabled { get; set; } = true;
+    /// <summary>Whether the evening dzikir reminder is shown.</summary>
+    [JsonPropertyName("reminder_evening_dzikir_enabled")] public bool EveningDzikirReminderEnabled { get; set; } = true;
+    /// <summary>Daily time for the sunnah-fast observance reminder, aimed at the next day's fast.</summary>
+    [JsonPropertyName("reminder_sunnah_fasting_time")] public string SunnahFastingReminderTime { get; set; } = DefaultSunnahFastingReminderTime;
+    /// <summary>Daily time for the national holiday reminder.</summary>
+    [JsonPropertyName("reminder_public_holiday_time")] public string PublicHolidayReminderTime { get; set; } = DefaultMorningReminderTime;
+    /// <summary>Daily time for the Islamic observance reminder.</summary>
+    [JsonPropertyName("reminder_islamic_holiday_time")] public string IslamicHolidayReminderTime { get; set; } = DefaultMorningReminderTime;
+    /// <summary>Daily time for the no-fasting prohibition reminder, aimed at the next day.</summary>
+    [JsonPropertyName("reminder_no_fast_time")] public string NoFastReminderTime { get; set; } = DefaultNoFastReminderTime;
+    /// <summary>Daily time for the morning dzikir reminder.</summary>
+    [JsonPropertyName("reminder_morning_dzikir_time")] public string MorningDzikirReminderTime { get; set; } = DefaultMorningReminderTime;
+    /// <summary>Daily time for the evening dzikir reminder.</summary>
+    [JsonPropertyName("reminder_evening_dzikir_time")] public string EveningDzikirReminderTime { get; set; } = DefaultEveningDzikirTime;
+    /// <summary>Seconds between repeated reminders for a missed schedule.</summary>
+    [JsonPropertyName("reminder_repeat_seconds")] public int ReminderRepeatSeconds { get; set; } = 300;
+    /// <summary>Maximum number of reminder repeats after the scheduled time.</summary>
+    [JsonPropertyName("reminder_repeat_count")] public int ReminderRepeatCount { get; set; } = 3;
     /// <summary>Whether prayer time reminders are enabled.</summary>
     [JsonPropertyName("enabled")] public bool RemindersEnabled { get; set; } = true;
     /// <summary>Whether the lock-screen image feature is enabled.</summary>
@@ -146,6 +188,16 @@ internal sealed class AppSettings
         LockScreenDurationMinutes = Math.Clamp(LockScreenDurationMinutes, 1, 60);
         DhuhaAfterSunriseMinutes = Math.Clamp(DhuhaAfterSunriseMinutes, 0, 180);
         HijriDateCorrectionDays = Math.Clamp(HijriDateCorrectionDays, -7, 7);
+        SunnahFastingReminderTime = AppDateTimeFormat.NormalizeTime(SunnahFastingReminderTime, DefaultSunnahFastingReminderTime);
+        PublicHolidayReminderTime = AppDateTimeFormat.NormalizeTime(PublicHolidayReminderTime, DefaultMorningReminderTime);
+        IslamicHolidayReminderTime = AppDateTimeFormat.NormalizeTime(IslamicHolidayReminderTime, DefaultMorningReminderTime);
+        NoFastReminderTime = AppDateTimeFormat.NormalizeTime(NoFastReminderTime, DefaultNoFastReminderTime);
+        MorningDzikirReminderTime = AppDateTimeFormat.NormalizeTime(MorningDzikirReminderTime, DefaultMorningReminderTime);
+        EveningDzikirReminderTime = AppDateTimeFormat.NormalizeTime(EveningDzikirReminderTime, DefaultEveningDzikirTime);
+        LastMainTabIndex = Math.Clamp(LastMainTabIndex, 0, 3);
+        LastDzikirTabIndex = Math.Clamp(LastDzikirTabIndex, 0, 2);
+        ReminderRepeatSeconds = Math.Clamp(ReminderRepeatSeconds, 30, 3600);
+        ReminderRepeatCount = Math.Clamp(ReminderRepeatCount, 0, 10);
         CalendarSource = string.Equals(CalendarSource, CalendarSourceKhgt, StringComparison.OrdinalIgnoreCase)
             ? CalendarSourceKhgt
             : CalendarSourceCivil;

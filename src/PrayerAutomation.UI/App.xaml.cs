@@ -25,6 +25,7 @@ public partial class App : Application
 
     private TrayService? _tray;
     private ReminderScheduler? _reminders;
+    private AdditionalReminderScheduler? _additionalReminders;
     private AutoLockScheduler? _autoLock;
     private LockScreenImageScheduler? _lockScreenScheduler;
     private ScheduleWidgetWindow? _widget;
@@ -106,6 +107,8 @@ public partial class App : Application
             _mainWindow.Show();
         _reminders = new ReminderScheduler(Settings);
         _reminders.Start();
+        _additionalReminders = new AdditionalReminderScheduler(Settings);
+        _additionalReminders.Start();
         _autoLock = new AutoLockScheduler(Settings);
         _autoLock.Start();
         _lockScreenScheduler = new LockScreenImageScheduler(
@@ -225,6 +228,21 @@ public partial class App : Application
         _mainWindow?.SelectSettingsTab();
     }
 
+    /// <summary>Shows the main window on the Dzikir &amp; Doa tab.</summary>
+    internal void OpenDzikir()
+    {
+        ShowMainWindow();
+        _mainWindow?.SelectDzikirTab();
+    }
+
+    /// <summary>Shows the main window on the requested dzikir sub-tab.</summary>
+    /// <param name="target"><c>morning</c>, <c>evening</c>, or <c>dzikir</c> to keep the current sub-tab.</param>
+    internal void OpenDzikirTab(string target)
+    {
+        ShowMainWindow();
+        _mainWindow?.SelectDzikirTab(target);
+    }
+
     /// <summary>Toggles the schedule widget visibility.</summary>
     internal void ToggleWidget()
     {
@@ -335,6 +353,7 @@ public partial class App : Application
         _widget?.ClearAppearancePreview();
         ThemeManager.Apply(this, Settings.ThemeId);
         _reminders?.Refresh();
+        _additionalReminders?.Refresh();
         _autoLock?.Refresh();
         _ = RefreshLockScreenSchedulerAsync();
         WidgetVisibilityAction action = WidgetLifecycleLogic.ForSettingsChange(_widgetSettingEnabled, Settings.WidgetEnabled);
@@ -469,6 +488,7 @@ public partial class App : Application
             _taskbarWidget = null;
             _tray?.Dispose();
             _reminders?.Dispose();
+            _additionalReminders?.Dispose();
             _autoLock?.Dispose();
         }
         catch (Exception ex)
@@ -494,6 +514,7 @@ public partial class App : Application
         _taskbarWidget = null;
         _tray?.Dispose();
         _reminders?.Dispose();
+        _additionalReminders?.Dispose();
         _autoLock?.Dispose();
         _lockScreenScheduler?.Dispose();
         _singleInstanceMutex?.Dispose();

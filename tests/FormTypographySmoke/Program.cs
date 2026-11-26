@@ -102,7 +102,7 @@ internal static class Program
                 Check(check.Content is TextBlock label && label.TextWrapping == TextWrapping.Wrap && label.LineHeight == 20 && label.FontSize == 14,
                     field + " needs a short, wrapped label without replacing the default checkbox template.");
             }
-            tabs.SelectedIndex = 2;
+            tabs.SelectedIndex = 3;
             Pump();
             FrameworkElement correctionsRow = Field<FrameworkElement>(window, "CorrectionsRow");
             // The production row starts collapsed; realize its visual children before measuring them.
@@ -150,7 +150,7 @@ internal static class Program
             {
                 window.Width = width;
                 window.Height = width == 940 ? 650 : 820;
-                tabs.SelectedIndex = 2;
+                tabs.SelectedIndex = 3;
                 Pump();
                 FrameworkElement settingsRoot = (FrameworkElement)((TabItem)tabs.SelectedItem).Content;
                 ScrollViewer settingsScroll = Descendants(settingsRoot).OfType<ScrollViewer>().First();
@@ -411,7 +411,7 @@ internal static class Program
             string id = (string)theme.GetType().GetProperty("Id")!.GetValue(theme)!;
             apply.Invoke(null, [application, id]);
             themes++;
-            foreach ((string field, int tab) in new[] { ("CalendarYearBox", 1), ("HijriYearBox", 1), ("MethodBox", 2), ("WidgetModeBox", 2), ("WidgetMotionBox", 2), ("WidgetPositionBox", 2), ("ThemeBox", 2) })
+            foreach ((string field, int tab) in new[] { ("CalendarYearBox", 1), ("HijriYearBox", 1), ("MethodBox", 3), ("WidgetModeBox", 3), ("WidgetMotionBox", 3), ("WidgetPositionBox", 3), ("ThemeBox", 3) })
             {
                 tabs.SelectedIndex = tab;
                 if (tab == 1) Field<TabControl>(window, "CalendarModeTabs").SelectedIndex = field == "HijriYearBox" ? 1 : 0;

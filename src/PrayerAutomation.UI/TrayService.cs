@@ -81,6 +81,7 @@ internal sealed class TrayService : IDisposable
     {
         AddMenuItem("Buka aplikasi", () => _app.ShowMainWindow());
         AddMenuItem("Pengaturan", () => _app.OpenSettings());
+        AddMenuItem("Dzikir & Doa", () => _app.OpenDzikir());
         AddMenuItem("Buka kalender", () => _app.OpenCalendar());
         _widgetItem.Click += (_, _) => Dispatch(() => _app.ToggleWidget());
         _menu.Items.Add(_widgetItem);

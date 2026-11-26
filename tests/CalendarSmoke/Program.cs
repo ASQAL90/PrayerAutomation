@@ -5,6 +5,17 @@ DateTime knownGregorian = new(2026, 1, 1);
 NativeCalendarDate knownHijri = NativePrayerCore.HijriDate(knownGregorian);
 Check(knownHijri.Year == 1447 && knownHijri.Month == 7 && knownHijri.Day == 12 && knownHijri.WeekdayMonday0 == 3,
     "2026-01-01 Gregorian/Hijri and Monday-based weekday mapping changed");
+NativeHijriMonth knownHijriMonth = NativePrayerCore.HijriMonth(knownHijri.Year, knownHijri.Month);
+DateTime hijriTodayCell = new DateTime(knownHijriMonth.GregorianYear, knownHijriMonth.GregorianMonth,
+    knownHijriMonth.GregorianDay).AddDays(knownHijri.Day - 1);
+Check(hijriTodayCell == knownGregorian,
+    "today's Hijri cell is keyed by today's Gregorian date");
+NativeCalendarDate shiftedHijri = NativePrayerCore.HijriDate(knownGregorian.AddDays(1));
+NativeHijriMonth shiftedMonth = NativePrayerCore.HijriMonth(shiftedHijri.Year, shiftedHijri.Month);
+DateTime shiftedCell = new DateTime(shiftedMonth.GregorianYear, shiftedMonth.GregorianMonth,
+    shiftedMonth.GregorianDay).AddDays(-1).AddDays(shiftedHijri.Day - 1);
+Check(shiftedCell == knownGregorian,
+    "a one-day Hijri correction still keys today's cell by today's Gregorian date");
 
 int[] expectedMonthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29];
 int totalDays = 0;
@@ -69,6 +80,20 @@ Check(HasAccessibleEventNames(codeBehind, "private Button CreateGregorianDateBut
 Check(codeBehind.Contains("Ikuti hasil rukyat atau otoritas setempat", StringComparison.OrdinalIgnoreCase) &&
       codeBehind.Contains("penetapan resmi tetap milik otoritas", StringComparison.OrdinalIgnoreCase),
     "the Hijri calendar must state that civil dates can differ from local rukyat/authority");
+Check(codeBehind.Contains("private void UpdateHijriSelection", StringComparison.Ordinal) &&
+      codeBehind.Contains("UpdateHijriDateButton(cellDate, button, today)", StringComparison.Ordinal) &&
+      codeBehind.Contains("_hasHijriSelection && date.Date == _selectedHijriDate.Date", StringComparison.Ordinal),
+    "Hijri date selection must repaint every cell like the Gregorian calendar");
+Check(codeBehind.Contains("RestoreHijriSelection(year, calendarToday)", StringComparison.Ordinal) &&
+      codeBehind.Contains("NativeCalendarDate todayHijri = HijriForCalendarDate(calendarToday)", StringComparison.Ordinal) &&
+      codeBehind.Contains("SelectHijriDate(todayHijri.Year, todayHijri.Month, todayHijri.Day, calendarToday.Date)", StringComparison.Ordinal) &&
+      codeBehind.Contains("HijriForCalendarDate(_selectedHijriDate)", StringComparison.Ordinal),
+    "the first Hijri view must select today's cell, just like the Gregorian view");
+Check(xaml.Split("Larangan puasa / Tasyrik", StringSplitOptions.None).Length - 1 == 2 &&
+      xaml.Split("Peringatan Islam", StringSplitOptions.None).Length - 1 == 2 &&
+      !xaml.Contains("Tasyrik / larangan puasa", StringComparison.Ordinal) &&
+      !xaml.Contains("Text=\"Peringatan\"", StringComparison.Ordinal),
+    "both calendar legends must use the same wording");
 
 Console.WriteLine("PASS: Gregorian/Hijri round-trip, 1500 H month lengths, observance/no-fast markers, correction offset, and accessible names in both source views; no UI input automation used.");
 

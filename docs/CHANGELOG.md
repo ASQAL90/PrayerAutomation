@@ -1,5 +1,19 @@
 # Riwayat perubahan
 
+## v2.6.0
+- Ditambahkan tab Dzikir & Doa berisi dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com; tiap entri memuat Arab, transliterasi Latin, dan arti dengan kredit di bagian atas serta tautan sumber per entri. Arab tidak diubah; judul doa memakai judul deskriptif buatan dan tampil sebagai header yang lebih besar.
+- Ditambahkan pengingat libur nasional & Id, puasa sunnah, larangan puasa/Tasyrik, peringatan Islam, dzikir pagi, dan dzikir petang dengan jam yang bisa diatur sendiri. Puasa sunnah dan larangan puasa mengingatkan untuk esok hari pukul `16.00`; libur nasional & Id, peringatan Islam, dan dzikir pagi pukul `08.10`; dzikir petang pukul `17.00`.
+- Dikoreksi kategori pengingat: Ayyamul Bidh, puasa Senin/Kamis, Tasu'a, Asyura, Arafah, dan puasa awal Zulhijah hanya masuk pengingat puasa sunnah besok, bukan hari besar Islam hari ini; Idulfitri/Iduladha masuk kategori libur nasional & Id; Hari Tasyriq masuk larangan puasa besok.
+- Jadwal pengingat tambahan yang bersamaan digabung jadi satu popup; jadwal berbeda tetap terpisah. Popup pengingat tambahan terpisah dari popup sholat. Maksimal 3 popup terlihat per layar, dan popup baru masuk antrean bila ruang vertikal tidak cukup sehingga tidak bertabrakan; popup sholat tetap auto-close 12 detik.
+- Diperbaiki kalender Hijriyah agar menyorot tanggal hari ini saat pertama dibuka dan mewarnai ulang cell terpilih seperti kalender Masehi; legenda Masehi/Hijriyah disamakan menjadi `Hari libur / Id`, `Puasa sunnah`, `Larangan puasa / Tasyrik`, serta `Peringatan Islam`.
+- Diringkas teks bantuan Pengaturan: cukup esensi pengingat, tanpa detail jam kantor, jam default, atau penjelasan hari besar tertentu.
+- Ditambahkan tombol hentikan permanen dan ingat lagi pada popup pengingat, dengan jeda ulang dan batas maksimal yang bisa diatur; perulangan dihitung sejak jadwal terlewat.
+- Diperbaiki warna hyperlink dzikir/doa agar mengikuti tema dan tetap kontras.
+- Diperbaiki penyimpanan pengaturan saat jendela ditutup ke systray, diminimalkan, atau keluar; tab terakhir kini dipulihkan saat aplikasi dibuka lagi. Menu systray memuat `Pengaturan` dan shortcut `Dzikir & Doa`; popup dzikir memiliki tombol buka ke sub-tab dzikir pagi/petang sesuai konteks.
+- Diperbaiki checkbox paket data lengkap agar tersimpan langsung dan status unduhan menampilkan tanggal snapshot yang terpasang.
+- Diperbaiki format tanggal dan jam pada status serta isi pengingat memakai waktu lokal yang mudah dibaca; log INFO tetap memakai ISO 8601 lokal dengan offset.
+- Dinaikkan nomor versi aplikasi dan installer ke 2.6.0.
+
 ## v2.5.4
 - Teks riwayat perubahan tidak lagi dipotong pada batas 220 karakter di jendela About maupun panel pratinjau pembaruan; Markdown decoration dibersihkan agar kalimat mudah dibaca.
 - Catatan rilis 2.5.2 dan 2.5.3 dipecah menjadi satu gagasan per baris sehingga tidak ada kalimat terpotong.

@@ -483,7 +483,7 @@ internal static class UiMinorSmoke
                 Assert(fixture.SettingsType.GetProperty(name, I)!.GetValue(restored) is false,
                     "Fail closed: saved/deserialized fixture consequential flags must stay false.");
             Assert((int)fixture.SettingsType.GetProperty("HijriDateCorrectionDays", I)!.GetValue(restored)! == -1 &&
-                   fixture.Field<TabControl>("MainTabs").SelectedIndex == 2 && !fixture.StartupValue,
+                   fixture.Field<TabControl>("MainTabs").SelectedIndex == 3 && !fixture.StartupValue,
                 "Save must preserve the existing date values, safe startup choice and selected settings tab.");
             Console.WriteLine("UI_MINOR_SIZE_SAVE_READBACK " + fixture.SavePath);
         }

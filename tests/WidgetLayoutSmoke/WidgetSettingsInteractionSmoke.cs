@@ -262,7 +262,7 @@ internal static class WidgetSettingsInteractionSmoke
         Pump();
         Assert(fixture.Field<TextBlock>("SettingsStatusLabel").Text.StartsWith("Pengaturan tersimpan.", StringComparison.Ordinal),
             "The real Save button must validate and complete the Save handler using isolated boundaries.");
-        Assert(fixture.Field<TabControl>("MainTabs").SelectedIndex == 2,
+        Assert(fixture.Field<TabControl>("MainTabs").SelectedIndex == 3,
             "Save must keep the active Settings tab instead of returning to the first tab.");
         using (JsonDocument saved = JsonDocument.Parse(File.ReadAllText(fixture.SavePath!)))
             Assert(saved.RootElement.GetProperty("widget_mode").GetString() == "detail" &&
@@ -278,7 +278,7 @@ internal static class WidgetSettingsInteractionSmoke
             "After Save, tray hide must return to the newly saved appearance, not the original baseline.");
         fixture.InvokeApp("OpenSettings");
         Pump();
-        Assert(fixture.SelectedTag("WidgetModeBox") == "detail" && fixture.Field<TabControl>("MainTabs").SelectedIndex == 2,
+        Assert(fixture.SelectedTag("WidgetModeBox") == "detail" && fixture.Field<TabControl>("MainTabs").SelectedIndex == 3,
             "The explicit Settings tray command must restore saved values and select Settings.");
         fixture.InvokeApp("OpenCalendar");
         Pump();
@@ -396,7 +396,7 @@ internal static class WidgetSettingsInteractionSmoke
             application.MainWindow = MainWindow;
             MainWindow.Show();
             _originalWidget?.Show();
-            Field<TabControl>("MainTabs").SelectedIndex = 2;
+            Field<TabControl>("MainTabs").SelectedIndex = 3;
             Pump();
         }
 

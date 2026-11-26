@@ -25,6 +25,14 @@ internal sealed class OfflineDataManifest
     [JsonPropertyName("files")] public List<OfflineDataFile> Files { get; set; } = [];
 }
 
+/// <summary>Metadata written with a verified offline data pack so status survives a restart.</summary>
+internal sealed class OfflineDataInstallMetadata
+{
+    [JsonPropertyName("schema")] public int Schema { get; set; }
+    [JsonPropertyName("dataset_version")] public int DatasetVersion { get; set; }
+    [JsonPropertyName("snapshot")] public string Snapshot { get; set; } = string.Empty;
+}
+
 /// <summary>Progress event for an offline data download.</summary>
 /// <param name="FileName">File currently being processed.</param>
 /// <param name="BytesDownloaded">Bytes downloaded so far.</param>
@@ -47,6 +55,7 @@ internal sealed class OfflineDataDownloadService
 {
     private const int ExpectedSchema = 1;
     private const int ExpectedDatasetVersion = 2;
+    private const string InstalledMetadataFileName = "installed.json";
     private readonly HttpClient _httpClient;
 
     internal OfflineDataDownloadService(HttpClient httpClient)
@@ -65,19 +74,70 @@ internal sealed class OfflineDataDownloadService
 
     /// <summary>Loads an already verified cache without network access.</summary>
     /// <returns>True when the cache exists and is usable.</returns>
-    internal bool TryLoadCached()
+    internal bool TryLoadCached() => TryLoadCached(out _);
+
+    /// <summary>Loads an already verified cache and reports its installed snapshot.</summary>
+    /// <param name="snapshot">Snapshot date from the installed metadata, or an empty string for a legacy cache.</param>
+    /// <returns>True when the cache exists and is usable.</returns>
+    internal bool TryLoadCached(out string snapshot)
     {
+        snapshot = string.Empty;
         if (!IsCacheComplete(CacheDirectory)) return false;
         try
         {
             OfflineReverseGeocoder.UseDownloaded(OfflineReverseGeocoder.LoadFromDirectory(CacheDirectory));
+            snapshot = ReadInstalledSnapshot(CacheDirectory);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException or JsonException)
         {
             OfflineReverseGeocoder.ClearDownloaded();
+            snapshot = string.Empty;
             return false;
         }
+    }
+
+    /// <summary>Returns a user-facing status that includes the installed snapshot date when available.</summary>
+    /// <param name="snapshot">Installed snapshot date in yyyy-MM-dd form.</param>
+    /// <returns>Short Indonesian status text.</returns>
+    internal static string InstalledStatus(string snapshot) => string.IsNullOrWhiteSpace(snapshot)
+        ? "Paket data lengkap terpasang dan siap dipakai tanpa internet."
+        : $"Paket data lengkap ({AppDateTimeFormat.Date(snapshot)}) terpasang dan siap dipakai tanpa internet.";
+
+    /// <summary>Reads the snapshot date from verified-cache metadata.</summary>
+    private static string ReadInstalledSnapshot(string directory)
+    {
+        string path = Path.Combine(directory, InstalledMetadataFileName);
+        if (!File.Exists(path)) return string.Empty;
+        OfflineDataInstallMetadata? metadata;
+        try
+        {
+            metadata = JsonSerializer.Deserialize<OfflineDataInstallMetadata>(File.ReadAllText(path));
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+        return metadata is not null && metadata.Schema == ExpectedSchema &&
+               metadata.DatasetVersion == ExpectedDatasetVersion &&
+               !string.IsNullOrWhiteSpace(metadata.Snapshot)
+            ? metadata.Snapshot
+            : string.Empty;
+    }
+
+    /// <summary>Writes verified-cache metadata into the staging directory before activation.</summary>
+    private static void WriteInstalledMetadata(string directory, OfflineDataManifest manifest)
+    {
+        var metadata = new OfflineDataInstallMetadata
+        {
+            Schema = ExpectedSchema,
+            DatasetVersion = ExpectedDatasetVersion,
+            Snapshot = manifest.Snapshot
+        };
+        string path = Path.Combine(directory, InstalledMetadataFileName);
+        string temporary = path + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true }));
+        File.Move(temporary, path, overwrite: true);
     }
 
     /// <summary>Downloads, verifies, and activates the optional data pack.</summary>
@@ -125,11 +185,11 @@ internal sealed class OfflineDataDownloadService
                 downloaded += Math.Max(0, file.Size);
             }
 
+            WriteInstalledMetadata(staging, manifest);
             ActivateStaging(staging);
             CleanupDirectory(partial);
             OfflineReverseGeocoder.UseDownloaded(OfflineReverseGeocoder.LoadFromDirectory(CacheDirectory));
-            return new OfflineDataInstallResult(true, CacheDirectory,
-                $"Paket data lengkap ({manifest.Snapshot}) terpasang dan siap dipakai tanpa internet.");
+            return new OfflineDataInstallResult(true, CacheDirectory, InstalledStatus(manifest.Snapshot));
         }
         catch (OperationCanceledException)
         {

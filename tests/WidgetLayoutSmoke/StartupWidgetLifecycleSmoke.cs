@@ -204,7 +204,7 @@ internal static class StartupWidgetLifecycleSmoke
         fixture.Field<Button>("SaveSettingsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Pump();
         Assert(fixture.Field<TextBlock>("SettingsStatusLabel").Text.StartsWith("Pengaturan tersimpan.", StringComparison.Ordinal) &&
-            fixture.StartupWrites == 1 && !fixture.StartupValue && fixture.Field<TabControl>("MainTabs").SelectedIndex == 2,
+            fixture.StartupWrites == 1 && !fixture.StartupValue && fixture.Field<TabControl>("MainTabs").SelectedIndex == 3,
             "The real Save click must finish using synthetic persistence/startup boundaries and retain Settings tab.");
         using JsonDocument saved = JsonDocument.Parse(System.IO.File.ReadAllText(fixture.SavePath!));
         foreach (string name in new[] { "enabled", "auto_lock_enabled", "lock_enabled", "lock_screen_opt_in", "startup" })
