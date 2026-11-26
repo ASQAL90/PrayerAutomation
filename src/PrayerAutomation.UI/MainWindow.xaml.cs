@@ -2318,7 +2318,8 @@ public partial class MainWindow : Window
             : _settings.Longitude;
 
         var dialog = new LocationMapDialog(this, latitude, longitude,
-            OnlineGeocodingEnabledCheckBox.IsChecked == true, _settings.OnlineGeocodingEndpoint);
+            OnlineGeocodingEnabledCheckBox.IsChecked == true, _settings.OnlineGeocodingEndpoint,
+            LocationNameBox.Text.Trim());
         if (dialog.ShowDialog() != true || !dialog.HasSelection) return;
         await ApplyMapLocationAsync(dialog.Latitude, dialog.Longitude, dialog.DisplayName);
     }

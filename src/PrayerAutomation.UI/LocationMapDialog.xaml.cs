@@ -14,13 +14,14 @@ namespace PrayerAutomation.UI;
 
 /// <summary>
 /// Themed dialog for choosing a map point. Tiles are never requested until the
-/// user checks the consent box and presses "Muat peta online".
+/// user checks the consent box; unchecking it stops and clears tile loads.
 /// </summary>
 internal partial class LocationMapDialog : Window
 {
     private const double FallbackLatitude = -6.2;
     private const double FallbackLongitude = 106.8;
-    private const int ZoomPercentageBase = 11;
+    private const int InitialZoom = 15;
+    private const int ZoomPercentageBase = InitialZoom;
     private const double DragThreshold = 3.0;
     private static readonly double[] LatitudeGridSteps =
         [30, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001];
@@ -35,7 +36,7 @@ internal partial class LocationMapDialog : Window
     };
     private double _centerLatitude;
     private double _centerLongitude;
-    private int _zoom = 11;
+    private int _zoom = InitialZoom;
     private int _renderVersion;
     private int _searchVersion;
     private bool _tilesRequested;
@@ -56,8 +57,9 @@ internal partial class LocationMapDialog : Window
     /// <param name="longitude">Initial longitude in degrees.</param>
     /// <param name="onlineGeocodingEnabled">Whether the user enabled Nominatim in Settings.</param>
     /// <param name="onlineEndpoint">Configured Nominatim-compatible base URI.</param>
+    /// <param name="initialName">Location name already shown in the settings form, when known.</param>
     internal LocationMapDialog(Window owner, double latitude, double longitude,
-        bool onlineGeocodingEnabled, string onlineEndpoint)
+        bool onlineGeocodingEnabled, string onlineEndpoint, string initialName = "")
     {
         InitializeComponent();
         Icon = App.LoadApplicationIcon();
@@ -65,8 +67,11 @@ internal partial class LocationMapDialog : Window
         Owner = owner;
         _onlineGeocodingEnabled = onlineGeocodingEnabled;
         _onlineEndpoint = onlineEndpoint;
+        bool hasInitialCoordinates = double.IsFinite(latitude) && double.IsFinite(longitude) &&
+            Math.Abs(latitude) <= MapProjection.MaxLatitude && Math.Abs(longitude) <= 180.0;
         _centerLatitude = double.IsFinite(latitude) ? MapProjection.ClampLatitude(latitude) : FallbackLatitude;
         _centerLongitude = double.IsFinite(longitude) ? MapProjection.NormalizeLongitude(longitude) : FallbackLongitude;
+        if (hasInitialCoordinates) ApplyInitialSelection(initialName);
         UpdateZoomLabel();
         MapCanvas.Cursor = MapCursorFactory.Pin;
         _cursorResetTimer.Tick += (_, _) =>
@@ -81,6 +86,22 @@ internal partial class LocationMapDialog : Window
             _searchVersion++;
             _locateVersion++;
         };
+    }
+
+    /// <summary>Places the initial pin at the coordinates already used by the settings form.</summary>
+    /// <param name="initialName">Location name already shown in the settings form, when known.</param>
+    private void ApplyInitialSelection(string initialName)
+    {
+        _pendingLatitude = _centerLatitude;
+        _pendingLongitude = _centerLongitude;
+        _pendingName = initialName;
+        ConfirmMapPointButton.IsEnabled = true;
+        string coordinates =
+            _centerLatitude.ToString("0.#####", CultureInfo.InvariantCulture) + ", " +
+            _centerLongitude.ToString("0.#####", CultureInfo.InvariantCulture);
+        MapSelectionStatus.Text = string.IsNullOrWhiteSpace(initialName)
+            ? $"Titik awal dari pengaturan: {coordinates}. Geser/klik peta bila perlu, lalu Tetapkan titik."
+            : $"Titik awal: {initialName}. Geser/klik peta bila perlu, lalu Tetapkan titik; belum disimpan.";
     }
 
     /// <summary>True after the user clicked the map or chose a search result.</summary>
@@ -117,9 +138,11 @@ internal partial class LocationMapDialog : Window
     private void UpdateZoomLabel()
     {
         double percent = Math.Pow(2.0, _zoom - ZoomPercentageBase) * 100.0;
-        ZoomLevelText.Text = percent >= 10.0
-            ? percent.ToString("0", CultureInfo.CurrentCulture) + "%"
-            : percent.ToString("0.#", CultureInfo.CurrentCulture) + "%";
+        ZoomLevelText.Text = percent < 1.0
+            ? "<1%"
+            : percent >= 10.0
+                ? percent.ToString("0", CultureInfo.CurrentCulture) + "%"
+                : percent.ToString("0.#", CultureInfo.CurrentCulture) + "%";
     }
 
     /// <summary>Moves already-loaded tiles with the pointer while a drag is in progress.</summary>
@@ -624,34 +647,23 @@ internal partial class LocationMapDialog : Window
         RenderMap();
     }
 
-    /// <summary>Enables OSM tiles only after the explicit consent checkbox is ticked.</summary>
-    /// <param name="sender">Event source.</param>
-    /// <param name="e">Routed event arguments.</param>
-    private void LoadOnlineTiles_Click(object sender, RoutedEventArgs e)
-    {
-        if (MapOnlineConsentCheckBox.IsChecked != true)
-        {
-            MapSelectionStatus.Text = "Centang izin penggunaan peta online terlebih dahulu; tidak ada permintaan yang dikirim.";
-            return;
-        }
-        _tilesRequested = true;
-        LoadOnlineTilesButton.IsEnabled = false;
-        LoadOnlineTilesButton.Content = "Peta online aktif";
-        MapSelectionStatus.Text = $"Memuat tile dari OpenStreetMap. {OpenStreetMapTileService.Attribution}";
-        RenderMap();
-    }
-
-    /// <summary>Clears tiles immediately when consent is withdrawn.</summary>
+    /// <summary>Turns OSM tiles on when consent is checked and clears them when it is withdrawn.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Routed event arguments.</param>
     private void MapOnlineConsentCheckBox_Changed(object sender, RoutedEventArgs e)
     {
-        if (MapOnlineConsentCheckBox.IsChecked == true) return;
+        if (MapOnlineConsentCheckBox.IsChecked == true)
+        {
+            _tilesRequested = true;
+            MapSelectionStatus.Text = $"Peta online aktif. {OpenStreetMapTileService.Attribution}";
+            RenderMap();
+            return;
+        }
+
         _tilesRequested = false;
         _renderVersion++;
         TileLayer.Children.Clear();
-        LoadOnlineTilesButton.IsEnabled = true;
-        LoadOnlineTilesButton.Content = "Muat peta online";
+        MapSelectionStatus.Text = "Peta online dimatikan; tile tidak dimuat. Grid dan pencarian lokal tetap tersedia.";
     }
 
     /// <summary>Confirms the pending point and closes the dialog.</summary>

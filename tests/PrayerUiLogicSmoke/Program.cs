@@ -548,6 +548,10 @@ Assert(mapDialogSource.Contains("MapOnlineConsentCheckBox.IsChecked", StringComp
        mapDialogSource.Contains("OfflineReverseGeocoder.Current", StringComparison.Ordinal) &&
        !mapDialogSource.Contains("WebView2", StringComparison.Ordinal),
     "The map dialog must keep offline search available and gate online tiles behind the consent checkbox.");
+Assert(!mapDialogXaml.Contains("LoadOnlineTilesButton", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("MapOnlineConsentCheckBox_Changed", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("_tilesRequested = true", StringComparison.Ordinal),
+    "Checking the consent box must enable tiles automatically without a separate load button.");
 Assert(tileServiceSource.Contains("https://tile.openstreetmap.org/", StringComparison.Ordinal) &&
        tileServiceSource.Contains("userConsentGranted", StringComparison.Ordinal) &&
        tileServiceSource.Contains("throw new InvalidOperationException", StringComparison.Ordinal) &&
@@ -559,6 +563,10 @@ Assert(mapDialogXaml.Contains("MouseWheel=\"MapCanvas_MouseWheel\"", StringCompa
        mapDialogXaml.Contains("Text=\"100%\"", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("MapCheckBoxText", StringComparison.Ordinal),
     "The map must expose wheel zoom, drag panning, a percentage zoom badge, and themed field/checkbox styles.");
+Assert(mapDialogXaml.Contains("ZoomLevelBadge", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("FontSize=\"18\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Height=\"30\"", StringComparison.Ordinal),
+    "The zoom badge must match the +/- button height and use larger zoom glyphs.");
 Assert(mapDialogSource.Contains("MapCanvas_MouseWheel", StringComparison.Ordinal) &&
        mapDialogSource.Contains("MapCanvas_MouseMove", StringComparison.Ordinal) &&
        mapDialogSource.Contains("HideSearchResults", StringComparison.Ordinal) &&
@@ -587,6 +595,11 @@ Assert(mapDialogSource.Contains("_deviceLocationService.DetectAsync", StringComp
        mapDialogSource.Contains("DeviceLocationStatus.PermissionDenied", StringComparison.Ordinal) &&
        mapDialogSource.Contains("LocationDetectionService.Midpoint", StringComparison.Ordinal),
     "The current-location button must prefer the device fix and fall back to the network estimate.");
+Assert(mapDialogSource.Contains("InitialZoom = 15", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("ApplyInitialSelection", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("_pendingLatitude = _centerLatitude", StringComparison.Ordinal) &&
+       codeBehind.Contains("LocationNameBox.Text.Trim()", StringComparison.Ordinal),
+    "Opening the map must pin the current form coordinates at a readable zoom and keep the known name.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&
