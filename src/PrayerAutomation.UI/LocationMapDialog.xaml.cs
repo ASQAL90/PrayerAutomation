@@ -27,6 +27,8 @@ internal partial class LocationMapDialog : Window
     private readonly bool _onlineGeocodingEnabled;
     private readonly string _onlineEndpoint;
     private readonly OpenStreetMapTileService _tileService = new();
+    private readonly DeviceLocationService _deviceLocationService = new();
+    private readonly LocationDetectionService _locationDetectionService = new();
     private readonly DispatcherTimer _cursorResetTimer = new()
     {
         Interval = TimeSpan.FromMilliseconds(450),
@@ -37,6 +39,8 @@ internal partial class LocationMapDialog : Window
     private int _renderVersion;
     private int _searchVersion;
     private bool _tilesRequested;
+    private bool _isLocating;
+    private int _locateVersion;
     private bool _isPanning;
     private bool _dragMoved;
     private bool _suppressSearchSelection;
@@ -75,6 +79,7 @@ internal partial class LocationMapDialog : Window
         {
             _cursorResetTimer.Stop();
             _searchVersion++;
+            _locateVersion++;
         };
     }
 
@@ -401,6 +406,80 @@ internal partial class LocationMapDialog : Window
         {
             MapSelectionStatus.Text = $"Titik sementara: {coordinates}. Dataset lokal tidak dapat dibaca; koordinat tetap bisa dipakai.";
             AppLogger.Write("map.nearest", ex);
+        }
+    }
+
+    /// <summary>Centres the map on the current location, trying the device first and network IP next.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private async void GoToCurrentLocation_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isLocating) return;
+        _isLocating = true;
+        int version = ++_locateVersion;
+        GoToCurrentLocationButton.IsEnabled = false;
+        MapSelectionStatus.Text = "Mencari lokasi saat ini…";
+        try
+        {
+            DeviceLocationResult device = await _deviceLocationService.DetectAsync();
+            if (version != _locateVersion) return;
+
+            if (device.IsSuccess)
+            {
+                double latitude = device.Latitude!.Value;
+                double longitude = device.Longitude!.Value;
+                SetPendingPoint(latitude, longitude,
+                    DeviceLocationLogic.FormatLocalLocationName(device.Source, latitude, longitude));
+                MapSelectionStatus.Text =
+                    $"Titik sementara dari lokasi perangkat ({DeviceLocationLogic.SourceLabel(device.Source)}; " +
+                    $"{DeviceLocationLogic.AccuracyLabel(device.AccuracyMeters)}). " +
+                    "Geser/klik peta bila perlu, lalu Tetapkan titik.";
+                return;
+            }
+
+            if (device.Status == DeviceLocationStatus.PermissionDenied)
+            {
+                MapSelectionStatus.Text =
+                    "Izin lokasi Windows ditolak. Aktifkan izin lokasi atau klik peta untuk menetapkan titik.";
+                return;
+            }
+
+            MapSelectionStatus.Text = "Lokasi perangkat tidak tersedia; mencoba perkiraan dari jaringan…";
+            NetworkLocationResult network = await _locationDetectionService.DetectNetworkLocationAsync();
+            if (version != _locateVersion) return;
+            if (!network.ProvidersAgree)
+            {
+                MapSelectionStatus.Text =
+                    "Lokasi perangkat tidak tersedia dan hasil jaringan tidak cukup selaras. " +
+                    "Klik peta atau cari nama tempat.";
+                return;
+            }
+
+            (double networkLatitude, double networkLongitude) =
+                LocationDetectionService.Midpoint(network.IpApi, network.IpWho);
+            string networkLabel = network.IpApi.City ?? network.IpApi.Region ??
+                network.IpApi.Country ?? "perkiraan jaringan";
+            SetPendingPoint(networkLatitude, networkLongitude, $"Perkiraan jaringan ({networkLabel})");
+            MapSelectionStatus.Text =
+                $"Titik sementara dari perkiraan jaringan ({network.IpApi.CountryCode ?? "IP"}; akurasi kasar). " +
+                "Geser/klik peta bila perlu, lalu Tetapkan titik.";
+        }
+        catch (LocationLookupException ex)
+        {
+            if (version != _locateVersion) return;
+            AppLogger.Write("map.current-location", ex);
+            MapSelectionStatus.Text = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            if (version != _locateVersion) return;
+            AppLogger.Write("map.current-location", ex);
+            MapSelectionStatus.Text = "Lokasi saat ini tidak tersedia. Klik peta atau cari nama tempat.";
+        }
+        finally
+        {
+            _isLocating = false;
+            GoToCurrentLocationButton.IsEnabled = true;
         }
     }
 

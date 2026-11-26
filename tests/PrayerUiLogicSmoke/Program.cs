@@ -578,6 +578,15 @@ Assert(mapCursorSource.Contains("CreatePinDrawing", StringComparison.Ordinal) &&
        mapCursorSource.Contains("zoomIn: true", StringComparison.Ordinal) &&
        mapCursorSource.Contains("zoomIn: false", StringComparison.Ordinal),
     "Custom pin and zoom cursors must be generated without new assets or dependencies.");
+Assert(mapDialogXaml.Contains("GoToCurrentLocationButton", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("GoToCurrentLocation_Click", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Menuju lokasi saat ini", StringComparison.Ordinal),
+    "The map must expose a small icon button that navigates to the current location.");
+Assert(mapDialogSource.Contains("_deviceLocationService.DetectAsync", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("_locationDetectionService.DetectNetworkLocationAsync", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("DeviceLocationStatus.PermissionDenied", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("LocationDetectionService.Midpoint", StringComparison.Ordinal),
+    "The current-location button must prefer the device fix and fall back to the network estimate.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&
