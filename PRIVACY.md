@@ -30,12 +30,15 @@ Registry HKCU yang dapat ditulis:
 | --- | --- | --- | --- |
 | Cek pembaruan | `api.github.com` | saat cek pembaruan (manual atau terjadwal) | User-Agent, versi aplikasi |
 | Unduh pembaruan/data | `github.com`, `raw.githubusercontent.com` | hanya bila pembaruan atau paket data dipilih | permintaan berkas biasa |
-| Perkiraan lokasi dari jaringan | `ipapi.co`, `ipwho.is` | **hanya** saat pertama kali dijalankan bila lokasi Windows tidak tersedia | alamat IP publik (otomatis oleh HTTP) |
-| Geocoding online | `nominatim.openstreetmap.org` | **hanya** bila Anda mengaktifkan opsi geocoding online dan memberi persetujuan | koordinat, bahasa, User-Agent |
+| Perkiraan lokasi dari jaringan | `ipapi.co`, `ipwho.is` | **hanya** saat Anda menekan tombol **Perkiraan dari jaringan** (atau deteksi awal saat lokasi Windows tidak tersedia) | alamat IP publik (otomatis oleh HTTP) |
+| Geocoding online | `nominatim.openstreetmap.org` | **hanya** bila Anda mengaktifkan opsi geocoding online dan memberi persetujuan | koordinat atau nama tempat, bahasa, User-Agent |
+| Tile peta pemilih lokasi | `tile.openstreetmap.org` | **hanya** bila Anda mencentang izin lalu menekan **Muat peta online** di jendela peta | nomor tile/zoom yang dilihat, User-Agent, alamat IP publik |
 
-Tidak ada data lokasi, nama, atau log yang dikirim ke pihak lain. Geocoding
-online dapat dimatikan kapan saja; tanpa izin eksplisit, koordinat tidak pernah
-dikirim.
+Tidak ada data lokasi, nama, atau log yang dikirim ke pihak lain saat aplikasi
+dibuka atau saat jendela peta dibuka. Tile tidak dimuat otomatis. Membuka peta,
+mencari dengan data lokal, dan menetapkan titik tidak mengirim koordinat ke
+server; permintaan jaringan hanya terjadi lewat tindakan eksplisit Anda di atas.
+Geocoding online dan izin tile dapat dicabut kapan saja dalam sesi tersebut.
 
 ## Menghapus data
 

@@ -366,6 +366,17 @@ var gpsButton = xaml.Descendants(presentation + "Button")
     .SingleOrDefault(element => (string?)element.Attribute("Name") == "DetectGpsLocationButton");
 Assert(gpsButton is not null && (string?)gpsButton.Attribute("Click") == "DetectGpsLocation_Click",
     "GPS/device-location detection must be available from Settings.");
+var locationNameBox = xaml.Descendants(presentation + "TextBox")
+    .SingleOrDefault(element => (string?)element.Attribute("Name") == "LocationNameBox");
+var mapButton = xaml.Descendants(presentation + "Button")
+    .SingleOrDefault(element => (string?)element.Attribute("Name") == "OpenLocationMapButton");
+Assert(locationNameBox is not null && mapButton is not null &&
+       (string?)mapButton.Attribute("AutomationProperties.AutomationId") == "OpenLocationMapButton" &&
+       (string?)mapButton.Attribute("AutomationProperties.Name") == "Buka peta lokasi" &&
+       (string?)mapButton.Attribute("Click") == "OpenLocationMap_Click" &&
+       mapButton.Parent == locationNameBox.Parent &&
+       mapButton.Parent != detectButton?.Parent && mapButton.Parent != gpsButton?.Parent,
+    "The location name field must own an inset map-picker button, separate from network/GPS detection.");
 var widgetMode = xaml.Descendants(presentation + "ComboBox")
     .SingleOrDefault(element => (string?)element.Attribute("Name") == "WidgetModeBox");
 string[] widgetModeTags = widgetMode?.Elements(presentation + "ComboBoxItem")
@@ -517,6 +528,30 @@ Assert(constructorStart >= 0 && loadingGuard >= constructorStart && initializeCo
     "Initial XAML selection events must not replace the previously saved theme before settings are loaded.");
 Assert(codeBehind.Contains("private async void DetectGpsLocation_Click", StringComparison.Ordinal),
     "The GPS button must have an asynchronous device-location handler.");
+Assert(codeBehind.Contains("private async void OpenLocationMap_Click", StringComparison.Ordinal) &&
+       codeBehind.Contains("private async Task ApplyMapLocationAsync", StringComparison.Ordinal) &&
+       codeBehind.Contains("dialog.ShowDialog()", StringComparison.Ordinal) &&
+       codeBehind.Contains("UpdateLocationNameFromCoordinatesAsync", StringComparison.Ordinal),
+    "The map button must show a dialog, apply the chosen point as a draft, and reuse the coordinate-name lookup.");
+string mapDialogXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "LocationMapDialog.xaml"));
+string mapDialogSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "LocationMapDialog.xaml.cs"));
+string tileServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "OpenStreetMapTileService.cs"));
+Assert(mapDialogXaml.Contains("© OpenStreetMap contributors", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("x:Name=\"MapOnlineConsentCheckBox\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("x:Name=\"ConfirmMapPointButton\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("IsCancel=\"True\"", StringComparison.Ordinal) &&
+       !mapDialogXaml.Contains("WebView2", StringComparison.Ordinal),
+    "The map dialog must show OSM attribution, require explicit tile consent, and expose confirm/cancel without WebView2.");
+Assert(mapDialogSource.Contains("MapOnlineConsentCheckBox.IsChecked", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("userConsentGranted: true", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("OfflineReverseGeocoder.Current", StringComparison.Ordinal) &&
+       !mapDialogSource.Contains("WebView2", StringComparison.Ordinal),
+    "The map dialog must keep offline search available and gate online tiles behind the consent checkbox.");
+Assert(tileServiceSource.Contains("https://tile.openstreetmap.org/", StringComparison.Ordinal) &&
+       tileServiceSource.Contains("userConsentGranted", StringComparison.Ordinal) &&
+       tileServiceSource.Contains("throw new InvalidOperationException", StringComparison.Ordinal) &&
+       tileServiceSource.Contains("UriKind.Absolute", StringComparison.Ordinal),
+    "Tile loading must target HTTPS OSM only and reject calls without explicit consent.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&

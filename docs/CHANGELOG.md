@@ -1,5 +1,12 @@
 # Riwayat perubahan
 
+## v2.7.0
+- Ditambahkan ikon peta inset di ujung kanan kolom Nama Lokasi, terpisah dari tombol perkiraan jaringan dan GPS.
+- Klik ikon peta membuka pemilih lokasi dengan pencarian offline dan opsional Nominatim, grid koordinat, marker, serta zoom.
+- Klik peta atau pilih hasil pencarian menaruh titik sementara; Tetapkan titik mengisi form dan menutup jendela, sedangkan Batal/Esc tidak mengubah form.
+- Tile OpenStreetMap hanya dimuat setelah izin eksplisit dan tombol Muat peta online; atribusi ODbL tampil di UI dan notifikasi pihak ketiga.
+- Tetap self-contained tanpa WebView2; penyimpanan, popup saran nama, default offline, dan logika pengingat tidak diubah.
+
 ## v2.6.0
 - Ditambahkan tab Dzikir & Doa berisi dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com; tiap entri memuat Arab, transliterasi Latin, dan arti dengan kredit di bagian atas serta tautan sumber per entri. Arab tidak diubah; judul doa memakai judul deskriptif buatan dan tampil sebagai header yang lebih besar.
 - Ditambahkan pengingat libur nasional & Id, puasa sunnah, larangan puasa/Tasyrik, peringatan Islam, dzikir pagi, dan dzikir petang dengan jam yang bisa diatur sendiri. Puasa sunnah dan larangan puasa mengingatkan untuk esok hari pukul `16.00`; libur nasional & Id, peringatan Islam, dan dzikir pagi pukul `08.10`; dzikir petang pukul `17.00`.

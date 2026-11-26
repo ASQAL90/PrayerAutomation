@@ -25,6 +25,18 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="1" />
         </Style>
+        <Style x:Key="LocationMapInsetButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="MinWidth" Value="30" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Margin" Value="3" />
             <Setter Property="MinHeight" Value="30" />
@@ -411,11 +423,23 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0" Style="{StaticResource FieldLabel}" Text="Nama lokasi" />
-                                        <TextBox Grid.Row="0" Grid.Column="1" Name="LocationNameBox" AutomationProperties.AutomationId="LocationNameBox" Margin="3" TextAlignment="Left"
-                                                 TextChanged="SettingsPreviewInput_Changed" PreviewKeyDown="LocationNameBox_PreviewKeyDown"
-                                                 LostKeyboardFocus="LocationNameBox_LostKeyboardFocus"
-                                                 ToolTip="Ketik minimal dua karakter untuk mencari kota/permukiman dari data lokal. Pilih hasil untuk mengisi koordinat dan zona waktu; belum disimpan." />
-                                        <Popup Name="LocationSuggestionsPopup" PlacementTarget="{Binding ElementName=LocationNameBox}" Placement="Bottom"
+                                        <Grid Grid.Row="0" Grid.Column="1">
+                                            <TextBox Name="LocationNameBox" AutomationProperties.AutomationId="LocationNameBox" Margin="3" TextAlignment="Left" Padding="7,4,34,4"
+                                                     TextChanged="SettingsPreviewInput_Changed" PreviewKeyDown="LocationNameBox_PreviewKeyDown"
+                                                     LostKeyboardFocus="LocationNameBox_LostKeyboardFocus"
+                                                     ToolTip="Ketik minimal dua karakter untuk mencari kota/permukiman dari data lokal. Ikon peta di kanan membuka pemilih titik; belum disimpan." />
+                                            <Button Name="OpenLocationMapButton" AutomationProperties.AutomationId="OpenLocationMapButton"
+                                                    AutomationProperties.Name="Buka peta lokasi" Style="{StaticResource LocationMapInsetButton}"
+                                                    Click="OpenLocationMap_Click"
+                                                    ToolTip="Buka peta untuk memilih titik lokasi. Peta offline dulu; tile online hanya bila diizinkan.">
+                                                <Viewbox Width="16" Height="16" Stretch="Uniform">
+                                                    <Path Data="{x:Static local:AppBranding.LocationMapGeometry}"
+                                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                                          Stretch="Uniform" />
+                                                </Viewbox>
+                                            </Button>
+                                        </Grid>
+                                        <Popup Grid.Row="0" Grid.Column="1" Name="LocationSuggestionsPopup" PlacementTarget="{Binding ElementName=LocationNameBox}" Placement="Bottom"
                                                StaysOpen="False" AllowsTransparency="True" Closed="LocationSuggestionsPopup_Closed">
                                             <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
                                                     CornerRadius="{DynamicResource CardCornerRadius}" Padding="4"

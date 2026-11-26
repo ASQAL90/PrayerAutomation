@@ -146,6 +146,14 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Belum dijalankan: build WPF/Rust penuh dan uji pembaruan nyata di Windows.
 
 
+### Pengembangan 2.7.0 — pemilih lokasi via peta (belum dirilis)
+
+- Branch `feature/2.7.0-map-picker` berangkat dari commit rilis `81f12c4` dan menaikkan versi ke `2.7.0`. Tombol peta inset ditambahkan di kolom **Nama Lokasi** tanpa menggabungkan tombol jaringan/GPS.
+- Pemilih memakai WPF + marker/grid offline; tile OSM hanya dimuat setelah checkbox izin dan tombol **Muat peta online**. Tidak ada WebView2, package peta baru, atau perubahan payload installer.
+- Verifikasi statis di Termux: `git diff --check`, parse XML untuk seluruh XAML, pemeriksaan handler, serta uji round-trip Mercator dan pembungkusan tile dengan Python.
+- Verifikasi via `dotnet` di container proot Debian (`/opt/dotnet`, MSBuild `-m:1 -nodeReuse:false`): `MapPickerSmoke` **PASS**; `PrayerUiLogicSmoke` **PASS** (dua suite, dengan `SkipRustBuild=true` dan `prayer_core.dll` yang sudah dibangun); build WPF Release x64 dengan `-p:Arch=x64 -p:RustTarget=x86_64-pc-windows-gnu -p:EnableWindowsTargeting=true` **0 error**. Satu-satunya warning ialah `NU1900` karena metadata kerentanan NuGet tidak dapat diunduh (jaringan terbatas), bukan masalah kode.
+- Belum dijalankan: build Windows/CI dengan `RustTarget=x86_64-pc-windows-msvc`, uji visual/manual pada DPI 96/144, dan verifikasi installer/portable. Jangan klaim rilis sebelum CI Windows lulus.
+
 ### Rilis 2.5.4 — 24 November 2026
 
 - Tag `v2.5.3` dibuat sebelum perbaikan tampilan riwayat perubahan (PR #14) masuk, jadi versi dinaikkan ke `2.5.4` dengan `docs/release-notes/2.5.4.md` sebagai body rilis.

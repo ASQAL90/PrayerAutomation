@@ -1,0 +1,96 @@
+<Window x:Class="PrayerAutomation.UI.LocationMapDialog" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pilih lokasi pada peta" Width="760" Height="640" MinWidth="660" MinHeight="580"
+        ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource PrimaryTextBrush}"
+        FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        KeyDown="Window_KeyDown">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock FontSize="19" FontWeight="SemiBold" Text="Pilih titik pada peta"
+                   AutomationProperties.AutomationId="LocationMapDialogHeading" Margin="0,0,0,10" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <TextBox x:Name="MapSearchBox" AutomationProperties.AutomationId="MapSearchBox" Margin="0,0,8,0"
+                     TextAlignment="Left" VerticalContentAlignment="Center"
+                     ToolTip="Cari kota/permukiman dari data lokal. Nominatim opsional bila diaktifkan di Pengaturan."
+                     KeyDown="MapSearchBox_KeyDown" />
+            <Button Grid.Column="1" x:Name="SearchMapButton" Content="Cari"
+                    AutomationProperties.AutomationId="SearchMapButton" Click="SearchMapButton_Click" />
+        </Grid>
+
+        <ListBox Grid.Row="2" x:Name="MapSearchResults" AutomationProperties.AutomationId="MapSearchResults"
+                 DisplayMemberPath="DisplayName" MaxHeight="118" Margin="0,6,0,0" Visibility="Collapsed"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 SelectionChanged="MapSearchResults_SelectionChanged" />
+
+        <Border Grid.Row="3" Margin="0,10,0,0" Background="{DynamicResource AppBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                CornerRadius="{DynamicResource CardCornerRadius}">
+            <Grid x:Name="MapCanvasHost" ClipToBounds="True">
+                <Canvas x:Name="MapCanvas" ClipToBounds="True" Background="Transparent"
+                        MouseLeftButtonUp="MapCanvas_MouseLeftButtonUp"
+                        SizeChanged="MapCanvas_SizeChanged"
+                        AutomationProperties.AutomationId="MapCanvas" Cursor="Cross">
+                    <Canvas x:Name="TileLayer" IsHitTestVisible="False" />
+                    <Canvas x:Name="GridLayer" IsHitTestVisible="False" />
+                    <Ellipse x:Name="MapMarker" Width="14" Height="14" Visibility="Collapsed"
+                             Fill="{DynamicResource AccentBrush}" Stroke="{DynamicResource PrimaryTextBrush}"
+                             StrokeThickness="1" IsHitTestVisible="False" />
+                </Canvas>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Margin="8" Panel.ZIndex="2">
+                    <Button x:Name="ZoomOutButton" Content="−" Width="30" Padding="0"
+                            AutomationProperties.AutomationId="MapZoomOutButton"
+                            AutomationProperties.Name="Perkecil peta" Click="ZoomOutButton_Click" />
+                    <TextBlock x:Name="ZoomLevelText" Text="Zoom 11" VerticalAlignment="Center" Margin="4,0"
+                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <Button x:Name="ZoomInButton" Content="+" Width="30" Padding="0"
+                            AutomationProperties.AutomationId="MapZoomInButton"
+                            AutomationProperties.Name="Perbesar peta" Click="ZoomInButton_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <CheckBox x:Name="MapOnlineConsentCheckBox" AutomationProperties.AutomationId="MapOnlineConsentCheckBox"
+                      Checked="MapOnlineConsentCheckBox_Changed" Unchecked="MapOnlineConsentCheckBox_Changed">
+                <TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap"
+                           Text="Saya setuju memuat tile peta dari OpenStreetMap (menggunakan internet)" />
+            </CheckBox>
+            <Button Grid.Column="1" x:Name="LoadOnlineTilesButton" Content="Muat peta online"
+                    AutomationProperties.AutomationId="LoadOnlineTilesButton" Click="LoadOnlineTiles_Click" />
+        </Grid>
+
+        <TextBlock Grid.Row="5" x:Name="MapSelectionStatus" AutomationProperties.AutomationId="MapSelectionStatus"
+                   Text="Peta dibuka offline. Cari nama tempat atau klik langsung pada peta untuk menetapkan titik sementara."
+                   TextWrapping="Wrap" MinHeight="46" Margin="0,8,0,2"
+                   Foreground="{DynamicResource MutedTextBrush}" />
+
+        <TextBlock Grid.Row="6" Text="Peta dasar: © OpenStreetMap contributors (ODbL) — https://www.openstreetmap.org/copyright"
+                   TextWrapping="Wrap" Margin="0,2,0,8" FontSize="12"
+                   Foreground="{DynamicResource MutedTextBrush}" />
+
+        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="ConfirmMapPointButton" Content="Tetapkan titik" IsEnabled="False"
+                    AutomationProperties.AutomationId="ConfirmMapPointButton" Click="ConfirmMapPoint_Click"
+                    Margin="0,4,8,0" Padding="12,7" />
+            <Button x:Name="CancelMapButton" Content="Batal" IsCancel="True"
+                    AutomationProperties.AutomationId="CancelMapButton" Click="CancelMap_Click"
+                    Margin="0,4,0,0" Padding="12,7" />
+        </StackPanel>
+    </Grid>
+</Window>

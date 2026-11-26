@@ -2302,6 +2302,76 @@ public partial class MainWindow : Window
         if (IsVisible && IsActive) LocationNameBox.Focus();
     }
 
+    /// <summary>Opens the map picker beside the location name field and applies the chosen point as a draft.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Routed event arguments.</param>
+    private async void OpenLocationMap_Click(object sender, RoutedEventArgs e)
+    {
+        CloseLocationSuggestions();
+        double latitude = TryDouble(LatitudeBox.Text, out double formLatitude) &&
+                          double.IsFinite(formLatitude) && formLatitude is >= -90 and <= 90
+            ? formLatitude
+            : _settings.Latitude;
+        double longitude = TryDouble(LongitudeBox.Text, out double formLongitude) &&
+                           double.IsFinite(formLongitude) && formLongitude is >= -180 and <= 180
+            ? formLongitude
+            : _settings.Longitude;
+
+        var dialog = new LocationMapDialog(this, latitude, longitude,
+            OnlineGeocodingEnabledCheckBox.IsChecked == true, _settings.OnlineGeocodingEndpoint);
+        if (dialog.ShowDialog() != true || !dialog.HasSelection) return;
+        await ApplyMapLocationAsync(dialog.Latitude, dialog.Longitude, dialog.DisplayName);
+    }
+
+    /// <summary>Applies a confirmed map point to the settings draft, then resolves its name and details.</summary>
+    /// <param name="latitude">Confirmed latitude.</param>
+    /// <param name="longitude">Confirmed longitude.</param>
+    /// <param name="previewName">Display name previewed in the picker, when known.</param>
+    private async Task ApplyMapLocationAsync(double latitude, double longitude, string previewName)
+    {
+        int requestVersion = ++_locationRequestVersion;
+        _locationNameAutoFilled = false;
+        _loadingSettings = true;
+        try
+        {
+            LatitudeBox.Text = latitude.ToString("G", CultureInfo.InvariantCulture);
+            LongitudeBox.Text = longitude.ToString("G", CultureInfo.InvariantCulture);
+        }
+        finally { _loadingSettings = false; }
+
+        string timezone;
+        try
+        {
+            timezone = LocationDefaults.ResolveTimeZoneForCoordinates(latitude, longitude);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            SetAutoLocationName("Lokasi manual");
+            _locationNameAutoFilled = false;
+            OfflineReverseGeocodeStatus.Text = "Zona waktu titik peta ini belum dapat dicocokkan. Koordinat ada di draf; isi zona dan nama secara manual bila perlu.";
+            RefreshSettingsSchedulePreview();
+            return;
+        }
+
+        _loadingSettings = true;
+        try { TimeZoneBox.Text = timezone; }
+        finally { _loadingSettings = false; }
+
+        OfflineReverseGeocodeStatus.Text = string.IsNullOrEmpty(previewName)
+            ? "Titik dari peta dipilih. Mencari permukiman terdekat…"
+            : $"Titik dari peta: {previewName}. Mencari permukiman terdekat…";
+        await UpdateLocationNameFromCoordinatesAsync(latitude, longitude, timezone, requestVersion);
+        if (requestVersion == _locationRequestVersion && !string.IsNullOrEmpty(previewName) &&
+            string.Equals(LocationNameBox.Text, "Lokasi manual", StringComparison.Ordinal))
+        {
+            SetAutoLocationName(previewName);
+            _locationNameAutoFilled = true;
+            OfflineReverseGeocodeStatus.Text = $"Titik dari peta: {previewName}. Nama menjadi perkiraan; koordinat dan zona waktu berasal dari titik. Belum disimpan.";
+        }
+        RefreshSettingsSchedulePreview();
+        if (IsVisible && IsActive) LocationNameBox.Focus();
+    }
+
     /// <summary>Closes and clears the location suggestion popup.</summary>
     private void CloseLocationSuggestions()
     {
