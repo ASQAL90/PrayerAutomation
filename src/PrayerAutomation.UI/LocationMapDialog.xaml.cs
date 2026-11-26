@@ -19,6 +19,8 @@ internal partial class LocationMapDialog : Window
 {
     private const double FallbackLatitude = -6.2;
     private const double FallbackLongitude = 106.8;
+    private const int ZoomPercentageBase = 11;
+    private const double DragThreshold = 3.0;
     private static readonly double[] LatitudeGridSteps =
         [30, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001];
     private readonly bool _onlineGeocodingEnabled;
@@ -30,6 +32,11 @@ internal partial class LocationMapDialog : Window
     private int _renderVersion;
     private int _searchVersion;
     private bool _tilesRequested;
+    private bool _isPanning;
+    private bool _dragMoved;
+    private bool _suppressSearchSelection;
+    private System.Windows.Point _dragStart;
+    private System.Windows.Point _dragLast;
     private double? _pendingLatitude;
     private double? _pendingLongitude;
     private string _pendingName = "";
@@ -51,7 +58,7 @@ internal partial class LocationMapDialog : Window
         _onlineEndpoint = onlineEndpoint;
         _centerLatitude = double.IsFinite(latitude) ? MapProjection.ClampLatitude(latitude) : FallbackLatitude;
         _centerLongitude = double.IsFinite(longitude) ? MapProjection.NormalizeLongitude(longitude) : FallbackLongitude;
-        ZoomLevelText.Text = $"Zoom {_zoom}";
+        UpdateZoomLabel();
         Loaded += (_, _) => RenderMap();
         Closed += (_, _) => _searchVersion++;
     }
@@ -69,12 +76,13 @@ internal partial class LocationMapDialog : Window
     internal string DisplayName => _pendingName;
 
     /// <summary>Redraws grid lines, tiles, and the pending marker.</summary>
-    private void RenderMap()
+    /// <param name="loadTiles">False during a drag so existing tiles can be shifted without refetching.</param>
+    private void RenderMap(bool loadTiles = true)
     {
         if (!IsLoaded || MapCanvas.ActualWidth <= 0 || MapCanvas.ActualHeight <= 0) return;
 
         int version = ++_renderVersion;
-        TileLayer.Children.Clear();
+        if (loadTiles) TileLayer.Children.Clear();
         GridLayer.Children.Clear();
         double width = MapCanvas.ActualWidth;
         double height = MapCanvas.ActualHeight;
@@ -82,7 +90,32 @@ internal partial class LocationMapDialog : Window
 
         DrawGraticule(centre, width, height);
         UpdateMarker();
-        if (_tilesRequested) LoadOnlineTiles(version, centre, width, height);
+        if (loadTiles && _tilesRequested) LoadOnlineTiles(version, centre, width, height);
+    }
+
+    /// <summary>Updates the zoom badge with a percentage relative to the initial zoom level.</summary>
+    private void UpdateZoomLabel()
+    {
+        double percent = Math.Pow(2.0, _zoom - ZoomPercentageBase) * 100.0;
+        ZoomLevelText.Text = percent >= 10.0
+            ? percent.ToString("0", CultureInfo.CurrentCulture) + "%"
+            : percent.ToString("0.#", CultureInfo.CurrentCulture) + "%";
+    }
+
+    /// <summary>Moves already-loaded tiles with the pointer while a drag is in progress.</summary>
+    /// <param name="dx">Horizontal pointer movement in device-independent pixels.</param>
+    /// <param name="dy">Vertical pointer movement in device-independent pixels.</param>
+    private void ShiftTiles(double dx, double dy)
+    {
+        foreach (UIElement child in TileLayer.Children)
+        {
+            double left = Canvas.GetLeft(child);
+            double top = Canvas.GetTop(child);
+            if (double.IsNaN(left)) left = 0;
+            if (double.IsNaN(top)) top = 0;
+            Canvas.SetLeft(child, left + dx);
+            Canvas.SetTop(child, top + dy);
+        }
     }
 
     /// <summary>Draws a coarse latitude/longitude grid so offline mode still reads as a map.</summary>
@@ -191,12 +224,129 @@ internal partial class LocationMapDialog : Window
         MapMarker.Visibility = Visibility.Visible;
     }
 
-    /// <summary>Turns a click on the canvas into a pending geographic point.</summary>
+    /// <summary>Starts a potential drag or click and captures the pointer.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse button event arguments.</param>
+    private void MapCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        HideSearchResults();
+        _dragStart = _dragLast = e.GetPosition(MapCanvas);
+        _isPanning = true;
+        _dragMoved = false;
+        MapCanvas.CaptureMouse();
+        MapCanvas.Cursor = Cursors.SizeAll;
+        e.Handled = true;
+    }
+
+    /// <summary>Pans the map while the left button is held and the pointer moves past a small threshold.</summary>
     /// <param name="sender">Event source.</param>
     /// <param name="e">Mouse event arguments.</param>
+    private void MapCanvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPanning || e.LeftButton != MouseButtonState.Pressed) return;
+
+        System.Windows.Point current = e.GetPosition(MapCanvas);
+        if (!_dragMoved)
+        {
+            if (Math.Abs(current.X - _dragStart.X) < DragThreshold &&
+                Math.Abs(current.Y - _dragStart.Y) < DragThreshold)
+                return;
+            _dragMoved = true;
+        }
+
+        double dx = current.X - _dragLast.X;
+        double dy = current.Y - _dragLast.Y;
+        _dragLast = current;
+        if (dx == 0 && dy == 0) return;
+
+        MapPoint centre = MapProjection.WorldPixel(_centerLatitude, _centerLongitude, _zoom);
+        (_centerLatitude, _centerLongitude) = MapProjection.CoordinatesFromWorldPixel(
+            new MapPoint(centre.X - dx, centre.Y - dy), _zoom);
+        ShiftTiles(dx, dy);
+        RenderMap(loadTiles: false);
+        e.Handled = true;
+    }
+
+    /// <summary>Finishes a drag, or treats an unmoved click as a pending location.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse button event arguments.</param>
     private void MapCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        System.Windows.Point position = e.GetPosition(MapCanvas);
+        if (e.ChangedButton != MouseButton.Left || !_isPanning) return;
+
+        bool wasDrag = _dragMoved;
+        _isPanning = false;
+        _dragMoved = false;
+        if (MapCanvas.IsMouseCaptured) MapCanvas.ReleaseMouseCapture();
+        MapCanvas.Cursor = Cursors.Cross;
+
+        if (wasDrag) RenderMap();
+        else SelectPointAt(e.GetPosition(MapCanvas));
+        e.Handled = true;
+    }
+
+    /// <summary>Recovers when pointer capture is lost mid-drag.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse event arguments.</param>
+    private void MapCanvas_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (!_isPanning) return;
+        _isPanning = false;
+        _dragMoved = false;
+        MapCanvas.Cursor = Cursors.Cross;
+        RenderMap();
+    }
+
+    /// <summary>Zooms in or out with the mouse wheel while keeping the point under the cursor stable.</summary>
+    /// <param name="sender">Event source.</param>
+    /// <param name="e">Mouse wheel event arguments.</param>
+    private void MapCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta == 0) return;
+
+        int previousZoom = _zoom;
+        int nextZoom = MapProjection.ClampZoom(_zoom + (e.Delta > 0 ? 1 : -1));
+        if (nextZoom == previousZoom)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        double width = MapCanvas.ActualWidth;
+        double height = MapCanvas.ActualHeight;
+        if (width > 0 && height > 0)
+        {
+            System.Windows.Point position = e.GetPosition(MapCanvas);
+            MapPoint centre = MapProjection.WorldPixel(_centerLatitude, _centerLongitude, previousZoom);
+            var underCursor = new MapPoint(
+                centre.X + position.X - width / 2.0,
+                centre.Y + position.Y - height / 2.0);
+            (double latitude, double longitude) =
+                MapProjection.CoordinatesFromWorldPixel(underCursor, previousZoom);
+
+            _zoom = nextZoom;
+            MapPoint newUnderCursor = MapProjection.WorldPixel(latitude, longitude, _zoom);
+            var newCentre = new MapPoint(
+                newUnderCursor.X - position.X + width / 2.0,
+                newUnderCursor.Y - position.Y + height / 2.0);
+            (_centerLatitude, _centerLongitude) =
+                MapProjection.CoordinatesFromWorldPixel(newCentre, _zoom);
+        }
+        else
+        {
+            _zoom = nextZoom;
+        }
+
+        UpdateZoomLabel();
+        RenderMap();
+        e.Handled = true;
+    }
+
+    /// <summary>Turns a click position on the canvas into a pending geographic point.</summary>
+    /// <param name="position">Click position relative to the map canvas.</param>
+    private void SelectPointAt(System.Windows.Point position)
+    {
         MapPoint centre = MapProjection.WorldPixel(_centerLatitude, _centerLongitude, _zoom);
         var world = new MapPoint(
             centre.X + position.X - MapCanvas.ActualWidth / 2.0,
@@ -315,8 +465,27 @@ internal partial class LocationMapDialog : Window
     /// <param name="e">Selection event arguments.</param>
     private void MapSearchResults_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressSearchSelection) return;
         if (MapSearchResults.SelectedItem is not OfflineLocationSuggestion suggestion) return;
         SetPendingPoint(suggestion.Latitude, suggestion.Longitude, suggestion.DisplayName);
+        HideSearchResults();
+    }
+
+    /// <summary>Closes and clears the search-results list after a result is used.</summary>
+    private void HideSearchResults()
+    {
+        if (MapSearchResults.Visibility == Visibility.Collapsed && MapSearchResults.SelectedItem is null)
+            return;
+        _suppressSearchSelection = true;
+        try
+        {
+            MapSearchResults.SelectedItem = null;
+            MapSearchResults.Visibility = Visibility.Collapsed;
+        }
+        finally
+        {
+            _suppressSearchSelection = false;
+        }
     }
 
     /// <summary>Sets a draft point, centres the map, and redraws the marker.</summary>
@@ -349,8 +518,10 @@ internal partial class LocationMapDialog : Window
     /// <param name="delta">Number of zoom levels to add.</param>
     private void ChangeZoom(int delta)
     {
-        _zoom = MapProjection.ClampZoom(_zoom + delta);
-        ZoomLevelText.Text = $"Zoom {_zoom}";
+        int nextZoom = MapProjection.ClampZoom(_zoom + delta);
+        if (nextZoom == _zoom) return;
+        _zoom = nextZoom;
+        UpdateZoomLabel();
         RenderMap();
     }
 

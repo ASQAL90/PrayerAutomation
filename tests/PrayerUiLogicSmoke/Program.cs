@@ -552,6 +552,18 @@ Assert(tileServiceSource.Contains("https://tile.openstreetmap.org/", StringCompa
        tileServiceSource.Contains("throw new InvalidOperationException", StringComparison.Ordinal) &&
        tileServiceSource.Contains("UriKind.Absolute", StringComparison.Ordinal),
     "Tile loading must target HTTPS OSM only and reject calls without explicit consent.");
+Assert(mapDialogXaml.Contains("MouseWheel=\"MapCanvas_MouseWheel\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("MouseLeftButtonDown=\"MapCanvas_MouseLeftButtonDown\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("MouseMove=\"MapCanvas_MouseMove\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Text=\"100%\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("MapCheckBoxText", StringComparison.Ordinal),
+    "The map must expose wheel zoom, drag panning, a percentage zoom badge, and themed field/checkbox styles.");
+Assert(mapDialogSource.Contains("MapCanvas_MouseWheel", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("MapCanvas_MouseMove", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("HideSearchResults", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("UpdateZoomLabel", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("ShiftTiles", StringComparison.Ordinal),
+    "Wheel zoom, pointer panning, search-result closing, and the percentage zoom label must be implemented.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&

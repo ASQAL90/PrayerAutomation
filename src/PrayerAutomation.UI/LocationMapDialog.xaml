@@ -6,6 +6,39 @@
         Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource PrimaryTextBrush}"
         FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True"
         KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="7,4" />
+            <Setter Property="TextAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="SelectionTextBrush" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="3,4,3,8" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+        </Style>
+        <Style x:Key="MapCheckBoxText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Setter Property="TextAlignment" Value="Left" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="14,0,0,0" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type CheckBox}}}" />
+        </Style>
+    </Window.Resources>
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -39,9 +72,12 @@
         <Border Grid.Row="3" Margin="0,10,0,0" Background="{DynamicResource AppBackgroundBrush}"
                 BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
                 CornerRadius="{DynamicResource CardCornerRadius}">
-            <Grid x:Name="MapCanvasHost" ClipToBounds="True">
+            <Grid x:Name="MapCanvasHost" ClipToBounds="True" MouseWheel="MapCanvas_MouseWheel">
                 <Canvas x:Name="MapCanvas" ClipToBounds="True" Background="Transparent"
+                        MouseLeftButtonDown="MapCanvas_MouseLeftButtonDown"
+                        MouseMove="MapCanvas_MouseMove"
                         MouseLeftButtonUp="MapCanvas_MouseLeftButtonUp"
+                        LostMouseCapture="MapCanvas_LostMouseCapture"
                         SizeChanged="MapCanvas_SizeChanged"
                         AutomationProperties.AutomationId="MapCanvas" Cursor="Cross">
                     <Canvas x:Name="TileLayer" IsHitTestVisible="False" />
@@ -55,8 +91,13 @@
                     <Button x:Name="ZoomOutButton" Content="−" Width="30" Padding="0"
                             AutomationProperties.AutomationId="MapZoomOutButton"
                             AutomationProperties.Name="Perkecil peta" Click="ZoomOutButton_Click" />
-                    <TextBlock x:Name="ZoomLevelText" Text="Zoom 11" VerticalAlignment="Center" Margin="4,0"
-                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <Border x:Name="ZoomLevelBadge" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            CornerRadius="4" Padding="8,3" Margin="4,0" VerticalAlignment="Center"
+                            ToolTip="Persentase pembesaran relatif terhadap zoom awal.">
+                        <TextBlock x:Name="ZoomLevelText" Text="100%" MinWidth="44" TextAlignment="Center"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" />
+                    </Border>
                     <Button x:Name="ZoomInButton" Content="+" Width="30" Padding="0"
                             AutomationProperties.AutomationId="MapZoomInButton"
                             AutomationProperties.Name="Perbesar peta" Click="ZoomInButton_Click" />
@@ -68,7 +109,7 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <CheckBox x:Name="MapOnlineConsentCheckBox" AutomationProperties.AutomationId="MapOnlineConsentCheckBox"
                       Checked="MapOnlineConsentCheckBox_Changed" Unchecked="MapOnlineConsentCheckBox_Changed">
-                <TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource MapCheckBoxText}"
                            Text="Saya setuju memuat tile peta dari OpenStreetMap (menggunakan internet)" />
             </CheckBox>
             <Button Grid.Column="1" x:Name="LoadOnlineTilesButton" Content="Muat peta online"
