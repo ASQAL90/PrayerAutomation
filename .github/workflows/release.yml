@@ -29,7 +29,7 @@ jobs:
           $notes = "docs/release-notes/$version.md"
           if (-not (Test-Path $notes)) { throw "Catatan rilis $notes tidak ditemukan." }
           $text = Get-Content $notes -Raw
-          if ($text -notmatch '(?m)^## (Fitur baru|Perbaikan|Perubahan|Catatan)' -or $text -notmatch '(?m)^- ') {
+          if ($text -notmatch '(?m)^## (Fitur baru|Perbaikan bug|Peningkatan keamanan|Catatan)' -or $text -notmatch '(?m)^- ') {
             throw "Catatan rilis $notes tidak memuat bagian dan poin yang dikenali."
           }
           "NOTES_PATH=$notes" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
