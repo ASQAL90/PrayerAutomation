@@ -1,141 +1,114 @@
 # Riwayat perubahan
 
 ## v2.7.0
-- Ditambahkan ikon peta inset di ujung kanan kolom Nama Lokasi, terpisah dari tombol perkiraan jaringan dan GPS. Saat peta dibuka, pin langsung berada di koordinat form, nama lokasi tampil di kotak pencarian dan status peta, dan zoom awal 15 (`100%`); bila nama form kosong, nama permukiman terdekat diambil dari data lokal.
-- Klik ikon peta membuka pemilih lokasi dengan pencarian offline dan opsional Nominatim, grid koordinat, marker, serta zoom.
-- Scroll mouse memperbesar/memperkecil di sekitar kursor; tahan dan geser untuk memindahkan peta, sedangkan klik singkat tetap menetapkan titik. Kursor berganti antara pin, panah geser, dan kaca pembesar zoom in/out.
-- Tombol ikon lokasi di sudut peta menuju lokasi saat ini: perangkat/GPS lebih dulu, lalu perkiraan jaringan; titik sementara langsung dipasang.
-- Klik peta atau pilih hasil pencarian menaruh titik sementara sebagai pin merah dengan ujung pin tepat di koordinat terpilih; daftar hasil langsung menutup, Tetapkan titik mengisi form dan menutup jendela, sedangkan Batal/Esc tidak mengubah form.
-- Badge zoom menampilkan persentase dengan latar tema lebih opaque, tinggi disamakan dengan tombol `−`/`+`, dan simbol zoom diperbesar; textbox dan checkbox tile mengikuti gaya form Pengaturan.
-- Tile OpenStreetMap langsung dimuat saat peta dibuka; centang tampil peta online aktif secara default, dan menghapus centang menghentikan serta membersihkan tile. Tombol Muat peta online dihapus. Atribusi ODbL tampil di UI dan notifikasi pihak ketiga.
-- Tetap self-contained tanpa WebView2; penyimpanan, popup saran nama, default offline, dan logika pengingat tidak diubah.
+- Pemilih lokasi lewat peta: klik ikon peta di kanan kolom Nama Lokasi untuk membuka peta dan menaruh titik.
+- Pin merah menandai titik yang dipilih. Tombol Tetapkan titik mengisi nama lokasi, koordinat, ketinggian, zona waktu, dan metode hitung.
+- Peta bisa digeser dan di-zoom dengan scroll di posisi kursor. Ada tombol untuk menuju lokasi saat ini dengan GPS atau perkiraan jaringan.
+- Saat peta dibuka, pin langsung berada di lokasi yang sedang dipakai di form pada zoom 15. Nama lokasi yang sudah ada ikut tampil di kotak pencarian.
+- Tile OpenStreetMap langsung dimuat dan bisa dimatikan lewat centang. Tanpa tile, peta tetap memakai grid dan data lokal.
+- Daftar hasil pencarian langsung menutup setelah lokasi dipilih.
+- Badge zoom, tombol zoom, kotak pencarian, dan checkbox tile dirapikan agar sesuai tema.
+- Atribusi OpenStreetMap dan tautan lisensinya tampil di jendela peta.
+- Permintaan tile memakai HTTPS, User-Agent aplikasi, batas ukuran respons, dan cache sementara. Alamat IP tetap terlihat oleh server tile selama tile online aktif.
+- Aplikasi tetap tanpa WebView2, dan installer maupun versi portable tetap berjalan sendiri.
 
 ## v2.6.0
-- Ditambahkan tab Dzikir & Doa berisi dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com; tiap entri memuat Arab, transliterasi Latin, dan arti dengan kredit di bagian atas serta tautan sumber per entri. Arab tidak diubah; judul doa memakai judul deskriptif buatan dan tampil sebagai header yang lebih besar.
-- Ditambahkan pengingat libur nasional & Id, puasa sunnah, larangan puasa/Tasyrik, peringatan Islam, dzikir pagi, dan dzikir petang dengan jam yang bisa diatur sendiri. Puasa sunnah dan larangan puasa mengingatkan untuk esok hari pukul `16.00`; libur nasional & Id, peringatan Islam, dan dzikir pagi pukul `08.10`; dzikir petang pukul `17.00`.
-- Dikoreksi kategori pengingat: Ayyamul Bidh, puasa Senin/Kamis, Tasu'a, Asyura, Arafah, dan puasa awal Zulhijah hanya masuk pengingat puasa sunnah besok, bukan hari besar Islam hari ini; Idulfitri/Iduladha masuk kategori libur nasional & Id; Hari Tasyriq masuk larangan puasa besok.
-- Jadwal pengingat tambahan yang bersamaan digabung jadi satu popup; jadwal berbeda tetap terpisah. Popup pengingat tambahan terpisah dari popup sholat. Maksimal 3 popup terlihat per layar, dan popup baru masuk antrean bila ruang vertikal tidak cukup sehingga tidak bertabrakan; popup sholat tetap auto-close 12 detik.
-- Diperbaiki kalender Hijriyah agar menyorot tanggal hari ini saat pertama dibuka dan mewarnai ulang cell terpilih seperti kalender Masehi; legenda Masehi/Hijriyah disamakan menjadi `Hari libur / Id`, `Puasa sunnah`, `Larangan puasa / Tasyrik`, serta `Peringatan Islam`.
-- Diringkas teks bantuan Pengaturan: cukup esensi pengingat, tanpa detail jam kantor, jam default, atau penjelasan hari besar tertentu.
-- Ditambahkan tombol hentikan permanen dan ingat lagi pada popup pengingat, dengan jeda ulang dan batas maksimal yang bisa diatur; perulangan dihitung sejak jadwal terlewat.
-- Diperbaiki warna hyperlink dzikir/doa agar mengikuti tema dan tetap kontras.
-- Diperbaiki penyimpanan pengaturan saat jendela ditutup ke systray, diminimalkan, atau keluar; tab terakhir kini dipulihkan saat aplikasi dibuka lagi. Menu systray memuat `Pengaturan` dan shortcut `Dzikir & Doa`; popup dzikir memiliki tombol buka ke sub-tab dzikir pagi/petang sesuai konteks.
-- Diperbaiki checkbox paket data lengkap agar tersimpan langsung dan status unduhan menampilkan tanggal snapshot yang terpasang.
-- Diperbaiki format tanggal dan jam pada status serta isi pengingat memakai waktu lokal yang mudah dibaca; log INFO tetap memakai ISO 8601 lokal dengan offset.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.6.0.
+- Tab Dzikir & Doa berisi dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com, lengkap dengan teks Arab, transliterasi, arti, dan tautan sumber.
+- Pengingat baru untuk libur nasional dan Id, puasa sunnah, larangan puasa, peringatan hari besar Islam, dzikir pagi, dan dzikir petang. Jamnya bisa diatur sendiri.
+- Pengingat yang jatuh pada waktu sama digabung dalam satu popup. Popup tambahan dipisah dari popup sholat dan ditata agar tidak bertabrakan.
+- Tombol untuk menghentikan pengingat hari itu dan Ingatkan lagi. Jeda pengulangan dan jumlah maksimalnya bisa diatur.
+- Kalender Hijriyah menyorot tanggal hari ini saat pertama dibuka, sama seperti kalender Masehi.
+- Pengaturan dan tab terakhir tidak hilang lagi saat jendela ditutup ke tray, diminimalkan, atau keluar.
+- Warna tautan dzikir dan doa mengikuti tema, termasuk saat kursor diarahkan.
+- Checkbox paket data lengkap langsung tersimpan dan menampilkan tanggal paket yang terpasang.
+- Tanggal dan jam di status serta isi pengingat memakai format lokal yang mudah dibaca.
+- Kategori pengingat dirapikan supaya hari puasa tidak muncul sebagai hari besar, dan sebaliknya.
+- Teks bantuan di Pengaturan diringkas agar tidak terlalu penuh.
+- Dua doa hujan belum punya transliterasi di sumbernya, jadi kolom Latinnya sengaja dikosongkan.
 
 ## v2.5.4
-- Teks riwayat perubahan tidak lagi dipotong pada batas 220 karakter di jendela About maupun panel pratinjau pembaruan; Markdown decoration dibersihkan agar kalimat mudah dibaca.
-- Catatan rilis 2.5.2 dan 2.5.3 dipecah menjadi satu gagasan per baris sehingga tidak ada kalimat terpotong.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.4 agar perbaikan tampilan ini masuk paket rilis resmi.
+- Jendela Riwayat perubahan tidak lagi memotong kalimat panjang.
+- Tanda Markdown seperti bintang dan backtick tidak ikut tampil di teks riwayat.
+- Pratinjau catatan rilis di popup pembaruan sekarang muat teks yang lebih panjang.
 
 ## v2.5.3
-- Pemuatan `prayer_core` kini memakai resolver P/Invoke yang dipasang sebelum panggilan native pertama.
-- Resolver hanya menerima satu berkas di `AppContext.BaseDirectory` dengan nama platform yang benar; berkas kosong dan reparse point ditolak.
-- Bila pustaka tidak valid, resolver melempar `DllNotFoundException` tanpa fallback ke pencarian bawaan.
-- Respons pembaruan dibatasi sebelum diverifikasi: JSON rilis 1 MiB, manifest 512 KiB, dan tanda tangan 16 KiB.
-- Batas diperiksa dari `Content-Length` dan ditegakkan lagi saat streaming, sehingga endpoint yang rusak tidak bisa menghabiskan memori.
-- Parser catatan rilis memakai `RegexOptions.NonBacktracking` dan body dibatasi 64 KiB sebelum diurai.
-- Nama aset divalidasi sebagai nama berkas polos; manifest dengan nama aset berbahaya ditolak.
-- Rilis 2.4.0 ke atas bersifat fail-closed bila manifest atau tanda tangan gagal diverifikasi, tanpa fallback ke aset unsigned.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.3 agar seluruh perbaikan masuk paket rilis; isi v2.5.2 tetap menjadi riwayat.
+- Teks riwayat perubahan tidak lagi terpotong pada batas 220 karakter.
+- Aplikasi hanya memuat prayer_core dari folder aplikasi. Berkas kosong, symlink, dan berkas di luar folder aplikasi ditolak.
+- Ukuran respons pembaruan dibatasi sebelum diperiksa, baik JSON rilis, manifest, maupun tanda tangan.
+- Parser catatan rilis dibuat agar tidak bisa dipaksa bekerja berat oleh teks yang aneh.
+- Nama berkas di manifest pembaruan diperiksa, dan nama yang berbahaya ditolak.
+- Untuk versi 2.4.0 ke atas, pembaruan berhenti kalau manifest atau tanda tangan gagal diverifikasi. Tidak ada lagi fallback ke aset tanpa tanda tangan.
 
 ## v2.5.2
-- Nomor versi hanya punya satu sumber: `<Version>` di `src/PrayerAutomation.UI/PrayerAutomation.UI.csproj`.
-- Skrip installer membaca nilai itu untuk nama berkas keluaran dan meneruskannya ke NSIS sebagai `-DAPP_VERSION`/`-DAPP_VERSION_QUAD`.
-- `AyoJamaah.nsi` tidak lagi menyimpan versi sendiri dan menolak kompilasi langsung tanpa define tersebut.
-- `/UPDATEMODE` hanya dikenali sebagai satu argumen utuh, sehingga potongan teks di path tidak mengaktifkan mode pembaruan senyap.
-- `/D=` ditolak sebelum halaman pertama karena NSIS menerapkannya setelah `.onInit`.
-- Uninstaller menanyakan simpan pengaturan (default) atau hapus semua data pengguna.
-- Penghapusan data hanya berjalan bila pilihan hapus dipilih; jurnal pemulihan lock screen tetap tidak disentuh.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.2.
+- Uninstaller menanyakan apakah pengaturan dan data pengguna disimpan atau dihapus. Pilihan awal adalah menyimpan data.
+- Nomor versi aplikasi dan installer sekarang diambil dari satu tempat, jadi keduanya tidak bisa berbeda.
+- Mode pembaruan senyap hanya aktif kalau /UPDATEMODE dikirim sebagai argumen tersendiri.
+- Argumen /D= ditolak agar folder instalasi tidak bisa diarahkan ke luar folder yang diizinkan.
+- Data pengguna hanya dihapus kalau pengguna memilihnya saat uninstall. Jurnal pemulihan lock screen tidak pernah dihapus.
 
 ## v2.5.1
-- Diperkecil ukuran paket self-contained lewat optimasi Tier 1: payload publish memangkas berkas runtime/framework yang tidak diperlukan aplikasi, memverifikasi berkas wajib, dan membersihkan/remap `deps.json`.
-- Dihapus dependensi WinForms lewat optimasi Tier 2: tray icon memakai native `Shell_NotifyIconW` dengan menu konteks WPF, sehingga `UseWindowsForms` tidak lagi diperlukan.
-- Diperbaiki tampilan menu systray agar mengikuti tema aplikasi, termasuk latar, hover, kontras tema gelap, dan separator.
-- Ditambahkan tiga varian installer NSIS: universal (`x64+x86`), `x64`, dan `x86`; updater memprioritaskan installer sesuai arsitektur dengan fallback universal.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.1.
+- Tersedia tiga installer: universal (x64 dan x86), x64, dan x86. Updater memilih installer sesuai arsitektur Windows, lalu memakai versi universal kalau yang sesuai tidak tersedia.
+- Ukuran paket lebih kecil karena komponen runtime yang tidak dipakai dipangkas. Aplikasi tetap berjalan sendiri tanpa perlu memasang .NET Runtime.
+- Menu tray memakai tema aplikasi, termasuk warna latar, hover, dan garis pemisah.
+- Tray icon tidak lagi bergantung pada WinForms dan tampil konsisten di tema terang maupun gelap.
 
 ## v2.5.0
-- Diperluas data lokasi offline dengan daftar global `cities500` dan data Indonesia hybrid Kemendagri–GeoNames yang memuat koordinat, `dem`, nama alternatif, kode fitur, dan populasi.
-- Ditingkatkan ketinggian permukiman dengan sampel Copernicus GLO-90 di samping `dem` GeoNames; sumber dan kualitas ketinggian disimpan pada data.
-- Diperbaiki peringkat pencarian nama lokasi agar nama resmi dan nama alternatif tidak menggabungkan tempat yang berbeda, khususnya `Cibarusa`/`Cibarusah` dan `Cileungsi`/`Cileungsir`.
-- Disatukan katalog metode hitung dan aturan negara/zona waktu untuk semua jalur input lokasi; Muhammadiyah 99 tetap dipertahankan di Indonesia.
-- Ditambahkan opsi paket data global lengkap dengan checkbox izin, tombol unduh, progres, pembatalan, cache permanen, dan verifikasi SHA-256. Kegagalan manifest/jaringan ditangani tanpa menghentikan aplikasi; data bawaan tetap dipakai; direktori staging `v2.partial` dibersihkan setelah instalasi sukses.
-- Ditambahkan opsi Nominatim online opsional (default mati, izin eksplisit lewat checkbox). Saat aktif, koordinat dapat dilengkapi lewat reverse geocoding dan nama lokasi dapat dicari sebagai acuan saran; bila jaringan/layanan gagal, data offline tetap dipakai tanpa menghentikan aplikasi.
-- Ditambahkan deteksi lokasi otomatis saat instalasi baru: prioritas lokasi perangkat/GPS, fallback ke perkiraan jaringan, lalu fallback ke lokasi bawaan; nama, mdpl, zona waktu, lintang, bujur, dan metode diisi otomatis.
-- Disesuaikan preset instalasi baru: metode Muhammadiyah, widget desktop aktif (lima waktu statis, tengah atas, selalu di atas, klik tembus, sembunyi saat kursor mendekat), panel taskbar aktif, mulai tersembunyi, jalankan saat masuk Windows, periksa pembaruan otomatis, kunci Windows lima waktu sholat, dan persetujuan lock screen aktif.
-- Diperbaiki aktivasi widget desktop dan panel taskbar agar langsung diterapkan saat dicentang atau disimpan, tanpa memerlukan keluar-masuk aplikasi.
-- Diperbaiki panel taskbar yang bisa hilang setelah deteksi lokasi otomatis instalasi baru; refresh latar tidak lagi membongkar panel yang sehat dan kegagalan sinkronisasi dicatat tanpa mematikan aplikasi.
-- Diperbaiki sinkronisasi `DisplayVersion` Control Panel/Programs & Features saat root instalasi terdeteksi, termasuk setelah pembaruan diterapkan.
-- Diperbarui atribusi sumber data pada `NOTICE.txt` dan `THIRD_PARTY_NOTICES.md`.
-- Dinaikkan nomor versi aplikasi dan installer ke 2.5.0.
+- Data lokasi offline diperluas dengan daftar kota dunia dan data Indonesia dari Kemendagri yang dipadukan dengan GeoNames. Ketinggian permukiman memakai data GeoNames dan sampel Copernicus bila tersedia.
+- Paket data global lengkap bisa diunduh dari Pengaturan, dengan progres, pembatalan, dan cache permanen. Tanpa paket ini aplikasi tetap memakai data bawaan.
+- Nominatim online tersedia sebagai pilihan dan default-nya mati. Kalau diaktifkan, koordinat bisa dilengkapi lewat reverse geocoding dan nama tempat bisa dicari sebagai saran.
+- Instalasi baru mencoba mendeteksi lokasi otomatis: lokasi perangkat atau GPS lebih dulu, lalu perkiraan jaringan, lalu lokasi bawaan.
+- Preset instalasi baru mengaktifkan widget desktop, panel taskbar, mulai tersembunyi, jalankan saat masuk Windows, pemeriksaan pembaruan, dan kunci layar saat waktu sholat.
+- Pencarian lokasi sekarang membedakan nama yang mirip, seperti Cibarusa dan Cibarusah.
+- Widget dan panel taskbar langsung aktif saat dicentang atau disimpan, tanpa perlu keluar-masuk aplikasi.
+- Panel taskbar tidak lagi hilang setelah deteksi lokasi otomatis saat instalasi baru.
+- Versi yang tampil di Control Panel dan Programs & Features ikut diperbarui setelah pembaruan.
+- Paket data global diperiksa dengan SHA-256 sebelum dipakai. Kalau unduhan atau manifest gagal, aplikasi tetap memakai data bawaan.
 
 ## v2.4.3
-- Disinkronkan nilai `DisplayVersion` pada entri uninstall setelah journal pembaruan tersimpan dan saat startup agar sesuai dengan versi biner yang sedang berjalan.
-- Diselaraskan assertion harness visual dengan `AssemblyName` produk, tinggi widget 34 DIP, padding 2, teks bantuan, margin, jarak layout, direktori scratch milik harness, dan jalur Cancel tanpa dialog.
-- Diselaraskan semua jalur penentuan lokasi—koordinat manual, pilihan nama lokal, perkiraan jaringan, dan GPS—agar mengisi nama lokasi, mdpl, zona waktu, lintang, bujur, dan metode hitung secara otomatis; Muhammadiyah 99 dipertahankan bila sedang aktif di Indonesia.
-- Dihilangkan karakter panah non-ASCII pada halaman selamat datang installer dan diganti escape baris literal pada pengaman lock screen dengan escape NSIS yang benar.
-- Dinaikkan nomor versi aplikasi ke 2.4.3.
-- Diperbarui contoh ID draft pada panduan kanal pembaruan internal.
+- Versi yang tampil di Control Panel dan Programs & Features sekarang ikut diperbarui setelah pembaruan.
+- Semua cara mengisi lokasi, baik manual, data lokal, perkiraan jaringan, maupun GPS, sekarang mengisi nama, ketinggian, zona waktu, koordinat, dan metode hitung dengan lengkap.
+- Karakter panah pada halaman selamat datang installer diganti agar tidak tampil rusak.
+- Escape pada pengaman lock screen diperbaiki.
 
 ## v2.4.2
-- Ditambahkan panel ringkasan catatan rilis versi terbaru pada popup pembaruan.
-- Ditambahkan tombol "Riwayat perubahan" pada halaman Tentang beserta jendela riwayat seluruh versi.
-- Dijalankan pemulihan lock screen secara paksa pada preflight pembaruan dan dilanjutkan pembaruan meskipun verifikasi pemulihan gagal.
-- Disesuaikan pemasang NSIS untuk menampilkan konfirmasi pada instalasi manual bila versi terpasang sama atau lebih baru.
-- Diteruskan pembaruan otomatis /UPDATEMODE tanpa dialog konfirmasi versi.
-- Dinaikkan nomor versi aplikasi ke 2.4.2.
-- Diwajibkan berkas catatan rilis pada workflow Release dan dipakai sebagai body rilis.
-- Status verifikasi tampilan Windows tetap visual=unverified.
+- Popup pembaruan menampilkan ringkasan catatan rilis versi terbaru.
+- Halaman Tentang punya tombol Riwayat perubahan untuk melihat catatan semua versi.
+- Pemulihan lock screen tetap dicoba sebelum pembaruan. Kalau verifikasi pemulihan gagal, pembaruan tetap dilanjutkan.
+- Installer manual memberi konfirmasi kalau versi yang terpasang sama atau lebih baru.
+- Pembaruan otomatis tidak lagi berhenti di dialog konfirmasi versi.
 
 ## v2.4.1
-- Diperbaiki kegagalan pembaruan akibat akses lintas-thread yang memicu pesan "The calling thread cannot access this object because a different thread owns it."
-- Diperbaiki kesalahan "window has closed" saat jendela pembaruan ditutup lebih awal.
-- Ditangkap Dispatcher UI pada thread UI sebelum callback pemulihan, pemeriksaan otomatis, status jendela, dan aksi tray dijalankan.
-- Dipertahankan InstallDeltaAsync pada thread UI hingga ReleaseAndShutdown dipanggil.
-- Ditempatkan Shutdown di dalam blok finally agar selalu dieksekusi.
-- Dibuat ulang jendela utama saat dibuka dari tray setelah tertutup.
-- Diaktifkan kembali tombol "Periksa lagi" setelah pembaruan gagal.
-- Dirapikan format kode Rust agar pemeriksaan CI kembali hijau.
-- Dirilis sebagai hotfix untuk perbaikan jalur pembaruan.
-- Status verifikasi pembaruan dan tampilan Windows tetap update=unverified dan visual=unverified.
+- Pembaruan tidak lagi gagal karena akses lintas-thread saat berpindah dari jendela pembaruan ke proses update.
+- Menutup jendela pembaruan lebih awal tidak lagi memunculkan error "window has closed".
+- Jendela utama bisa dibuka lagi dari tray setelah ditutup.
+- Tombol Periksa lagi aktif kembali setelah pembaruan gagal.
 
 ## v2.4.0
-- Ditambahkan dataset GeoNames Indonesia offline untuk pencarian lokasi.
-- Disajikan kalender 12 bulan pada aplikasi.
-- Disediakan tabel KHGT dan Muhammadiyah untuk perhitungan jadwal offline.
-- Diperbaiki alur gambar lock screen, termasuk penulisan berkas sementara dan pemulihan gambar semula.
-- Diperbaiki pengaturan aplikasi, termasuk penjajaran tombol lock screen dan pemulihan pratinjau tema saat sumber kalender diganti.
-- Istilah koreksi tanggal yang dipakai pada aplikasi adalah geser tanggal Hijriyah.
-- Aset watermark silhouette dan tekstur varian C tidak diubah.
-- Status verifikasi tampilan Windows tetap visual=unverified.
+- Data lokasi Indonesia dari GeoNames bisa dipakai untuk mencari tempat tanpa internet.
+- Kalender 12 bulan tersedia di aplikasi.
+- Perhitungan jadwal offline memakai tabel KHGT dan Muhammadiyah.
+- Alur gambar lock screen diperbaiki, termasuk penulisan berkas sementara dan pemulihan gambar semula.
+- Tombol lock screen di Pengaturan dirapikan, dan pratinjau tema kembali normal saat sumber kalender diganti.
 
 ## v2.3.1
-- Ditambahkan pembaruan delta bertanda tangan dengan manifest JSON dan berkas .sig.
-- Ditambahkan pemulihan otomatis saat startup.
-- Disiapkan fallback ke installer NSIS saat tanda tangan manifest tidak dapat diverifikasi.
-- Status verifikasi tampilan Windows tetap visual=unverified.
+- Pembaruan delta bertanda tangan dengan manifest JSON dan berkas tanda tangan.
+- Pemulihan otomatis saat aplikasi dibuka lagi setelah pembaruan terputus.
+- Setiap manifest pembaruan punya tanda tangan yang diperiksa sebelum dipakai. Kalau verifikasi gagal, aplikasi memakai installer NSIS biasa.
 
 ## v2.3.0
-- Ditanamkan tabel resmi KHGT di prayer_core.dll untuk perhitungan jadwal offline.
-- Ditetapkan metode Muhammadiyah mengikuti MTT/Pedoman Hisab.
-- Ditambahkan gambar lock screen dinamis berisi logo, nama sholat, dan jam.
-- Disajikan kalender Hijriyah dan Masehi pada aplikasi.
-- Dirilis versi 2.3.0.
-- Status verifikasi tampilan Windows tetap visual=unverified.
+- Tabel resmi KHGT ditanam di prayer_core untuk perhitungan jadwal tanpa internet.
+- Metode Muhammadiyah mengikuti MTT/Pedoman Hisab.
+- Gambar lock screen dinamis menampilkan logo, nama sholat, dan jam.
+- Kalender Hijriyah dan Masehi tersedia di aplikasi.
 
 ## v2.2.1
-- Diperbaiki penerbitan CI untuk arsitektur x86.
-- Diterapkan penamaan berkas rilis yang dinamis.
-- Dipusatkan simbol legenda kalender dengan pengaturan stretch.
+- Build 32-bit (x86) kembali bisa diterbitkan.
+- Nama berkas rilis mengikuti versi secara otomatis.
+- Simbol legenda kalender dirapikan.
 
 ## v2.2.0
-- Dinaikkan nomor versi aplikasi ke 2.2.0.
-- Dipusatkan simbol legenda kalender dengan bentuk vektor.
-- Ditetapkan workflow rilis CI hanya dapat dipicu secara manual.
+- Simbol legenda kalender sekarang berada di tengah dan tetap tajam di berbagai ukuran layar.
+- Rilis hanya bisa dijalankan manual agar tidak terbit tanpa sengaja.
 
 ## v2.1.2
-- Disinkronkan source aplikasi dengan rilis 2.1.2.
-- Dirapikan baris estimasi waktu sholat pada tampilan pengaturan.
+- Baris estimasi waktu sholat di halaman Pengaturan dirapikan agar lebih mudah dibaca.
