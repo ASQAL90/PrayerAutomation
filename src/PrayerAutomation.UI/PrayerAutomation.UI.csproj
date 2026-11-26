@@ -21,7 +21,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>../../AyoJamaah.ico</ApplicationIcon>
     <AssemblyName>AyoJamaah</AssemblyName>
-    <Version>2.6.0</Version>
+    <Version>2.7.0</Version>
     <Product>Ayo Jama'ah!</Product>
     <Company>Ayo Jama'ah!</Company>
     <AssemblyTitle>Ayo Jama'ah!</AssemblyTitle>

@@ -2,6 +2,9 @@
 
 ## Mulai di sini — ringkasan 2.6.0
 
+> **Dalam pengembangan 2.7.0:** branch `feature/2.7.0-map-picker` menambah pemilih titik via peta dengan ikon inset di **Nama Lokasi**. Pencarian dan grid tetap offline; tile OpenStreetMap dimuat otomatis saat peta dibuka dan dapat dimatikan lewat centang. Rilis stable tetap `v2.6.0`, catatan rilis 2.7.0 ada di [`release-notes/2.7.0.md`](release-notes/2.7.0.md).
+>
+
 > **Catatan 2.6.0:** stable terbaru adalah `v2.6.0`. Rilis ini menambah tab Dzikir & Doa dari Rumaysho.Com dan pengingat libur nasional & Id, puasa sunnah (keesokan hari pukul `16.00`), larangan puasa/Tasyrik (keesokan hari), peringatan Islam, dzikir pagi, serta dzikir petang. Popup pengingat tambahan terpisah dari popup sholat dengan maksimal 3 popup per layar; popup baru antre bila ruang layar tidak cukup. Kalender Hijriyah kini menyorot tanggal hari ini saat pertama dibuka, mewarnai cell terpilih, dan legenda kedua kalender disamakan. Checkbox paket data lengkap kini tersimpan langsung dan statusnya memuat tanggal snapshot. Rilis ini tetap membawa seluruh pengerasan 2.5.2/2.5.3 dan perbaikan tampilan riwayat perubahan 2.5.4. Angka versi sebelumnya di dokumen lain adalah riwayat.
 >
 > **Catatan 2.5.4:** Rilis 2.5.4 merapikan tampilan riwayat perubahan yang sebelumnya terpotong dan tetap membawa seluruh pengerasan dari 2.5.2/2.5.3. Catatan versi lama di bawah tetap berlaku sebagai riwayat.

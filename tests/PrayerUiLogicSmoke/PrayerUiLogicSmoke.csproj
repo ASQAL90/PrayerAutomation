@@ -23,6 +23,11 @@
     <None Include="../../src/PrayerAutomation.UI/App.xaml" Link="App.xaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml" Link="MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/MainWindow.xaml.cs" Link="MainWindow.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/LocationMapDialog.xaml" Link="LocationMapDialog.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/LocationMapDialog.xaml.cs" Link="LocationMapDialog.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/MapProjection.cs" Link="MapProjection.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/MapCursorFactory.cs" Link="MapCursorFactory.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/PrayerAutomation.UI/OpenStreetMapTileService.cs" Link="OpenStreetMapTileService.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/App.xaml.cs" Link="App.xaml.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/ThemeManager.cs" Link="ThemeManager.cs" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/PrayerAutomation.UI/ReminderPopup.cs" Link="ReminderPopup.cs" CopyToOutputDirectory="PreserveNewest" />

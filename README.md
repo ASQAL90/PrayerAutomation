@@ -25,6 +25,7 @@ Akhirnya saya buat sendiri: cukup notifikasi sebelum waktu sholat, lalu layar Wi
 - Ada kalender Masehi & Hijriyah, widget desktop, panel taskbar, dan pengingat.
 - Lokasi bisa diisi manual, dipilih dari data offline, diperkirakan dari jaringan, atau dideteksi dari Windows Location Services. Saat instalasi baru, lokasi dicoba dideteksi otomatis.
 - Pencarian nama tempat berjalan offline (GeoNames + hierarki wilayah Kemendagri). Paket data global lengkap bisa diunduh opsional; Nominatim online juga opsional (default mati) dengan fallback offline.
+- Mulai 2.7.0, ikon peta di ujung kanan **Nama Lokasi** membuka pemilih titik. Tile OpenStreetMap hanya dimuat bila diizinkan secara eksplisit; tanpa izin, pemilih tetap memakai grid dan data lokal.
 - Pembaruan bisa diperiksa sendiri dari GitHub: tombol "Periksa sekarang" di Pengaturan tambahan atau menu ikon tray.
 - Jadwal yang muncul adalah hasil hitung aplikasi, bukan pengumuman resmi.
 
@@ -53,6 +54,10 @@ Tangkapan layar dari build 2.6.0:
 Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar. Teks saja, tanpa suara, dan hilang sendiri setelah 12 detik. Jumlah menit serta isi pesannya bisa diatur sendiri.
 
 ## Unduh
+
+### Dalam pengembangan: 2.7.0
+
+Pemilih lokasi via peta sedang disiapkan pada branch `feature/2.7.0-map-picker`. Rilis stable dan tautan unduhan di bawah tetap memakai `v2.6.0` sampai rilis 2.7.0 dipublish.
 
 ### v2.6.0 (stable terbaru)
 

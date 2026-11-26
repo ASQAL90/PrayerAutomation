@@ -1,5 +1,15 @@
 # Riwayat perubahan
 
+## v2.7.0
+- Ditambahkan ikon peta inset di ujung kanan kolom Nama Lokasi, terpisah dari tombol perkiraan jaringan dan GPS. Saat peta dibuka, pin langsung berada di koordinat form, nama lokasi tampil di kotak pencarian dan status peta, dan zoom awal 15 (`100%`); bila nama form kosong, nama permukiman terdekat diambil dari data lokal.
+- Klik ikon peta membuka pemilih lokasi dengan pencarian offline dan opsional Nominatim, grid koordinat, marker, serta zoom.
+- Scroll mouse memperbesar/memperkecil di sekitar kursor; tahan dan geser untuk memindahkan peta, sedangkan klik singkat tetap menetapkan titik. Kursor berganti antara pin, panah geser, dan kaca pembesar zoom in/out.
+- Tombol ikon lokasi di sudut peta menuju lokasi saat ini: perangkat/GPS lebih dulu, lalu perkiraan jaringan; titik sementara langsung dipasang.
+- Klik peta atau pilih hasil pencarian menaruh titik sementara sebagai pin merah dengan ujung pin tepat di koordinat terpilih; daftar hasil langsung menutup, Tetapkan titik mengisi form dan menutup jendela, sedangkan Batal/Esc tidak mengubah form.
+- Badge zoom menampilkan persentase dengan latar tema lebih opaque, tinggi disamakan dengan tombol `−`/`+`, dan simbol zoom diperbesar; textbox dan checkbox tile mengikuti gaya form Pengaturan.
+- Tile OpenStreetMap langsung dimuat saat peta dibuka; centang tampil peta online aktif secara default, dan menghapus centang menghentikan serta membersihkan tile. Tombol Muat peta online dihapus. Atribusi ODbL tampil di UI dan notifikasi pihak ketiga.
+- Tetap self-contained tanpa WebView2; penyimpanan, popup saran nama, default offline, dan logika pengingat tidak diubah.
+
 ## v2.6.0
 - Ditambahkan tab Dzikir & Doa berisi dzikir pagi, dzikir petang, dan kumpulan doa dari Rumaysho.Com; tiap entri memuat Arab, transliterasi Latin, dan arti dengan kredit di bagian atas serta tautan sumber per entri. Arab tidak diubah; judul doa memakai judul deskriptif buatan dan tampil sebagai header yang lebih besar.
 - Ditambahkan pengingat libur nasional & Id, puasa sunnah, larangan puasa/Tasyrik, peringatan Islam, dzikir pagi, dan dzikir petang dengan jam yang bisa diatur sendiri. Puasa sunnah dan larangan puasa mengingatkan untuk esok hari pukul `16.00`; libur nasional & Id, peringatan Islam, dan dzikir pagi pukul `08.10`; dzikir petang pukul `17.00`.

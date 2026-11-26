@@ -1,6 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.6.0
+# Third-party notices — Ayo Jama'ah! 2.7.0
 
-Inventaris komponen pihak ketiga yang benar-benar dipakai source dan paket 2.6.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
+Inventaris komponen pihak ketiga yang dipakai source 2.7.0 (dalam pengembangan) dan paket rilis 2.6.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
 Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lisensinya dan tidak dicantumkan lagi di repository.
 
@@ -45,6 +45,12 @@ Hierarki administrasi Indonesia berasal dari [cahyadsn/wilayah](https://github.c
 ### Copernicus DEM GLO-90 lewat Open-Meteo
 
 Sampel ketinggian diambil saat penyusunan data melalui [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api) dari Copernicus DEM GLO-90. Median jendela `3×3` dipakai untuk menekan puncak DSM dari atap atau kanopi. Sumber dan kualitas ketinggian ditulis pada kolom `elevation_source` dan `elevation_quality`; baris tanpa sampel memakai `dem` GeoNames sebagai fallback. Aplikasi tidak memanggil API ini saat berjalan dan tetap bekerja offline. Atribusi: Copernicus DEM GLO-90 via Open-Meteo; data disediakan "as is" tanpa jaminan akurasi atau kelengkapan.
+
+### Tile peta OpenStreetMap (opsional, 2.7.0)
+
+Pemilih lokasi memuat tile raster dari `https://tile.openstreetmap.org/{z}/{x}/{y}.png` secara otomatis saat jendela peta dibuka; kotak **Tampilkan tile peta online** aktif secara default, dan menghapus centang menghentikannya. Tidak ada tile yang dibundel atau dimuat otomatis, dan tidak ada WebView2/package peta baru. Permintaan memakai HTTPS, User-Agent aplikasi, pembatasan laju, cache memori 24 jam, serta batas ukuran respons.
+
+Atribusi wajib di jendela peta: **© OpenStreetMap contributors**. Data peta tersebut tersedia di bawah [Open Database License (ODbL) 1.0](https://www.openstreetmap.org/copyright); pengguna juga harus mematuhi [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) OpenStreetMap Foundation. Koordinat yang diklik dipakai lokal untuk perhitungan jadwal, bukan untuk mengirim nama lokasi ke server tile.
 
 ### Natural Earth
 
