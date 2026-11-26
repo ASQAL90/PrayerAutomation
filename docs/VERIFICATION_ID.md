@@ -146,7 +146,9 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Belum dijalankan: build WPF/Rust penuh dan uji pembaruan nyata di Windows.
 
 
-### Pengembangan 2.7.0 — pemilih lokasi via peta (belum dirilis)
+### Pengembangan 2.7.0 — pemilih lokasi via peta (rilis 26 November 2026)
+
+- Rilis `v2.7.0` diterbitkan lewat workflow `Release` setelah PR #17 di-merge ke `master`; aset installer universal/x64/x86, portable x64/x86, delta pembaruan, dan `SHA256SUMS.txt` tersedia di halaman rilis.
 
 - Branch `feature/2.7.0-map-picker` berangkat dari commit rilis `81f12c4` dan menaikkan versi ke `2.7.0`. Tombol peta inset ditambahkan di kolom **Nama Lokasi** tanpa menggabungkan tombol jaringan/GPS.
 - Pemilih memakai WPF + marker/grid offline; tile OSM langsung dimuat saat dialog dibuka karena kotak **Tampilkan tile peta online** aktif secara default. Menghapus centang menghentikan dan membersihkan tile; tombol **Muat peta online** dihapus. Tidak ada WebView2, package peta baru, atau perubahan payload installer.
@@ -161,7 +163,7 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Verifikasi ulang setelah perbaikan pada 26 November 2026: build WPF Release x64 `0 Warning(s)`/`0 Error(s)`; `PrayerUiLogicSmoke` **PASS** dan `MapPickerSmoke` **PASS** dari salinan di `/root`; `git diff --check` bersih; XAML `LocationMapDialog.xaml` lolos parse XML. Assertion kursor memeriksa pemakaian `MapCursorFactory.Pin/ZoomIn/ZoomOut`, `Cursors.SizeAll`, timer reset, dan generasi `CreateIconIndirect`; assertion lokasi memeriksa tombol, `DetectAsync`, fallback `DetectNetworkLocationAsync`, dan `Midpoint`; assertion tampilan awal memeriksa `InitialZoom = 15`, `ApplyInitialSelection`, pin dari `_centerLatitude`, dan nama form `LocationNameBox.Text.Trim()`; assertion izin memastikan `LoadOnlineTilesButton` sudah tidak ada, kotak tile aktif secara default di konstruktor, dan hapus centang menghentikan tile; assertion penanda memastikan pin merah dan ujung pin di koordinat klik; assertion nama awal memastikan `MapSearchBox.Text = initialName` dan fallback `DescribeInitialPoint`.
 - Paket uji lokal self-contained win-x64 dibangun ulang **setelah** perbaikan, kursor, tombol lokasi saat ini, pin awal, badge zoom, tile online default, pin merah, dan nama awal: `/storage/emulated/0/Download/AyoJamaah-2.7.0-local-test-x64.zip`, 98 MB, 241 file, SHA256 `2d0a271917466b4cc7858e63443f92aa9e9bd273fcd5fcf933040eedbdfb58f9`. Paket lama (`c9d767b1…`, `7ec8af67…`, `341d8c48…`, `41a489d2…`, `b4da8db3…`, `51cae5a3…`) sudah diganti. Ini build Rust target GNU, bukan MSVC seperti CI.
 - Mock desain kursor tersedia di `/storage/emulated/0/Download/mock-kursor-peta.png` (render lokal, bukan aset aplikasi).
-- Belum dijalankan: build Windows/CI dengan `RustTarget=x86_64-pc-windows-msvc`, uji visual/manual pada DPI 96/144, dan verifikasi installer/portable. Jangan klaim rilis sebelum CI Windows lulus. Perbaikan popup masih lokal dan belum masuk PR #17 sampai ada persetujuan push baru.
+- Belum dijalankan: uji visual/manual pada DPI 96/144 dan verifikasi installer/portable di mesin Windows. CI Windows (`Build aplikasi (Release, x64)`, `Analyze C#`, `Analyze Actions`, `CodeQL`, `rust-core`) lulus pada commit rilis; PR #17 sudah di-merge ke `master`, tag `v2.7.0` dibuat, dan workflow `Release` menerbitkan installer, portable, delta, serta `SHA256SUMS.txt` pada 26 November 2026.
 
 ### Rilis 2.5.4 — 24 November 2026
 
