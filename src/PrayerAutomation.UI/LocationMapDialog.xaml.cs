@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace PrayerAutomation.UI;
 
@@ -26,6 +27,10 @@ internal partial class LocationMapDialog : Window
     private readonly bool _onlineGeocodingEnabled;
     private readonly string _onlineEndpoint;
     private readonly OpenStreetMapTileService _tileService = new();
+    private readonly DispatcherTimer _cursorResetTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(450),
+    };
     private double _centerLatitude;
     private double _centerLongitude;
     private int _zoom = 11;
@@ -59,8 +64,18 @@ internal partial class LocationMapDialog : Window
         _centerLatitude = double.IsFinite(latitude) ? MapProjection.ClampLatitude(latitude) : FallbackLatitude;
         _centerLongitude = double.IsFinite(longitude) ? MapProjection.NormalizeLongitude(longitude) : FallbackLongitude;
         UpdateZoomLabel();
+        MapCanvas.Cursor = MapCursorFactory.Pin;
+        _cursorResetTimer.Tick += (_, _) =>
+        {
+            _cursorResetTimer.Stop();
+            if (!_isPanning) MapCanvas.Cursor = MapCursorFactory.Pin;
+        };
         Loaded += (_, _) => RenderMap();
-        Closed += (_, _) => _searchVersion++;
+        Closed += (_, _) =>
+        {
+            _cursorResetTimer.Stop();
+            _searchVersion++;
+        };
     }
 
     /// <summary>True after the user clicked the map or chose a search result.</summary>
@@ -234,6 +249,7 @@ internal partial class LocationMapDialog : Window
         _dragStart = _dragLast = e.GetPosition(MapCanvas);
         _isPanning = true;
         _dragMoved = false;
+        _cursorResetTimer.Stop();
         MapCanvas.CaptureMouse();
         MapCanvas.Cursor = Cursors.SizeAll;
         e.Handled = true;
@@ -279,7 +295,7 @@ internal partial class LocationMapDialog : Window
         _isPanning = false;
         _dragMoved = false;
         if (MapCanvas.IsMouseCaptured) MapCanvas.ReleaseMouseCapture();
-        MapCanvas.Cursor = Cursors.Cross;
+        MapCanvas.Cursor = MapCursorFactory.Pin;
 
         if (wasDrag) RenderMap();
         else SelectPointAt(e.GetPosition(MapCanvas));
@@ -294,7 +310,7 @@ internal partial class LocationMapDialog : Window
         if (!_isPanning) return;
         _isPanning = false;
         _dragMoved = false;
-        MapCanvas.Cursor = Cursors.Cross;
+        MapCanvas.Cursor = MapCursorFactory.Pin;
         RenderMap();
     }
 
@@ -304,6 +320,10 @@ internal partial class LocationMapDialog : Window
     private void MapCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (e.Delta == 0) return;
+
+        MapCanvas.Cursor = e.Delta > 0 ? MapCursorFactory.ZoomIn : MapCursorFactory.ZoomOut;
+        _cursorResetTimer.Stop();
+        _cursorResetTimer.Start();
 
         int previousZoom = _zoom;
         int nextZoom = MapProjection.ClampZoom(_zoom + (e.Delta > 0 ? 1 : -1));

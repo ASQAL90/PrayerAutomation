@@ -535,6 +535,7 @@ Assert(codeBehind.Contains("private async void OpenLocationMap_Click", StringCom
     "The map button must show a dialog, apply the chosen point as a draft, and reuse the coordinate-name lookup.");
 string mapDialogXaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "LocationMapDialog.xaml"));
 string mapDialogSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "LocationMapDialog.xaml.cs"));
+string mapCursorSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MapCursorFactory.cs"));
 string tileServiceSource = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "OpenStreetMapTileService.cs"));
 Assert(mapDialogXaml.Contains("© OpenStreetMap contributors", StringComparison.Ordinal) &&
        mapDialogXaml.Contains("x:Name=\"MapOnlineConsentCheckBox\"", StringComparison.Ordinal) &&
@@ -564,6 +565,19 @@ Assert(mapDialogSource.Contains("MapCanvas_MouseWheel", StringComparison.Ordinal
        mapDialogSource.Contains("UpdateZoomLabel", StringComparison.Ordinal) &&
        mapDialogSource.Contains("ShiftTiles", StringComparison.Ordinal),
     "Wheel zoom, pointer panning, search-result closing, and the percentage zoom label must be implemented.");
+Assert(mapDialogSource.Contains("MapCursorFactory.Pin", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("MapCursorFactory.ZoomIn", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("MapCursorFactory.ZoomOut", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("Cursors.SizeAll", StringComparison.Ordinal) &&
+       mapDialogSource.Contains("_cursorResetTimer.Start()", StringComparison.Ordinal),
+    "The map must switch between pin, pan, zoom-in, and zoom-out cursors dynamically.");
+Assert(mapCursorSource.Contains("CreatePinDrawing", StringComparison.Ordinal) &&
+       mapCursorSource.Contains("CreateZoomDrawing", StringComparison.Ordinal) &&
+       mapCursorSource.Contains("CreateIconIndirect", StringComparison.Ordinal) &&
+       mapCursorSource.Contains("CursorInteropHelper.Create", StringComparison.Ordinal) &&
+       mapCursorSource.Contains("zoomIn: true", StringComparison.Ordinal) &&
+       mapCursorSource.Contains("zoomIn: false", StringComparison.Ordinal),
+    "Custom pin and zoom cursors must be generated without new assets or dependencies.");
 Assert(codeBehind.Contains("WidgetModeBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetMotionBox", StringComparison.Ordinal) &&
        codeBehind.Contains("WidgetPositionBox", StringComparison.Ordinal) &&
