@@ -165,6 +165,15 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - Mock desain kursor tersedia di `/storage/emulated/0/Download/mock-kursor-peta.png` (render lokal, bukan aset aplikasi).
 - Belum dijalankan: uji visual/manual pada DPI 96/144 dan verifikasi installer/portable di mesin Windows. CI Windows (`Build aplikasi (Release, x64)`, `Analyze C#`, `Analyze Actions`, `CodeQL`, `rust-core`) lulus pada commit rilis; PR #17 sudah di-merge ke `master`, tag `v2.7.0` dibuat, dan workflow `Release` menerbitkan installer, portable, delta, serta `SHA256SUMS.txt` pada 26 November 2026.
 
+### Rilis 2.7.1 — 27 November 2026
+
+- Branch `release/2.7.1` berangkat dari `master` `88c2437` dan menaikkan versi ke `2.7.1`. Pin peta kini memakai kotak `26 x 28.5` sesuai geometri kursor dengan titik putih `7.2`, dan timer teks berjalan widget berubah dari `80 ms` ke `40 ms`; label gerakan menjadi **Berjalan — bergerak halus**.
+- `docs/release-notes/2.7.1.md` dan entri `docs/CHANGELOG.md` ditambahkan; tautan unduhan di `README.md`, `docs/README.md`, dan `site/index.html` diperbarui ke `2.7.1`. Rilis `v2.7.0` beserta asetnya tidak diubah.
+- Assertion smoke ditambahkan: `PrayerUiLogicSmoke` memeriksa `MapMarker` `26 x 28.5` dan titik `7.2`; `WidgetLayoutSmoke` memeriksa interval timer `40 ms`.
+- CI di PR #22 lulus: `rust-core` (19 dtk), `Build aplikasi (Release, x64)` (55 dtk), `Analyze Actions` (38 dtk), dan `Analyze C#` pada run `45948566954`. PR #22 di-merge ke `master` sebagai `27310b6`.
+- Smoke WPF tidak dijalankan ulang di Termux karena tidak ada runtime Windows/proot pada sesi ini; assertion baru akan dieksekusi bersama smoke lain pada pemeriksaan Windows berikutnya.
+- Tag `v2.7.1` dibuat dan workflow `Release` (`45948920019`, environment `release` disetujui) menerbitkan installer universal/x64/x86, portable x64/x86, delta pembaruan, dan `SHA256SUMS.txt` pada 27 November 2026. `v2.7.1` tercatat sebagai **Latest**; unduhan `AyoJamaah-win-x64.zip` lolos `sha256sum -c` terhadap `SHA256SUMS.txt`.
+
 ### Rilis 2.5.4 — 24 November 2026
 
 - Tag `v2.5.3` dibuat sebelum perbaikan tampilan riwayat perubahan (PR #14) masuk, jadi versi dinaikkan ke `2.5.4` dengan `docs/release-notes/2.5.4.md` sebagai body rilis.
