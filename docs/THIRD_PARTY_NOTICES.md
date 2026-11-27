@@ -1,6 +1,6 @@
-# Third-party notices — Ayo Jama'ah! 2.7.0
+# Third-party notices — Ayo Jama'ah! 2.7.1
 
-Inventaris komponen pihak ketiga yang dipakai source 2.7.0 (dalam pengembangan) dan paket rilis 2.6.0. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
+Inventaris komponen pihak ketiga yang dipakai source 2.7.1 dan paket rilis 2.7.1. **Ini bukan LICENSE utama aplikasi.** Source aplikasi dilisensikan MIT (lihat [`../LICENSE`](../LICENSE), Copyright (c) 2026 Muhammad Nashiruddin Al-Asqalani). Setiap komponen di bawah tunduk pada lisensi/terms pemiliknya; lisensi MIT source aplikasi tidak menggantikan terms binary atau data pihak ketiga.
 
 Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lisensinya dan tidak dicantumkan lagi di repository.
 
@@ -8,8 +8,8 @@ Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lise
 
 | Komponen | Versi terbukti | Peran | Lisensi/terms yang dibaca |
 |---|---|---|---|
-| GeoTimeZone | 6.1.0 | Direct; `GeoTimeZone.dll` | MIT untuk kode; ODbL untuk data boundary; atribusi Geohash-net/Geohash-js |
-| TimeZoneConverter | 7.2.0 | Direct; `TimeZoneConverter.dll` | MIT untuk library |
+| GeoTimeZone | 7.0.0 | Direct; `GeoTimeZone.dll` dengan resource `GeoTimeZoneData.zip` | MIT untuk kode; ODbL untuk data boundary; atribusi Geohash-net/Geohash-js tetap ada di LICENSE |
+| TimeZoneConverter | 8.0.1 | Direct; `TimeZoneConverter.dll` | MIT untuk library |
 | Data GeoNames (`cities500`, `indonesia`) | snapshot 22 November 2026 UTC | Dataset lokal permukiman dan lapisan Indonesia di `src/PrayerAutomation.UI/Data/geonames/` | CC BY 4.0 |
 | Data Kemendagri lewat `cahyadsn/wilayah` | Kepmendagri No. 300.2.2-2430 Tahun 2025 | Hierarki dan nama resmi kabupaten/kota pada `indonesia.tsv.gz` | MIT untuk tooling; data tunduk pada sumber resmi |
 | Sampel Copernicus DEM GLO-90 lewat Open-Meteo | GLO-90, snapshot 22 November 2026 | Kolom `sampled_elevation`, `elevation_source`, dan `elevation_quality` | CC BY 4.0; atribusi Copernicus/Open-Meteo wajib |
@@ -21,16 +21,17 @@ Riwayat backend taskbar WinUI dihapus dari source pada 2.2.1 beserta NOTICE/lise
 
 ### GeoTimeZone: kode MIT, data ODbL
 
-- Pemilik kode: Matt Johnson-Pint dan Simon Bartlett. LICENSE juga mengakui Geohash-net oleh Sharon Lourduraj dan Geohash-js oleh David Troy.
-- Boundary berasal dari OpenStreetMap melalui [Timezone Boundary Builder](https://github.com/evansiroky/timezone-boundary-builder) oleh Evan Siroky.
-- [LICENSE lengkap](third-party/licenses/GeoTimeZone-6.1.0-LICENSE.txt), [teks ODbL 1.0](third-party/licenses/ODbL-1.0.txt), dan [penjelasan ODbL](GEOTIMEZONE_LICENSE_ID.md).
-- Exact input TBB `2025b/timezones.shapefile.zip` dan tanggal snapshot OSM belum dibuktikan; review kewajiban ODbL sebelum publikasi tetap diperlukan.
+- Pemilik kode: Matt Johnson-Pint dan Simon Bartlett. LICENSE juga mengakui Geohash-net oleh Sharon Lourduraj dan Geohash-js oleh David Troy, walaupun lookup 7.0.0 memakai geometri polygon, bukan geohash.
+- Boundary berasal dari OpenStreetMap melalui [Timezone Boundary Builder](https://github.com/evansiroky/timezone-boundary-builder) oleh Evan Siroky. DataBuilder 7.0.0 meminta TBB `2026f`.
+- DLL 7.0.0 membawa resource `GeoTimeZoneData.zip` sekitar 26,35 MB (`TZIndex.dat` dan `TZGeometry.dat`). Data inilah yang membuat `GeoTimeZone.dll` naik dari 3,5 MB di 6.1.0 menjadi 26,4 MB.
+- [LICENSE lengkap](third-party/licenses/GeoTimeZone-7.0.0-LICENSE.txt), [teks ODbL 1.0](third-party/licenses/ODbL-1.0.txt), dan [penjelasan ODbL](GEOTIMEZONE_LICENSE_ID.md), termasuk hash resource dan batas provenance.
+- Exact input TBB `2026f/timezones.shapefile.zip` dan tanggal snapshot OSM belum dibuktikan; review kewajiban ODbL sebelum publikasi tetap diperlukan.
 
 ### TimeZoneConverter dan data mapping
 
-Source pin: `f96c7a7d167d9ab93bb8c924fc7413b84f52010c`. Copyright library: Matt Johnson-Pint.
+Source pin: `df18ec0b98614eef04daaa1cfdd6586340c00fb8`. Copyright library: Matt Johnson-Pint.
 
-- [LICENSE lengkap](third-party/licenses/TimeZoneConverter-7.2.0-LICENSE.txt).
+- [LICENSE lengkap](third-party/licenses/TimeZoneConverter-8.0.1-LICENSE.txt).
 - Data mapping embedded tidak memerlukan unduhan ketika dipakai; resolusi `TimeZoneInfo` tetap bergantung pada data timezone Windows.
 - Versi/snapshot dan lisensi sumber mapping individual belum dipetakan.
 
