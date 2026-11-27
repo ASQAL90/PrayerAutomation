@@ -409,6 +409,8 @@ internal static class Program
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         var startTimer = (DispatcherTimer)typeof(ScheduleWidgetWindow).GetField("_marqueeStartTimer", flags)!.GetValue(widget.Window)!;
         var motionTimer = (DispatcherTimer)typeof(ScheduleWidgetWindow).GetField("_marqueeTimer", flags)!.GetValue(widget.Window)!;
+        Assert(motionTimer.Interval == TimeSpan.FromMilliseconds(40),
+            "The marquee timer must tick every 40 ms for brisk but smooth movement.");
         string previousText = marqueeLine.Text;
         double liveOffset = ((TranslateTransform)marqueeLine.RenderTransform).X;
         var pumpFrame = new DispatcherFrame();

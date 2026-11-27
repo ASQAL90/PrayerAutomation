@@ -1,5 +1,11 @@
 # Riwayat perubahan
 
+## v2.7.1
+- Pin di peta tampil dengan proporsi aslinya; kotak penampung kini mengikuti tinggi pin.
+- Titik putih di tengah pin disesuaikan agar sama dengan pin pada kursor peta.
+- Teks berjalan di widget bergerak lebih cepat dan tetap halus.
+- Label pilihan gerakan widget diperbarui sesuai kecepatan barunya.
+
 ## v2.7.0
 - Pemilih lokasi lewat peta: klik ikon peta di kanan kolom Nama Lokasi untuk membuka peta dan menaruh titik.
 - Pin merah menandai titik yang dipilih. Tombol Tetapkan titik mengisi nama lokasi, koordinat, ketinggian, zona waktu, dan metode hitung.

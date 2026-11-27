@@ -55,7 +55,11 @@ Beberapa menit sebelum waktu sholat, pengingat muncul di pojok kanan bawah layar
 
 ## Unduh
 
-### v2.7.0 (stable terbaru)
+### v2.7.1 (stable terbaru)
+
+Pin di peta sekarang tampil dengan proporsi aslinya dan titik putihnya sama besar dengan pin pada kursor. Teks berjalan di widget juga bergerak lebih cepat dan tetap halus, dengan label gerakan yang diperbarui. Rilis [`v2.7.1`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.1) dibangun oleh workflow `Release`.
+
+### v2.7.0
 
 Ikon peta di ujung kanan **Nama Lokasi** membuka pemilih titik dengan pin merah, zoom di posisi kursor, geser peta, pencarian lokal, dan tombol lokasi saat ini (perangkat/GPS lebih dulu, lalu perkiraan jaringan). Saat dibuka, pin langsung berada di koordinat form pada zoom 15 dan nama lokasi tampil di kotak pencarian. Tile OpenStreetMap langsung dimuat dan bisa dimatikan lewat centang; tanpa tile, grid dan pencarian lokal tetap bekerja. Rilis [`v2.7.0`](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.0) dibangun oleh workflow `Release`.
 
@@ -65,14 +69,14 @@ Tab **Dzikir & Doa** memuat dzikir pagi, dzikir petang, dan kumpulan doa dari Ru
 
 | Berkas | Keterangan |
 |---|---|
-| [AyoJamaah.Setup-2.7.0.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0.exe) | Installer universal (x64+x86) |
-| [AyoJamaah.Setup-2.7.0-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0-x64.exe) | Installer x64 |
-| [AyoJamaah.Setup-2.7.0-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah.Setup-2.7.0-x86.exe) | Installer x86 (32-bit) |
-| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah-win-x64.zip) | Portable x64 |
-| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
-| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.0/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
+| [AyoJamaah.Setup-2.7.1.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/AyoJamaah.Setup-2.7.1.exe) | Installer universal (x64+x86) |
+| [AyoJamaah.Setup-2.7.1-x64.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/AyoJamaah.Setup-2.7.1-x64.exe) | Installer x64 |
+| [AyoJamaah.Setup-2.7.1-x86.exe](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/AyoJamaah.Setup-2.7.1-x86.exe) | Installer x86 (32-bit) |
+| [AyoJamaah-win-x64.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/AyoJamaah-win-x64.zip) | Portable x64 |
+| [AyoJamaah-win-x86.zip](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/AyoJamaah-win-x86.zip) | Portable x86 (32-bit) |
+| [SHA256SUMS.txt](https://github.com/ASQAL90/PrayerAutomation/releases/download/v2.7.1/SHA256SUMS.txt) | Checksum SHA-256 semua berkas |
 
-Aset pembaruan delta (`AyoJamaah-update-2.7.0-*.json`, `.sig`, dan `AyoJamaah-delta-2.7.0-*.zip`) juga tersedia di [rilis v2.7.0](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.0) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
+Aset pembaruan delta (`AyoJamaah-update-2.7.1-*.json`, `.sig`, dan `AyoJamaah-delta-2.7.1-*.zip`) juga tersedia di [rilis v2.7.1](https://github.com/ASQAL90/PrayerAutomation/releases/tag/v2.7.1) untuk updater aplikasi. Versi lama tetap ada di [daftar rilis](https://github.com/ASQAL90/PrayerAutomation/releases).
 
 Installer dan portable belum ditandatangani, jadi SmartScreen akan memberi peringatan pertama kali jalan.
 
