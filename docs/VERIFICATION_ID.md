@@ -173,6 +173,7 @@ dotnet tests/UpdateLogicSmoke/bin/Release/net10.0/UpdateLogicSmoke.dll
 - CI di PR #22 lulus: `rust-core` (19 dtk), `Build aplikasi (Release, x64)` (55 dtk), `Analyze Actions` (38 dtk), dan `Analyze C#` pada run `45948566954`. PR #22 di-merge ke `master` sebagai `27310b6`.
 - Smoke WPF tidak dijalankan ulang di Termux karena tidak ada runtime Windows/proot pada sesi ini; assertion baru akan dieksekusi bersama smoke lain pada pemeriksaan Windows berikutnya.
 - Tag `v2.7.1` dibuat dan workflow `Release` (`45948920019`, environment `release` disetujui) menerbitkan installer universal/x64/x86, portable x64/x86, delta pembaruan, dan `SHA256SUMS.txt` pada 27 November 2026. `v2.7.1` tercatat sebagai **Latest**; unduhan `AyoJamaah-win-x64.zip` lolos `sha256sum -c` terhadap `SHA256SUMS.txt`.
+- Dokumentasi third-party diselaraskan ke GeoTimeZone 7.0.0 dan TimeZoneConverter 8.0.1: lisensi versi baru ditambahkan, hash DLL/resource dan isi `GeoTimeZoneData.zip` dicatat, input TBB diperbarui ke `2026f`, dan penjelasan lookup diganti dari geohash ke geometri polygon. Kenaikan ukuran `GeoTimeZone.dll` 3,5 MB → 26,4 MB didokumentasikan sebagai konsekuensi data boundary yang lebih presisi.
 
 ### Rilis 2.5.4 — 24 November 2026
 

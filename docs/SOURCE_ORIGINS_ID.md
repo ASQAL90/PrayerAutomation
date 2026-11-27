@@ -10,7 +10,7 @@ Aplikasi memakai beberapa referensi teknis dan dependency yang perlu disebut. Da
 
 ## GeoTimeZone — Geohash-net / Geohash-js
 
-GeoTimeZone memuat Geohash-net (Sharon Lourduraj) dan port Geohash-js (David Troy) di dalamnya. Kredit ada pada [LICENSE GeoTimeZone](third-party/licenses/GeoTimeZone-6.1.0-LICENSE.txt); keduanya source di dalam dependency, bukan bukti tiga salinan langsung ke source aplikasi. Data timezone ODbL tetap terpisah; lihat [third-party notices](THIRD_PARTY_NOTICES.md).
+LICENSE GeoTimeZone 7.0.0 masih memuat kredit Geohash-net (Sharon Lourduraj) dan port Geohash-js (David Troy), walaupun lookup versi ini memakai geometri polygon TBB, bukan database geohash. Kredit ada pada [LICENSE GeoTimeZone](third-party/licenses/GeoTimeZone-7.0.0-LICENSE.txt); keduanya source di dalam dependency, bukan bukti tiga salinan langsung ke source aplikasi. Data timezone ODbL tetap terpisah; lihat [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## GeoNames, Kemendagri, dan Copernicus DEM
 
