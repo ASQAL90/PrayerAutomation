@@ -608,7 +608,7 @@
                                         <TextBlock Name="WidgetMotionLabel" Text="Gerakan tampilan Lengkap" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="WidgetMotionBox" AutomationProperties.AutomationId="WidgetMotionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">
                                             <ComboBoxItem Content="Diam — lima waktu tetap" Tag="static" />
-                                            <ComboBoxItem Content="Berjalan — bergerak pelan" Tag="marquee" />
+                                            <ComboBoxItem Content="Berjalan — bergerak halus" Tag="marquee" />
                                         </ComboBox>
                                         <TextBlock Name="WidgetPositionLabel" Text="Posisi widget (semua tampilan)" Style="{StaticResource FieldLabel}" />
                                         <ComboBox Name="WidgetPositionBox" AutomationProperties.AutomationId="WidgetPositionBox" Margin="3,4,3,4" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="WidgetPreviewOptions_Changed">

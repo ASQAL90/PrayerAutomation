@@ -575,6 +575,9 @@ Assert(mapDialogXaml.Contains("x:Name=\"MapMarker\"", StringComparison.Ordinal) 
        !mapDialogXaml.Contains("x:Name=\"MapMarker\" Width=\"14\"", StringComparison.Ordinal) &&
        mapDialogSource.Contains("y - MapMarker.Height", StringComparison.Ordinal),
     "The chosen point must render as a red pin whose tip sits on the clicked coordinate.");
+Assert(mapDialogXaml.Contains("x:Name=\"MapMarker\" Width=\"26\" Height=\"28.5\"", StringComparison.Ordinal) &&
+       mapDialogXaml.Contains("Width=\"7.2\" Height=\"7.2\"", StringComparison.Ordinal),
+    "The map pin must keep the cursor's 26 x 28.5 proportions and 7.2 dot size.");
 Assert(mapDialogSource.Contains("MapCanvas_MouseWheel", StringComparison.Ordinal) &&
        mapDialogSource.Contains("MapCanvas_MouseMove", StringComparison.Ordinal) &&
        mapDialogSource.Contains("HideSearchResults", StringComparison.Ordinal) &&

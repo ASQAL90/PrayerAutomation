@@ -105,7 +105,7 @@ internal sealed class ScheduleWidgetWindow : Window
 
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _clockTimer.Tick += (_, _) => RefreshClockAndCountdown();
-        _marqueeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _marqueeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
         _marqueeTimer.Tick += (_, _) => AdvanceMarquee();
         _marqueeStartTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
         _marqueeStartTimer.Tick += (_, _) =>
